@@ -1,3 +1,4 @@
+import { getCampaignDate } from "./calendar";
 import { MODULE_ID } from "./constants";
 import {
   buildDiscordMarkdown,
@@ -104,7 +105,7 @@ export class PayoutWindow extends FormApplication {
       players: accounts.map(toPlayerView),
       playerCount: accounts.length,
       activePlayerCount: accounts.filter(({ active }) => active).length,
-      inGameDate: getLastPayoutDate(),
+      inGameDate: getPayoutDefaultDate(),
       payoutContainers: getPayoutContainers().map(({ id, name }) => ({
         actorId: id,
         actorName: name,
@@ -1669,4 +1670,12 @@ function toPlayerView(account: PlayerAccount): PlayerView {
     hasOtherActors: otherActors.length > 0,
     warningText: account.issues.map((issue) => ISSUE_LABELS[issue]).join(" "),
   };
+}
+
+function getPayoutDefaultDate(): string {
+  try {
+    return getCampaignDate() || getLastPayoutDate();
+  } catch {
+    return getLastPayoutDate();
+  }
 }

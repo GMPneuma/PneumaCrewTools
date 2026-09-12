@@ -19,5 +19,4 @@ export async function saveLastPayoutDate(value: string): Promise<void> {
   await game.settings.set(MODULE_ID, LAST_PAYOUT_DATE_SETTING, value.trim());
 }
 
-// Foundry v13 migration note: when Cyberpunk RED supports v13, this default
-// may be seeded from GameTime/CalendarData without adding a calendar UI here.
+// The payout form prefers the campaign calendar date when one is configured.

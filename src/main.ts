@@ -1,3 +1,4 @@
+import { registerCampaignCalendar, readyCampaignCalendar } from "./calendar";
 import "./styles/pneuma-crewtools.css";
 import { pneumaCrewToolsApi } from "./api";
 import { MODULE_ID } from "./constants";
@@ -29,6 +30,7 @@ registerHqIpTotalHandler();
 Hooks.once("init", () => {
   console.info(`${MODULE_ID} | Initializing`);
 
+  registerCampaignCalendar();
   registerPayoutLedger();
   registerDiscordLinks();
   registerPayoutJournalSettings();
@@ -44,6 +46,7 @@ Hooks.once("init", () => {
 
 Hooks.once("ready", () => {
   console.info(`${MODULE_ID} | Ready`);
+  readyCampaignCalendar();
   if (game.user?.isGM) {
     void ensurePayoutJournal();
     void ensurePayoutLog();

@@ -7,6 +7,25 @@ declare const foundry: {
 
 declare const Hooks: {
   on(
+    event: "updateWorldTime",
+    callback: (
+      time: number,
+      delta: number,
+      options: Record<string, unknown>,
+      userId: string,
+    ) => void,
+  ): number;
+  on(
+    event:
+      | "createJournalEntry"
+      | "deleteJournalEntry"
+      | "deleteJournalEntryPage"
+      | "updateSetting"
+      | "updateUser"
+      | "userConnected",
+    callback: () => void,
+  ): number;
+  on(
     event: "getSceneControlButtons",
     callback: (controls: SceneControl[]) => void,
   ): number;
@@ -133,6 +152,15 @@ interface FoundryUser {
 }
 
 declare const game: {
+  time: {
+    worldTime: number;
+    calendar?: import("./calendar-date").NativeCalendar;
+    advance(
+      seconds: number,
+      options?: Record<string, unknown>,
+    ): Promise<number>;
+    set?(seconds: number, options?: Record<string, unknown>): Promise<number>;
+  };
   user: FoundryUser | null;
   users: Iterable<FoundryUser>;
   actors: Iterable<FoundryActor> & {
@@ -201,6 +229,7 @@ declare class Dialog {
 }
 
 interface FoundryJournalPage {
+  getFlag?(namespace: string, key: string): unknown;
   id: string;
   name: string;
   text?: { content?: string };
@@ -208,6 +237,7 @@ interface FoundryJournalPage {
 }
 
 interface FoundryJournalEntry {
+  getFlag?(namespace: string, key: string): unknown;
   id: string;
   name: string;
   pages: Iterable<FoundryJournalPage>;

@@ -1,3 +1,4 @@
+import { journalExplanation } from "./journal-explanations";
 import {
   MODULE_ID,
   PAYOUT_JOURNAL_DATA_SETTING,
@@ -341,7 +342,7 @@ function renderHqPage(data: PayoutJournalData): string {
     (sum, { amount }) => sum + amount,
     0,
   );
-  return `${renderHqIpTotal(total)}<h2>Purchased Improvements</h2>${table(
+  return `${journalExplanation("hq")}${renderHqIpTotal(total)}<h2>Purchased Improvements</h2>${table(
     ["Improvement", "IP Spent"],
     data.hqImprovements.map(({ name, ipSpent }) => [name, String(ipSpent)]),
   )}<h2>HQ IP Journal</h2>${table(
@@ -355,32 +356,38 @@ function renderHqPage(data: PayoutJournalData): string {
 }
 
 function renderReputationPage(data: PayoutJournalData): string {
-  return table(
-    ["Actor", "Reputation", "Faction", "Reason"],
-    data.factionReputations.map(
-      ({ actorName, reputation, faction, reason }) => [
-        actorName,
-        String(reputation),
-        faction,
-        reason,
-      ],
-    ),
+  return (
+    journalExplanation("reputation") +
+    table(
+      ["Actor", "Reputation", "Faction", "Reason"],
+      data.factionReputations.map(
+        ({ actorName, reputation, faction, reason }) => [
+          actorName,
+          String(reputation),
+          faction,
+          reason,
+        ],
+      ),
+    )
   );
 }
 
 function renderAttendancePage(data: PayoutJournalData): string {
-  return table(
-    ["Player", "Sessions Played", "Last Session"],
-    [...data.attendance]
-      .sort(
-        (a, b) =>
-          a.sessions - b.sessions || a.userName.localeCompare(b.userName),
-      )
-      .map(({ userName, sessions, lastSession }) => [
-        userName,
-        String(sessions),
-        lastSession || "—",
-      ]),
+  return (
+    journalExplanation("attendance") +
+    table(
+      ["Player", "Sessions Played", "Last Session"],
+      [...data.attendance]
+        .sort(
+          (a, b) =>
+            a.sessions - b.sessions || a.userName.localeCompare(b.userName),
+        )
+        .map(({ userName, sessions, lastSession }) => [
+          userName,
+          String(sessions),
+          lastSession || "—",
+        ]),
+    )
   );
 }
 

@@ -1,3 +1,4 @@
+import { journalExplanation } from "./journal-explanations";
 import { MODULE_ID, PAYOUT_LOG_JOURNAL_ID_SETTING } from "./constants";
 import type { PayoutPlan, RewardEntry } from "./payout-execution";
 
@@ -119,6 +120,7 @@ function renderPayoutPage(plan: PayoutPlan): string {
   ]);
 
   return [
+    journalExplanation("payout-log"),
     metadata("In-Game Date", plan.inGameDate || "Not specified"),
     metadata("Recipients", recipients),
     metadata("Notes", plan.notes || "None"),

@@ -2,6 +2,9 @@
 
 ## Payout ledger
 
+For plain-language purposes, formats, and editing effects, see
+[the Journal guide](journals.md).
+
 Completed payouts are retained in the hidden, world-scoped Foundry setting
 `pneuma-crewtools.payoutLedger`. Records use schema version 1 so later releases
 can migrate stored history.
@@ -32,12 +35,14 @@ source used to recreate the module-owned **Payouts** journal. It stores:
 - HQ improvements entered through the journal; and
 - HQ IP transactions and their descriptions.
 
-The journal is a readable and partly editable view of that data. Relevant HQ
-table edits are synchronized back to the setting. Deleting the module-owned
-journal does not discard the reference data; the settings data can recreate it.
-The Module Data settings menu provides explicit controls to inspect and clear
-each major section.
-
+The Reputation and Attendance pages are regenerated from this data. HQ text can
+be edited directly: its displayed total is recalculated from the adjustment
+table, but manual HQ table edits are not synchronized back into the setting.
+Payout HQ transactions are saved in the setting and appended to the HQ page.
+Deleting the registered Payouts journal resets the stored reference data when
+it is recreated. Deleting an individual page recreates it from stored data, so
+manual-only HQ edits on that page are lost. Module Data provides explicit
+controls to inspect and clear each section. See the Journal guide for details.
 The module-owned **Payout Log** journal is a GM-only, append-only readable log
 of completed payouts. Its stored journal ID is retained in world settings so an
 unrelated journal with the same name is never adopted.
@@ -73,3 +78,10 @@ Payout execution records rollback operations for Actor changes, communal
 Items, journal updates, acknowledgments, pending Humanity prompts, and the Payout
 Log. The payout ledger is written last. If a later operation fails, completed
 changes are reversed where possible.
+
+## Campaign calendar
+
+Foundry's native `game.time.worldTime` is authoritative. The v12 shim converts
+that clock into Gregorian dates; later versions use native calendar conversion.
+There is no calendar Journal, stored date copy, or module data setting.
+See [calendar details](calendar.md).

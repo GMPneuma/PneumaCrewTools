@@ -4,6 +4,13 @@ Crew management tools for Foundry VTT v12 and the Cyberpunk RED Core system.
 Version 0.1.0 starts from the copied Pneuma's Payouts codebase, retaining its
 payout workflow, journals, and player inbox.
 
+## Campaign calendar
+
+A small shared date display provides GM controls to set the campaign date and
+advance days. The date comes directly from Foundry world time; no calendar
+Journal is required or created.
+See [calendar usage, compatibility, and validation](docs/calendar.md).
+
 ## Development
 
 Requirements: Node.js 20.19+ (or 22.12+) and pnpm.
@@ -23,7 +30,9 @@ pnpm dev
 
 For local Foundry development, copy or link `dist` to
 `Data/modules/pneuma-crewtools`. The folder name must match the module ID.
-This initial source repository has no published installable release.
+Release downloads are available from [GitHub Releases](https://github.com/GMPneuma/PneumaCrewTools/releases).
+The Foundry manifest URL is
+[module.json](https://github.com/GMPneuma/PneumaCrewTools/releases/latest/download/module.json).
 
 ## Module identity and data
 
@@ -31,6 +40,7 @@ PneumaCrewTools uses the `pneuma-crewtools` module ID, settings, and flags.
 Existing Pneuma's Payouts world data is not migrated or adopted automatically.
 The module API is available at `game.modules.get("pneuma-crewtools").api`.
 
-See [the data model](docs/data-model.md),
+See [the Journal guide and specifications](docs/journals.md),
+[the data model](docs/data-model.md),
 [player discovery](docs/player-discovery.md), and [the roadmap](ROADMAP.md).
 The inherited project history is preserved under [docs/legacy](docs/legacy).

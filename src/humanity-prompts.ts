@@ -87,7 +87,9 @@ export async function createHumanityPrompt(
   prompt: PendingHumanityRoll,
 ): Promise<FoundryChatMessage> {
   const action = prompt.reward === "humanityGain" ? "gain" : "lose";
-  const description = escapeHtml(prompt.description || "PneumaCrewTools payout");
+  const description = escapeHtml(
+    prompt.description || "PneumaCrewTools payout",
+  );
   const recipients = new Set([
     prompt.userId,
     ...Array.from(game.users)
