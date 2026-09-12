@@ -7,10 +7,6 @@ declare const foundry: {
 
 declare const Hooks: {
   on(
-    event: "renderSettingsConfig",
-    callback: (app: unknown, html: FoundryHtml) => void,
-  ): number;
-  on(
     event: "getSceneControlButtons",
     callback: (controls: SceneControl[]) => void,
   ): number;
@@ -93,7 +89,6 @@ interface FoundrySettingsMenuConfig {
 }
 
 interface FoundryModule {
-  version?: string;
   active: boolean;
   api?: unknown;
 }
@@ -213,8 +208,6 @@ interface FoundryJournalPage {
 }
 
 interface FoundryJournalEntry {
-  isOwner: boolean;
-  getFlag(namespace: string, key: string): unknown;
   id: string;
   name: string;
   pages: Iterable<FoundryJournalPage>;

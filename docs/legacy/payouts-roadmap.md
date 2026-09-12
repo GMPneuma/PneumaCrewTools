@@ -150,8 +150,7 @@ acknowledgment and Humanity rolls, Discord summaries, and audit journals.
 It also supports the Cyberpunk RED system's light and dark themes and remains
 compatible with Foundry installations served without a secure browser context.
 The version 1.0 compatibility baseline is Foundry v12, the Cyberpunk RED Core
-system, and payout record schema version 1. Optional No Place Like Home
-integration is guarded by version and data validation.
+system, and payout record schema version 1.
 Correction/reversal workflows, managed faction definitions, exhaustive Item
 edge-case testing, and containerized Foundry integration tests are intentionally
 out of scope for this friendly-game module.

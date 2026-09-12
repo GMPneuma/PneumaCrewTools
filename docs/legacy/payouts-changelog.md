@@ -5,17 +5,13 @@
 - Declared the completed payout workflow stable for Foundry v12 and the
   Cyberpunk RED Core system.
 - Documented the version 1 payout schema, authoritative data locations,
-  journal reference data, pending player actions, optional No Place Like Home
-  integration, and transactional rollback behavior.
+  journal reference data, pending player actions, and transactional rollback
+  behavior.
 - Updated the roadmap for post-1.0 maintenance and backward-compatible module
   expansion.
 
 ## 0.9.4 - 2026-09-06
 
-- Added optional No Place Like Home integration for awarding HQ IP directly to
-  compatible HQ journals and selecting their linked shared stash.
-- Added guarded compatibility settings for No Place Like Home 0.4.1 and earlier,
-  including an explicit override for newer or unrecognized versions.
 - Refined communal payout destinations, item drop targets, tooltips, light and
   dark theme styling, and settings layout.
 

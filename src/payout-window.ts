@@ -1,8 +1,3 @@
-import {
-  hqIntegrationEnabled,
-  hqOptions,
-  prepareHqAward,
-} from "./hq-integration";
 import { MODULE_ID } from "./constants";
 import {
   buildDiscordMarkdown,
@@ -56,8 +51,6 @@ interface PlayerView {
 }
 
 interface PayoutWindowData {
-  hqIntegration: boolean;
-  headquarters: ReturnType<typeof hqOptions>;
   players: PlayerView[];
   playerCount: number;
   activePlayerCount: number;
@@ -108,8 +101,6 @@ export class PayoutWindow extends FormApplication {
   override getData(): PayoutWindowData {
     const accounts = discoverPlayerAccounts();
     return {
-      hqIntegration: hqIntegrationEnabled(),
-      headquarters: hqOptions(),
       players: accounts.map(toPlayerView),
       playerCount: accounts.length,
       activePlayerCount: accounts.filter(({ active }) => active).length,
@@ -134,27 +125,6 @@ export class PayoutWindow extends FormApplication {
 
     this.#initializeSelection(root);
     this.#initializePayoutContainer(root);
-    root
-      .querySelector<HTMLSelectElement>('[name="hqJournalId"]')
-      ?.addEventListener("change", (event) => {
-        this.#plan = null;
-        const select = event.currentTarget as HTMLSelectElement;
-        const option = select.selectedOptions[0];
-        const balance = root.querySelector<HTMLElement>("[data-hq-balance]");
-        if (balance) {
-          balance.hidden = !option?.dataset.balance;
-          balance.textContent = option?.dataset.balance
-            ? option.dataset.balance + " IP available"
-            : "";
-        }
-        const container = root.querySelector<HTMLSelectElement>(
-          '[name="payoutContainerId"]',
-        );
-        if (container && option?.dataset.stashId) {
-          container.value = option.dataset.stashId;
-          container.dispatchEvent(new Event("change", { bubbles: true }));
-        }
-      });
     root
       .querySelector<HTMLInputElement>('[name="inGameDate"]')
       ?.addEventListener("change", (event) => {
@@ -1079,31 +1049,12 @@ export class PayoutWindow extends FormApplication {
       root
         .querySelector<HTMLInputElement>('[name="groupHqIpDescription"]')
         ?.value.trim() ?? "";
-    if (
-      hqIpAmount &&
-      root.querySelector('[name="hqJournalId"]') &&
-      !hqIntegrationEnabled()
-    )
-      throw new Error(
-        "HQ integration is no longer active. Reopen Payouts before continuing.",
-      );
-    const hqAward =
-      hqIpAmount && hqIntegrationEnabled()
-        ? prepareHqAward(
-            root.querySelector<HTMLSelectElement>('[name="hqJournalId"]')
-              ?.value ?? "",
-            hqIpAmount,
-            hqIpDescription || sessionLabel,
-          )
-        : undefined;
     const hqIpTransactions = hqIpAmount
       ? [
           {
             date: inGameDate || new Date().toISOString().slice(0, 10),
             amount: hqIpAmount,
-            reason: hqAward
-              ? hqAward.name + ": " + hqAward.reason
-              : hqIpDescription || sessionLabel,
+            reason: hqIpDescription || sessionLabel,
           },
         ]
       : [];
@@ -1215,12 +1166,12 @@ export class PayoutWindow extends FormApplication {
     if (hqIpAmount) {
       journalChanges.push({
         reward: "hqIp",
-        targetType: hqAward ? "journal" : "world",
-        targetId: hqAward?.journalId ?? null,
-        targetName: hqAward?.name ?? "HQ",
+        targetType: "world",
+        targetId: null,
+        targetName: "HQ",
         amount: hqIpAmount,
-        previousValue: hqAward?.previousValue ?? null,
-        newValue: hqAward ? hqAward.previousValue + hqIpAmount : null,
+        previousValue: null,
+        newValue: null,
         details: {
           description: hqIpDescription,
           scope: "group",
@@ -1290,7 +1241,6 @@ export class PayoutWindow extends FormApplication {
       humanityPrompts,
       factionReputations,
       hqIpTransactions,
-      hqAward,
       communalItems,
       payoutContainer,
     };

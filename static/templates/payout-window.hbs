@@ -185,27 +185,6 @@
       <div class="reward-layout">
         <fieldset class="primary-payouts communal-payouts">
           <legend><i class="fas fa-building"></i> Communal Payout</legend>
-          {{#if hqIntegration}}
-            <div class="payout-destination-selector payout-hq-selector">
-              <label for="payout-hq-destination">HQ
-                <span
-                  class="payout-help"
-                  tabindex="0"
-                  role="img"
-                  aria-label="HQ destination help"
-                  title="HQ IP is awarded once to this HQ. Its linked stash is selected below when available; you can choose another container. Payouts retains the award history."
-                >?</span></label>
-              <select id="payout-hq-destination" name="hqJournalId">
-                <option value="">Select an HQ</option>
-                {{#each headquarters}}<option
-                    value="{{id}}"
-                    data-balance="{{balance}}"
-                    data-stash-id="{{stashId}}"
-                  >{{name}}</option>{{/each}}
-              </select>
-              <small class="hq-balance" data-hq-balance hidden></small>
-            </div>
-          {{/if}}
           <div class="payout-destination-selector payout-container-selector">
             <label for="payout-container-destination"><i
                 class="fas fa-box-open"

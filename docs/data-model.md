@@ -67,17 +67,9 @@ cancels the action. The Module Data settings menu can clear them manually.
 - The last entered in-game date, Discord mappings, journal IDs, default
   container, and feature preferences are world settings.
 
-## Optional No Place Like Home integration
-
-When enabled, HQ IP is written directly to the selected No Place Like Home HQ
-journal flags and its activity log. A linked stash may supply the communal
-Container Actor. PneumaCrewTools retains its own payout-history record but does
-not duplicate that external HQ's current balance.
-
 ## Transaction behavior
 
 Payout execution records rollback operations for Actor changes, communal
-Items, journal updates, acknowledgments, pending Humanity prompts, the Payout
-Log, and optional HQ integration. If a later operation fails, completed changes
-are reversed where possible. Rollback refuses to overwrite newer external HQ
-activity.
+Items, journal updates, acknowledgments, pending Humanity prompts, and the Payout
+Log. The payout ledger is written last. If a later operation fails, completed
+changes are reversed where possible.

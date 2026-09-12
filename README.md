@@ -2,7 +2,7 @@
 
 Crew management tools for Foundry VTT v12 and the Cyberpunk RED Core system.
 Version 0.1.0 starts from the copied Pneuma's Payouts codebase, retaining its
-payout workflow, journals, player inbox, and optional No Place Like Home integration.
+payout workflow, journals, and player inbox.
 
 ## Development
 
@@ -18,7 +18,7 @@ pnpm dev
 - `pnpm build` creates the installable module in `dist`.
 - `pnpm typecheck` checks TypeScript.
 - `pnpm check` checks TypeScript and creates a production build.
-- `pnpm test` runs the existing integration and rollback tests.
+- `pnpm test` runs the payout execution and rollback tests.
 - `pnpm dev` rebuilds when source files change.
 
 For local Foundry development, copy or link `dist` to
@@ -34,10 +34,3 @@ The module API is available at `game.modules.get("pneuma-crewtools").api`.
 See [the data model](docs/data-model.md),
 [player discovery](docs/player-discovery.md), and [the roadmap](ROADMAP.md).
 The inherited project history is preserved under [docs/legacy](docs/legacy).
-
-## Optional No Place Like Home integration
-
-Enable **Integrate with No Place Like Home** in the module settings to award HQ IP
-and select a linked communal stash. Integration defaults to off. Versions 0.4.1
-or earlier are accepted by default; newer or unknown versions require the
-separate version-check override. HQ data must still pass validation.
