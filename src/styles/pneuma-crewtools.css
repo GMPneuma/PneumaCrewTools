@@ -1,0 +1,1494 @@
+/* Module styles belong under the .pneuma-crewtools namespace. */
+.pneuma-crewtools {
+  --pneuma-accent: #8f2028;
+  --pneuma-blue: #2b6f9f;
+  --pneuma-green: #2f7d3c;
+  --pneuma-purple: #6f4b8b;
+  --pneuma-link: #1f5f99;
+  --pneuma-accent-soft: rgba(143, 32, 40, 0.16);
+  --pneuma-panel: rgba(0, 0, 0, 0.055);
+  --pneuma-panel-strong: rgba(0, 0, 0, 0.1);
+  --pneuma-row: color-mix(
+    in srgb,
+    var(--cpr-background-window, #d0d0d0) 88%,
+    var(--cpr-text-normal, #222) 12%
+  );
+  --pneuma-drop-zone: color-mix(
+    in srgb,
+    var(--cpr-background-window, #d0d0d0) 80%,
+    var(--cpr-text-normal, #222) 20%
+  );
+  box-sizing: border-box;
+}
+
+#controls [data-tool="pneuma-crewtools"] i {
+  color: #ffd24a;
+  text-shadow:
+    0 0 3px #7a4700,
+    0 0 7px #ffb000;
+}
+
+#controls [data-tool="pneuma-crewtools-inbox"] i {
+  color: #7fdcff;
+  text-shadow: 0 0 5px #006a8f;
+}
+
+#controls [data-tool="pneuma-crewtools-inbox"] i.pneuma-crewtools-inbox-pending {
+  color: #d95b64;
+  text-shadow: 0 0 6px #6f1119;
+}
+
+.nplh-settings-group {
+  margin: 0.75rem 0;
+  padding: 0.55rem 0.65rem 0.25rem;
+  border: 1px solid var(--color-border-light-primary, #777);
+  border-left: 3px solid var(--pneuma-blue, #2b6f9f);
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--pneuma-blue, #2b6f9f) 8%, transparent);
+}
+
+.nplh-settings-group > h3 {
+  margin: 0 0 0.35rem;
+  color: var(--pneuma-blue, #2b6f9f);
+}
+
+.nplh-settings-group > .form-group:last-child {
+  border-bottom: 0;
+}
+
+.nplh-settings-group > .form-group > label {
+  flex: 1 1 auto;
+  max-width: none;
+  white-space: nowrap;
+}
+
+.nplh-settings-group > .form-group > input[type="checkbox"] {
+  flex: 0 0 auto;
+}
+
+.pneuma-crewtools .window-content {
+  padding: 0;
+}
+
+.pneuma-crewtools .payout-form {
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.45rem;
+}
+
+.pneuma-crewtools [data-step-panel][hidden] {
+  display: none;
+}
+
+.pneuma-crewtools .wizard-steps {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  border: 1px solid var(--color-border-light-primary, #777);
+  background: transparent;
+  border-radius: 4px;
+  padding: 0.25rem;
+}
+
+.pneuma-crewtools .wizard-step {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  border-radius: 3px;
+  padding: 0.15rem 0.45rem;
+  color: var(--color-text-dark-secondary, #777);
+  font-size: 0.85rem;
+}
+
+.pneuma-crewtools .wizard-step b {
+  display: inline-grid;
+  width: 1.25rem;
+  height: 1.25rem;
+  place-items: center;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+}
+
+.pneuma-crewtools .wizard-step--active {
+  color: var(--pneuma-purple);
+  font-weight: 700;
+  background: rgba(111, 75, 139, 0.12);
+}
+
+.pneuma-crewtools .wizard-steps > i {
+  color: var(--color-text-dark-secondary, #777);
+  font-size: 0.7rem;
+  opacity: 0.75;
+}
+
+.pneuma-crewtools .payout-heading p {
+  margin: 0 0 0.25rem;
+}
+
+.pneuma-crewtools .payout-heading {
+  border-left: 3px solid var(--pneuma-accent);
+  border-radius: 3px;
+  background: var(--pneuma-panel);
+  padding: 0.4rem;
+}
+
+.pneuma-crewtools [data-step-panel="participants"] {
+  display: grid;
+  min-height: 0;
+  flex: 1;
+  grid-template-columns: minmax(14rem, 0.75fr) minmax(26rem, 2fr);
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 0.5rem;
+}
+
+.pneuma-crewtools [data-step-panel="participants"] .payout-heading {
+  align-self: start;
+  margin: 0;
+  border: 1px solid var(--color-border-light-primary, #777);
+  border-left: 3px solid var(--pneuma-purple);
+  border-radius: 4px;
+  padding: 0.3rem 0.45rem 0.45rem;
+  background: rgba(111, 75, 139, 0.045);
+}
+
+.pneuma-crewtools [data-step-panel="participants"] .payout-heading > legend {
+  padding: 0 0.35rem;
+  color: var(--pneuma-purple);
+  font-weight: 700;
+}
+
+.pneuma-crewtools .participant-selection {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  margin: 0;
+  border: 1px solid var(--color-border-light-primary, #777);
+  border-left: 3px solid var(--pneuma-purple);
+  border-radius: 4px;
+  padding: 0.3rem 0.45rem 0.45rem;
+  background: rgba(111, 75, 139, 0.045);
+  overflow: hidden;
+}
+
+.pneuma-crewtools .participant-selection > legend {
+  padding: 0 0.35rem;
+  color: var(--pneuma-purple);
+  font-weight: 700;
+}
+
+.pneuma-crewtools .participant-instructions {
+  margin: 0 0 0.35rem;
+  color: var(--color-text-dark-secondary, #777);
+  font-size: 0.78rem;
+}
+
+.pneuma-crewtools .payout-metadata {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.5rem;
+}
+
+.pneuma-crewtools .payout-metadata label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  font-weight: 600;
+}
+
+.pneuma-crewtools .payout-metadata textarea {
+  min-height: 8rem;
+  background: var(
+    --cpr-background-foundry-input,
+    var(--color-bg-option, rgba(0, 0, 0, 0.08))
+  );
+  color: var(--cpr-text-foundry-input, inherit);
+  resize: vertical;
+}
+
+.pneuma-crewtools .payout-metadata textarea::placeholder {
+  color: var(--cpr-text-normal, currentColor);
+  opacity: 0.7;
+}
+
+.pneuma-crewtools .participant-list {
+  display: flex;
+  min-height: 6rem;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.25rem;
+  overflow-y: auto;
+  padding-right: 0.25rem;
+}
+
+.pneuma-crewtools [data-step-panel="participants"] .payout-footer {
+  grid-column: 1 / -1;
+}
+
+.pneuma-crewtools .participant {
+  border: 1px solid var(--color-border-light-primary, #777);
+  border-radius: 4px;
+  padding: 0.2rem 0.35rem;
+  background: var(--pneuma-row);
+}
+
+.pneuma-crewtools .participant:has([data-user-toggle]:checked) {
+  border-left: 1px solid var(--color-border-light-primary, #777);
+  background: var(--pneuma-row);
+}
+
+.pneuma-crewtools .participant--ineligible {
+  opacity: 0.65;
+}
+
+.pneuma-crewtools .participant-header,
+.pneuma-crewtools .payout-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.pneuma-crewtools .wizard-button {
+  width: auto;
+  margin: 0;
+  padding: 0.25rem 0.75rem;
+}
+
+.pneuma-crewtools [data-step-panel="rewards"] {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+}
+
+.pneuma-crewtools .payout-step-layout {
+  display: grid;
+  min-height: 0;
+  flex: 1;
+  grid-template-columns: minmax(23rem, 1.05fr) minmax(0, 1.45fr);
+  gap: 0.5rem;
+  container-type: inline-size;
+}
+
+.pneuma-crewtools .reward-layout {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  gap: 0.45rem;
+  overflow-y: auto;
+  padding-right: 0.2rem;
+}
+
+.pneuma-crewtools .reward-summary {
+  margin-bottom: 0.35rem;
+}
+
+.pneuma-crewtools .primary-payouts,
+.pneuma-crewtools .additional-payouts {
+  margin: 0;
+  border: 1px solid var(--color-border-light-primary, #777);
+  border-radius: 4px;
+  padding: 0.3rem 0.45rem 0.45rem;
+  background: transparent;
+  overflow: hidden;
+}
+
+.pneuma-crewtools .communal-payouts {
+  border-left: 3px solid var(--pneuma-blue);
+  background: rgba(43, 111, 159, 0.055);
+}
+
+.pneuma-crewtools .payout-destination-selector {
+  display: grid;
+  grid-template-columns: 6.5rem minmax(0, 1fr);
+  align-items: center;
+  gap: 0.25rem 0.4rem;
+  margin-bottom: 0.4rem;
+  padding: 0.15rem;
+}
+
+.pneuma-crewtools .payout-hq-selector {
+  border-bottom: 1px solid var(--color-border-light-primary, #777);
+  padding-bottom: 0.4rem;
+}
+
+.pneuma-crewtools .payout-destination-selector select {
+  width: 100%;
+  min-width: 0;
+}
+
+.pneuma-crewtools .payout-destination-selector label {
+  white-space: nowrap;
+}
+
+.pneuma-crewtools .hq-balance {
+  grid-column: 2;
+  font-size: 0.75rem;
+}
+
+.pneuma-crewtools .payout-help {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1em;
+  height: 1em;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  font-size: 0.7rem;
+  cursor: help;
+}
+
+.pneuma-crewtools .payout-help:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.pneuma-crewtools .payout-container-selector .actor-sheet-link {
+  grid-column: 2;
+  font-size: 0.75rem;
+}
+
+.pneuma-crewtools .group-payouts {
+  border-left: 3px solid var(--pneuma-green);
+  background: rgba(47, 125, 60, 0.055);
+}
+
+.pneuma-crewtools .item-drop-zone {
+  margin-top: 0.35rem;
+  border: 1px dashed var(--color-border-light-primary, #777);
+  border-radius: 3px;
+  background: color-mix(in srgb, currentColor 8%, transparent);
+  color: inherit;
+  padding: 0.3rem;
+}
+
+.pneuma-crewtools .communal-payouts .item-drop-zone {
+  border-color: color-mix(in srgb, var(--pneuma-blue) 55%, #777 45%);
+  background: color-mix(in srgb, var(--pneuma-blue) 12%, transparent);
+}
+
+.pneuma-crewtools .item-drop-zone--individual {
+  margin-top: 0.3rem;
+  padding: 0.2rem 0.3rem;
+}
+
+.pneuma-crewtools .item-drop-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: inherit;
+  opacity: 0.62;
+}
+
+.pneuma-crewtools .item-drop-heading span {
+  font-weight: 700;
+}
+
+.pneuma-crewtools .item-drop-heading small {
+  color: inherit;
+  opacity: 1;
+  font-style: normal;
+}
+
+.pneuma-crewtools .item-drop-zone:hover .item-drop-heading,
+.pneuma-crewtools .item-drop-zone:focus-within .item-drop-heading {
+  opacity: 0.82;
+}
+
+.pneuma-crewtools .dropped-item-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.pneuma-crewtools .dropped-item-list:not(:empty) {
+  margin-top: 0.3rem;
+}
+
+.pneuma-crewtools .dropped-item-entry {
+  display: grid;
+  grid-template-columns: 2rem minmax(7rem, auto) 3.5rem minmax(8rem, 1fr) 1.8rem;
+  align-items: center;
+  gap: 0.3rem;
+  border-top: 1px solid var(--color-border-light-primary, #777);
+  padding-top: 0.25rem;
+}
+
+.pneuma-crewtools .dropped-item-entry img {
+  width: 2rem;
+  height: 2rem;
+  border: 0;
+  object-fit: contain;
+}
+
+.pneuma-crewtools .dropped-item-identity,
+.pneuma-crewtools .dropped-item-identity small {
+  display: block;
+  min-width: 0;
+}
+
+.pneuma-crewtools .dropped-item-identity strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pneuma-crewtools .dropped-item-identity small {
+  color: var(--color-text-dark-secondary, #777);
+  text-transform: capitalize;
+}
+
+.pneuma-crewtools .dropped-item-entry [data-item-quantity] {
+  text-align: center;
+}
+
+.pneuma-crewtools .primary-payouts legend,
+.pneuma-crewtools .additional-payouts legend,
+.pneuma-crewtools .individual-rewards > legend {
+  width: auto;
+  margin: 0;
+  border: 0;
+  padding: 0 0.35rem;
+  background: transparent;
+  font-weight: 700;
+}
+
+.pneuma-crewtools .communal-payouts legend {
+  color: var(--pneuma-blue);
+}
+
+.pneuma-crewtools .group-payouts legend {
+  color: var(--pneuma-green);
+}
+
+.pneuma-crewtools .individual-rewards > legend {
+  color: var(--pneuma-purple);
+}
+
+.pneuma-crewtools .fieldset-hint {
+  margin: 0 0 0.4rem;
+  color: var(--color-text-dark-secondary, #777);
+  font-size: 0.72rem;
+}
+
+.pneuma-crewtools .actor-sheet-link {
+  color: var(--pneuma-link);
+  cursor: pointer;
+  font-weight: 700;
+  text-decoration: underline;
+}
+
+.pneuma-crewtools .actor-sheet-link:hover {
+  text-decoration: underline;
+  text-shadow: 0 0 4px currentColor;
+}
+
+.pneuma-crewtools .primary-payout-row {
+  display: grid;
+  grid-template-columns: 5.5rem 5rem minmax(8rem, 1fr);
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.45rem;
+  border-radius: 3px;
+  padding: 0.15rem;
+}
+
+.pneuma-crewtools .primary-payout-row:last-child {
+  margin-bottom: 0;
+}
+
+.pneuma-crewtools .primary-payout-row input[type="number"],
+.pneuma-crewtools .additional-entry input[type="number"] {
+  text-align: right;
+}
+
+.pneuma-crewtools .additional-payouts [data-additional-entries] {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.pneuma-crewtools .additional-entry {
+  --payout-amount-width: 4.5rem;
+  display: grid;
+  grid-template-columns:
+    minmax(6.5rem, 1fr) var(--payout-amount-width) auto minmax(8rem, 1.5fr)
+    1.8rem;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.pneuma-crewtools .additional-entry [data-additional-field="description"] {
+  grid-column: 4;
+  min-width: 0;
+  width: 100%;
+}
+
+.pneuma-crewtools .additional-entry [data-additional-field="type"] {
+  grid-column: 1;
+}
+
+.pneuma-crewtools .additional-entry [data-additional-field="amount"] {
+  grid-column: 2;
+}
+
+.pneuma-crewtools .additional-entry [data-additional-field="mode"] {
+  grid-column: 3;
+}
+
+.pneuma-crewtools .additional-entry .remove-entry {
+  grid-column: 5;
+}
+
+.pneuma-crewtools .add-entry {
+  width: auto;
+  margin: 0.4rem 0 0;
+  padding: 0.2rem 0.5rem;
+}
+
+.pneuma-crewtools .remove-entry {
+  width: 1.8rem;
+  margin: 0;
+  padding: 0.15rem;
+  color: var(--color-level-error, #a00);
+}
+
+.pneuma-crewtools .individual-rewards {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  border: 1px solid var(--color-border-light-primary, #777);
+  border-left: 3px solid var(--pneuma-purple);
+  border-radius: 4px;
+  padding: 0.3rem 0 0;
+  background: rgba(111, 75, 139, 0.055);
+  overflow: hidden;
+  container-type: inline-size;
+}
+
+.pneuma-crewtools .individual-rewards > p {
+  margin: 0;
+  padding: 0 0.55rem;
+  color: var(--color-text-dark-secondary, #777);
+  font-size: 0.75rem;
+}
+
+.pneuma-crewtools .individual-payouts {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.3rem;
+  overflow-y: auto;
+  padding: 0.4rem;
+}
+
+.pneuma-crewtools .individual-row {
+  border: 1px solid var(--color-border-light-primary, #777);
+  border-radius: 3px;
+  padding: 0.25rem 0.35rem;
+  background: var(--pneuma-row);
+}
+
+.pneuma-crewtools .individual-row-header {
+  padding-left: 0;
+}
+
+.pneuma-crewtools .individual-row-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.pneuma-crewtools .individual-row-header strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pneuma-crewtools .individual-entry-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin-top: 0.25rem;
+}
+
+.pneuma-crewtools .individual-entry {
+  --payout-amount-width: 4.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.pneuma-crewtools .individual-entry [data-entry-type] {
+  flex: 0 0 8.5rem;
+}
+
+.pneuma-crewtools .individual-entry [data-entry-faction] {
+  flex: 0 0 7rem;
+}
+
+.pneuma-crewtools .individual-entry [data-entry-amount] {
+  flex: 0 0 var(--payout-amount-width);
+}
+
+.pneuma-crewtools .payout-entry--two-digit {
+  --payout-amount-width: 4ch;
+}
+
+.pneuma-crewtools .payout-entry--two-digit [data-entry-amount] {
+  box-sizing: border-box;
+  width: 4ch !important;
+  min-width: 4ch !important;
+  max-width: 4ch !important;
+  padding-right: 0.2rem;
+  padding-left: 0.2rem;
+  text-align: center;
+}
+
+.pneuma-crewtools [data-entry-amount]:disabled {
+  border-color: rgba(90, 90, 90, 0.55);
+  background: rgba(90, 90, 90, 0.35);
+  color: var(--color-text-dark-secondary, #777);
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.pneuma-crewtools .individual-entry [data-entry-mode] {
+  flex: 0 0 5rem;
+}
+
+.pneuma-crewtools .individual-entry [data-entry-field="description"] {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.pneuma-crewtools [aria-invalid="true"] {
+  border-color: var(--color-level-error, #a00) !important;
+  box-shadow: 0 0 0 1px var(--color-level-error, #a00);
+}
+
+.pneuma-crewtools .payout-field-error,
+.pneuma-crewtools .payout-validation-summary {
+  display: block;
+  margin: 0.15rem 0 0;
+  color: var(--color-level-error, #a00);
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.pneuma-crewtools .payout-validation-summary {
+  border-left: 3px solid var(--color-level-error, #a00);
+  background: rgba(160, 0, 0, 0.08);
+  padding: 0.35rem 0.5rem;
+}
+
+.pneuma-crewtools .participant-toggle,
+.pneuma-crewtools .actor-option {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.pneuma-crewtools .participant-toggle {
+  min-width: 9rem;
+}
+
+.pneuma-crewtools .actor-option--default {
+  min-width: 12rem;
+  flex: 1;
+}
+
+.pneuma-crewtools [data-actor-toggle] {
+  transform: scale(0.88);
+  opacity: 0.78;
+}
+
+.pneuma-crewtools .presence {
+  color: var(--color-text-dark-secondary, #777);
+  font-size: 0.8rem;
+}
+
+.pneuma-crewtools .presence i {
+  font-size: 0.55rem;
+}
+
+.pneuma-crewtools .presence--active {
+  color: #278b42;
+}
+
+.pneuma-crewtools .other-actors {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: 0.2rem 0.5rem;
+  margin: 0.3rem 0 0 9.5rem;
+  border-top: 1px dotted var(--color-border-light-primary, #777);
+  padding-top: 0.3rem;
+}
+
+.pneuma-crewtools .other-actors[hidden] {
+  display: none;
+}
+
+.pneuma-crewtools .show-other-actors {
+  width: auto;
+  min-width: 7.5rem;
+  margin: 0;
+  padding: 0.15rem 0.4rem;
+  font-size: 0.75rem;
+  line-height: 1.2;
+}
+
+.pneuma-crewtools .tag {
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  padding: 0.05rem 0.35rem;
+  color: var(--color-text-dark-secondary, #666);
+  font-size: 0.7rem;
+  line-height: 1.2;
+}
+
+.pneuma-crewtools .tag--warning {
+  color: var(--color-level-warning, #b26b00);
+}
+
+.pneuma-crewtools .empty-actors,
+.pneuma-crewtools .empty-players {
+  margin: 0;
+  font-style: italic;
+  font-size: 0.8rem;
+}
+
+.pneuma-crewtools .payout-footer {
+  border-top: 1px solid var(--color-border-light-primary, #777);
+  padding-top: 0.4rem;
+}
+
+.pneuma-crewtools .next-step {
+  color: var(--color-text-dark-secondary, #666);
+  font-size: 0.8rem;
+}
+
+.pneuma-crewtools .preview-heading {
+  display: grid;
+  grid-template-columns:
+    minmax(8rem, 0.7fr) minmax(12rem, 1.3fr) minmax(8rem, 0.7fr)
+    minmax(12rem, 1fr);
+  gap: 0.4rem;
+  padding: 0.3rem;
+  border: 1px solid var(--color-border-light-primary, #777);
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.pneuma-crewtools [data-step-panel="preview"] {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+}
+
+.pneuma-crewtools .preview-heading > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.1rem;
+  border-left: 3px solid var(--pneuma-accent);
+  padding-left: 0.4rem;
+}
+
+.pneuma-crewtools .preview-label {
+  color: var(--color-text-dark-secondary, #777);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.pneuma-crewtools .preview-heading [data-preview-session],
+.pneuma-crewtools .preview-heading [data-session-summary] {
+  font-size: 1rem;
+}
+
+.pneuma-crewtools .preview-heading [data-preview-recipients],
+.pneuma-crewtools .preview-heading [data-preview-in-game-date],
+.pneuma-crewtools .preview-heading [data-preview-notes],
+.pneuma-crewtools .preview-heading [data-recipient-list],
+.pneuma-crewtools .preview-heading [data-reward-in-game-date],
+.pneuma-crewtools .preview-heading [data-reward-notes] {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pneuma-crewtools .preview-columns {
+  display: grid;
+  min-height: 0;
+  flex: 1;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0.45rem;
+  margin: 0.35rem 0;
+}
+
+.pneuma-crewtools .preview-section {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  border: 1px solid var(--color-border-light-primary, #777);
+  border-radius: 4px;
+  padding: 0;
+  overflow: hidden;
+}
+
+.pneuma-crewtools .preview-section h3,
+.pneuma-crewtools .preview-section p {
+  margin: 0;
+  padding-right: 0.55rem;
+  padding-left: 0.55rem;
+}
+
+.pneuma-crewtools .preview-section h3 {
+  border-bottom: 1px solid var(--color-border-light-primary, #777);
+  padding-top: 0.35rem;
+  padding-bottom: 0.3rem;
+  background: rgba(0, 0, 0, 0.1);
+  font-size: 0.95rem;
+}
+
+.pneuma-crewtools .preview-section h3 .fa-building {
+  color: var(--pneuma-blue);
+}
+
+.pneuma-crewtools .preview-section h3 .fa-layer-group {
+  color: var(--pneuma-green);
+}
+
+.pneuma-crewtools .preview-section h3 .fa-address-card {
+  color: var(--pneuma-accent);
+}
+
+.pneuma-crewtools .preview-section p {
+  padding-top: 0.3rem;
+  color: var(--color-text-dark-secondary, #777);
+  font-size: 0.75rem;
+}
+
+.pneuma-crewtools .preview-list {
+  margin: 0.35rem 0 0;
+  padding: 0 0.5rem 0.45rem;
+  list-style: none;
+}
+
+.pneuma-crewtools .preview-list li {
+  display: grid;
+  grid-template-columns: minmax(6.5rem, 0.8fr) minmax(5rem, auto) minmax(
+      8rem,
+      1.4fr
+    );
+  align-items: baseline;
+  gap: 0.45rem;
+  margin-bottom: 0.2rem;
+  border-radius: 3px;
+  padding: 0.25rem 0.35rem;
+  background: var(--pneuma-row);
+}
+
+.pneuma-crewtools [data-preview-communal] li {
+  border-left: 3px solid var(--pneuma-blue);
+  background: rgba(43, 111, 159, 0.055);
+}
+
+.pneuma-crewtools [data-preview-group] li {
+  border-left: 3px solid var(--pneuma-green);
+  background: rgba(47, 125, 60, 0.055);
+}
+
+.pneuma-crewtools .preview-item-label {
+  font-weight: 700;
+}
+
+.pneuma-crewtools .preview-item-amount {
+  color: var(--pneuma-accent);
+  text-align: center;
+  white-space: nowrap;
+}
+
+.pneuma-crewtools .preview-item-description {
+  color: var(--color-text-dark-secondary, #777);
+  overflow: hidden;
+  font-size: 0.75rem;
+  font-style: italic;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pneuma-crewtools .preview-individual {
+  display: flex;
+  min-height: 0;
+  max-height: none;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-top: 0.35rem;
+  padding: 0 0.5rem 0.5rem;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+
+.pneuma-crewtools .preview-recipient {
+  flex: 0 0 auto;
+  border: 1px solid var(--color-border-light-primary, #777);
+  border-radius: 3px;
+  background: var(--pneuma-row);
+  overflow: hidden;
+}
+
+.pneuma-crewtools .preview-recipient > summary {
+  display: block;
+  cursor: pointer;
+  list-style: none;
+  padding: 0.25rem 0.4rem;
+  background: var(--pneuma-drop-zone);
+  font-weight: 700;
+}
+
+.pneuma-crewtools .preview-recipient > summary::-webkit-details-marker {
+  display: none;
+}
+
+.pneuma-crewtools .preview-recipient > summary::after {
+  float: right;
+  content: "▾";
+}
+
+.pneuma-crewtools .preview-recipient:not([open]) > summary::after {
+  content: "▸";
+}
+
+.pneuma-crewtools .preview-recipient .preview-item--primary {
+  border-left: 3px solid var(--pneuma-green);
+  background: rgba(47, 125, 60, 0.09);
+}
+
+.pneuma-crewtools .preview-recipient .preview-item--individual {
+  border-left: 3px solid var(--pneuma-purple);
+  background: rgba(111, 75, 139, 0.11);
+}
+
+.pneuma-crewtools .preview-recipient .preview-list {
+  margin-top: 0.25rem;
+  padding-bottom: 0.25rem;
+}
+
+.pneuma-crewtools .preview-recipient .preview-list li {
+  grid-template-columns: minmax(7rem, 0.8fr) minmax(0, 1.4fr);
+  row-gap: 0.1rem;
+}
+
+.pneuma-crewtools .preview-recipient .preview-list .preview-item-description {
+  grid-column: 1 / -1;
+  overflow: visible;
+  padding-left: 0.25rem;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+.pneuma-crewtools .preview-list--empty {
+  color: var(--color-text-dark-secondary, #777);
+  font-style: italic;
+  font-size: 0.8rem;
+}
+
+.pneuma-crewtools-humanity-prompt button {
+  width: auto;
+  padding: 0.2rem 0.55rem;
+}
+
+.pneuma-crewtools-humanity-prompt--resolved {
+  border-left: 3px solid #278b42;
+  padding-left: 0.5rem;
+}
+
+.discord-summary-dialog textarea {
+  width: 100%;
+  min-height: 20rem;
+  resize: vertical;
+  font-family: monospace;
+  font-size: 0.8rem;
+  white-space: pre-wrap;
+}
+
+.discord-links-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.discord-links-form > p {
+  margin: 0;
+}
+
+.discord-links-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.discord-links-list label {
+  display: grid;
+  grid-template-columns: minmax(8rem, 0.7fr) 8.5rem minmax(12rem, 1.3fr);
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.discord-links-list .discord-crew-link {
+  margin-bottom: 0.25rem;
+  border-bottom: 1px solid var(--color-border-light-primary, #777);
+  padding-bottom: 0.45rem;
+}
+
+.discord-crew-link > span {
+  color: var(--color-text-dark-secondary, #777);
+  font-size: 0.75rem;
+  font-style: italic;
+}
+
+.payout-container-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.payout-container-form > p {
+  margin: 0;
+}
+
+.payout-container-form label {
+  display: grid;
+  grid-template-columns: 11rem minmax(0, 1fr);
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.payout-container-form .payout-container-warning {
+  border-left: 3px solid var(--color-level-warning, #b26b00);
+  background: rgba(178, 107, 0, 0.08);
+  padding: 0.4rem 0.5rem;
+}
+
+.pneuma-crewtools .payout-inbox-form {
+  display: flex;
+  max-height: 65vh;
+  flex-direction: column;
+  gap: 0.65rem;
+  overflow-y: auto;
+  padding: 0.5rem;
+}
+
+.pneuma-crewtools .inbox-gm-panel {
+  position: sticky;
+  z-index: 2;
+  top: 0;
+  border: 1px solid var(--color-border-light-primary, #777);
+  border-left: 3px solid var(--pneuma-accent);
+  border-radius: 4px;
+  background: var(--color-bg-option, rgba(0, 0, 0, 0.12));
+  overflow: hidden;
+}
+
+.pneuma-crewtools .inbox-gm-actions {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45rem;
+  padding: 0.45rem 0.55rem;
+}
+
+.pneuma-crewtools .inbox-gm-actions input {
+  margin-top: 0.15rem;
+}
+
+.pneuma-crewtools .inbox-gm-actions span,
+.pneuma-crewtools .inbox-gm-actions small {
+  display: block;
+}
+
+.pneuma-crewtools .inbox-gm-bulk-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.35rem;
+  border-top: 1px solid var(--color-border-light-primary, #777);
+  padding: 0.35rem 0.55rem;
+  background: var(--pneuma-panel);
+}
+
+.pneuma-crewtools .inbox-gm-bulk-actions button {
+  width: auto;
+  margin: 0;
+  white-space: nowrap;
+}
+
+.pneuma-crewtools .inbox-gm-bulk-actions .inbox-cancel-all:not(:disabled) {
+  color: var(--color-level-error, #a00);
+}
+
+.pneuma-crewtools .inbox-gm-actions small {
+  margin-top: 0.1rem;
+  color: var(--color-text-dark-secondary, #777);
+  font-weight: 400;
+}
+
+.pneuma-crewtools .inbox-empty {
+  margin: 0;
+  padding: 1rem;
+  text-align: center;
+}
+
+.pneuma-crewtools .inbox-card-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.pneuma-crewtools .inbox-card {
+  border: 1px solid var(--color-border-light-primary, #777);
+  border-left: 3px solid var(--pneuma-green);
+  border-radius: 4px;
+  background: transparent;
+  overflow: hidden;
+}
+
+.pneuma-crewtools .inbox-card--pending {
+  border-left-color: var(--pneuma-accent);
+}
+
+.pneuma-crewtools .inbox-card-header {
+  display: grid;
+  grid-template-columns: minmax(8rem, 1.2fr) minmax(7rem, 1fr) auto auto;
+  align-items: center;
+  gap: 0.6rem;
+  cursor: pointer;
+  padding: 0.4rem 0.55rem;
+  background: var(--pneuma-panel-strong);
+  list-style: none;
+}
+
+.pneuma-crewtools .inbox-card-header::-webkit-details-marker {
+  display: none;
+}
+
+.pneuma-crewtools .inbox-card-header::after {
+  margin-left: 0.2rem;
+  content: "▸";
+}
+
+.pneuma-crewtools .inbox-card[open] .inbox-card-header::after {
+  content: "▾";
+}
+
+.pneuma-crewtools .inbox-card-title,
+.pneuma-crewtools .inbox-card-actor,
+.pneuma-crewtools .inbox-card-title small,
+.pneuma-crewtools .inbox-card-actor small {
+  display: block;
+  min-width: 0;
+}
+
+.pneuma-crewtools .inbox-card-title small,
+.pneuma-crewtools .inbox-card-actor small {
+  color: var(--color-text-dark-secondary, #777);
+  font-size: 0.72rem;
+}
+
+.pneuma-crewtools .inbox-card-status {
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  padding: 0.1rem 0.45rem;
+  color: var(--pneuma-green);
+  font-size: 0.68rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.pneuma-crewtools .inbox-card--pending .inbox-card-status {
+  color: var(--pneuma-accent);
+}
+
+.pneuma-crewtools .inbox-card-body {
+  padding: 0.15rem 0.55rem 0.35rem;
+}
+
+.pneuma-crewtools .inbox-awards {
+  margin: 0.2rem 0 0;
+  padding: 0;
+  font-size: 0.8rem;
+}
+
+.pneuma-crewtools .inbox-awards li {
+  display: grid;
+  grid-template-columns: 2rem minmax(0, 1fr);
+  align-items: start;
+  gap: 0.35rem;
+  list-style: none;
+  margin-bottom: 0.15rem;
+}
+
+.pneuma-crewtools .inbox-award-icon {
+  width: 2rem;
+  color: var(--pneuma-accent, #8f2830);
+  text-align: center;
+}
+
+.pneuma-crewtools .inbox-awards img {
+  width: 2rem;
+  height: 2rem;
+  border: 0;
+  vertical-align: middle;
+  object-fit: contain;
+}
+
+.pneuma-crewtools .inbox-award-content,
+.pneuma-crewtools .inbox-award-content small {
+  display: block;
+}
+
+.pneuma-crewtools .inbox-award-content small {
+  margin-top: 0.05rem;
+  color: var(--color-text-dark-secondary, #777);
+  font-style: italic;
+}
+
+.pneuma-crewtools .inbox-card-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.35rem;
+  border-top: 1px solid var(--color-border-light-primary, #777);
+  padding: 0.35rem 0.55rem;
+  background: var(--pneuma-panel);
+}
+
+.pneuma-crewtools .inbox-card-footer button {
+  width: auto;
+  margin: 0;
+  white-space: nowrap;
+}
+
+.pneuma-crewtools .inbox-status {
+  white-space: nowrap;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.pneuma-crewtools .inbox-status--done {
+  color: #278b42;
+}
+
+.pneuma-crewtools .payout-data-manager-form {
+  display: flex;
+  height: 100%;
+  min-height: 0;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.pneuma-crewtools .data-manager-warning {
+  margin: 0;
+  border-left: 3px solid var(--pneuma-accent);
+  background: var(--pneuma-accent-soft);
+  padding: 0.5rem;
+}
+
+.pneuma-crewtools .data-manager-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.4rem;
+}
+
+.pneuma-crewtools .data-manager-actions button {
+  display: grid;
+  grid-template-columns: 1.5rem 1fr;
+  align-items: center;
+  width: 100%;
+  margin: 0;
+  text-align: left;
+}
+
+.pneuma-crewtools .data-manager-actions button small {
+  grid-column: 2;
+  opacity: 0.7;
+}
+
+.pneuma-crewtools .data-manager-clear-all {
+  margin: 0;
+  border-color: var(--pneuma-accent);
+}
+
+.pneuma-crewtools .data-manager-json {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.pneuma-crewtools .data-manager-json textarea {
+  min-height: 16rem;
+  flex: 1;
+  resize: none;
+  background: rgba(255, 255, 255, 0.88);
+  color: #1b1b1b;
+  font-family: monospace;
+  font-size: 0.75rem;
+  white-space: pre;
+}
+
+/* Cyberpunk RED dark mode overrides. Light mode intentionally remains above. */
+html[data-cpr-theme="darkmode"] .pneuma-crewtools {
+  --pneuma-accent: #e06a72;
+  --pneuma-blue: #6eb4e3;
+  --pneuma-green: #73c283;
+  --pneuma-purple: #b493cc;
+  --pneuma-link: #78bff0;
+  --pneuma-accent-soft: rgba(224, 106, 114, 0.16);
+  --pneuma-panel: rgba(255, 255, 255, 0.055);
+  --pneuma-panel-strong: rgba(255, 255, 255, 0.1);
+  --color-border-light-primary: #657178;
+  --color-text-dark-secondary: #b8c2c7;
+  --color-level-error: #ff7474;
+  --color-level-warning: #e3aa53;
+  --color-bg-option: #30383d;
+}
+
+html[data-cpr-theme="darkmode"] .pneuma-crewtools .wizard-step--active {
+  background: rgba(180, 147, 204, 0.18);
+}
+
+html[data-cpr-theme="darkmode"]
+  .pneuma-crewtools
+  [data-step-panel="participants"]
+  .payout-heading,
+html[data-cpr-theme="darkmode"] .pneuma-crewtools .participant-selection,
+html[data-cpr-theme="darkmode"] .pneuma-crewtools .individual-rewards {
+  background: rgba(180, 147, 204, 0.1);
+}
+
+html[data-cpr-theme="darkmode"] .pneuma-crewtools .communal-payouts,
+html[data-cpr-theme="darkmode"] .pneuma-crewtools [data-preview-communal] li {
+  background: rgba(110, 180, 227, 0.1);
+}
+
+html[data-cpr-theme="darkmode"] .pneuma-crewtools .group-payouts,
+html[data-cpr-theme="darkmode"] .pneuma-crewtools [data-preview-group] li {
+  background: rgba(115, 194, 131, 0.1);
+}
+
+html[data-cpr-theme="darkmode"] .pneuma-crewtools .preview-heading,
+html[data-cpr-theme="darkmode"] .pneuma-crewtools .preview-section h3 {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+html[data-cpr-theme="darkmode"]
+  .pneuma-crewtools
+  .preview-recipient
+  .preview-item--primary {
+  background: rgba(115, 194, 131, 0.13);
+}
+
+html[data-cpr-theme="darkmode"]
+  .pneuma-crewtools
+  .preview-recipient
+  .preview-item--individual {
+  background: rgba(180, 147, 204, 0.14);
+}
+
+html[data-cpr-theme="darkmode"] .pneuma-crewtools [data-entry-amount]:disabled {
+  border-color: #69737a;
+  background: #343b40;
+  color: #aeb7bc;
+}
+
+html[data-cpr-theme="darkmode"] .pneuma-crewtools .payout-validation-summary {
+  background: rgba(255, 116, 116, 0.12);
+}
+
+html[data-cpr-theme="darkmode"] .pneuma-crewtools .item-drop-zone {
+  border-color: #69737a;
+  background: rgba(0, 0, 0, 0.18);
+  color: #929da3;
+}
+
+html[data-cpr-theme="darkmode"] .pneuma-crewtools .item-drop-heading,
+html[data-cpr-theme="darkmode"] .pneuma-crewtools .item-drop-heading > i,
+html[data-cpr-theme="darkmode"] .pneuma-crewtools .item-drop-heading > span,
+html[data-cpr-theme="darkmode"] .pneuma-crewtools .item-drop-heading > small {
+  color: #929da3 !important;
+}
+
+html[data-cpr-theme="darkmode"] .pneuma-crewtools .item-drop-zone:hover,
+html[data-cpr-theme="darkmode"] .pneuma-crewtools .item-drop-zone:focus-within {
+  border-color: #82929b;
+  background: rgba(255, 255, 255, 0.045);
+}
+
+html[data-cpr-theme="darkmode"]
+  .pneuma-crewtools
+  .item-drop-zone:hover
+  .item-drop-heading,
+html[data-cpr-theme="darkmode"]
+  .pneuma-crewtools
+  .item-drop-zone:hover
+  .item-drop-heading
+  > *,
+html[data-cpr-theme="darkmode"]
+  .pneuma-crewtools
+  .item-drop-zone:focus-within
+  .item-drop-heading,
+html[data-cpr-theme="darkmode"]
+  .pneuma-crewtools
+  .item-drop-zone:focus-within
+  .item-drop-heading
+  > * {
+  color: #b5bec3 !important;
+}
+
+html[data-cpr-theme="darkmode"] .pneuma-crewtools .payout-container-warning {
+  background: rgba(227, 170, 83, 0.12);
+}
+
+html[data-cpr-theme="darkmode"] .pneuma-crewtools .inbox-gm-panel {
+  background: #30383d;
+}
+
+html[data-cpr-theme="darkmode"] .pneuma-crewtools .presence--active,
+html[data-cpr-theme="darkmode"] .pneuma-crewtools .inbox-status--done {
+  color: var(--pneuma-green);
+}
+
+html[data-cpr-theme="darkmode"] .pneuma-crewtools-humanity-prompt--resolved {
+  border-left-color: #73c283;
+}
+
+html[data-cpr-theme="darkmode"] .pneuma-crewtools .data-manager-json textarea,
+html[data-cpr-theme="darkmode"] .discord-summary-dialog textarea {
+  background: var(--cpr-background-foundry-input, #454b50);
+  color: var(--cpr-text-foundry-input, #eaeaea);
+}
+
+html[data-cpr-theme="darkmode"] .discord-links-list .discord-crew-link {
+  border-bottom-color: #657178;
+}
+
+html[data-cpr-theme="darkmode"] .discord-crew-link > span {
+  color: #b8c2c7;
+}
+
+html[data-cpr-theme="darkmode"]
+  .payout-container-form
+  .payout-container-warning {
+  border-left-color: #e3aa53;
+  background: rgba(227, 170, 83, 0.12);
+}

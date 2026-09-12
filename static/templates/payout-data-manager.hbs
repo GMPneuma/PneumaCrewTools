@@ -1,0 +1,50 @@
+<form class="payout-data-manager-form">
+  <p class="data-manager-warning">
+    <i class="fas fa-triangle-exclamation"></i>
+    Clearing data is permanent. Configuration, Discord mappings, journal IDs,
+    and the selected Payout Container are preserved.
+  </p>
+
+  <section class="data-manager-actions">
+    <button type="button" data-clear-section="reputation">
+      <i class="fas fa-medal"></i>
+      Clear Reputation
+      <small>{{reputationCount}} records</small>
+    </button>
+    <button type="button" data-clear-section="attendance">
+      <i class="fas fa-users"></i>
+      Clear Attendance
+      <small>{{attendanceCount}} records</small>
+    </button>
+    <button type="button" data-clear-section="hq">
+      <i class="fas fa-building"></i>
+      Clear HQ Data
+      <small>{{hqCount}} records</small>
+    </button>
+    <button type="button" data-clear-section="acknowledgments">
+      <i class="fas fa-receipt"></i>
+      Clear Unacknowledged
+      <small>{{acknowledgmentCount}} records</small>
+    </button>
+    <button type="button" data-clear-section="humanity">
+      <i class="fas fa-dice-d6"></i>
+      Clear Pending Humanity
+      <small>{{humanityCount}} rolls</small>
+    </button>
+    <button type="button" data-clear-section="history">
+      <i class="fas fa-clock-rotate-left"></i>
+      Clear Payout History
+      <small>{{historyCount}} records/pages</small>
+    </button>
+  </section>
+
+  <button type="button" class="data-manager-clear-all" data-clear-section="all">
+    <i class="fas fa-trash"></i>
+    Clear All Recorded and Pending Data
+  </button>
+
+  <label class="data-manager-json">
+    <strong>All Stored Operational Data</strong>
+    <textarea readonly spellcheck="false">{{storedDataJson}}</textarea>
+  </label>
+</form>

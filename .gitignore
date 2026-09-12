@@ -1,0 +1,9 @@
+node_modules/
+.pnpm-store/
+dist/
+*.log
+*.zip
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

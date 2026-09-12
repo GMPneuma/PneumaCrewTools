@@ -1,0 +1,27 @@
+<form class="payout-container-form" autocomplete="off">
+  <p>
+    Choose the default Container Actor for Communal Money and Items. Players
+    should interact with this Container through a linked token. You can select a
+    different Payout Container for an individual payout.
+  </p>
+
+  <label>
+    <strong>Default Payout Container</strong>
+    <select name="payoutContainerId" data-selected="{{selectedId}}">
+      <option value="">None selected</option>
+      {{#each containers}}
+        <option value="{{actorId}}">{{actorName}}</option>
+      {{/each}}
+    </select>
+  </label>
+
+  {{#unless hasContainers}}
+    <p class="payout-container-warning">
+      No Container Actors exist. Create a Cyberpunk RED Container Actor,
+      configure it as a stash through a linked token, then return here.
+    </p>
+  {{/unless}}
+
+  <button type="submit"><i class="fas fa-save"></i>
+    Save Payout Container</button>
+</form>

@@ -1,0 +1,30 @@
+{
+  "id": "pneuma-crewtools",
+  "title": "PneumaCrewTools",
+  "description": "Crew management tools for Foundry VTT and Cyberpunk RED.",
+  "version": "0.1.0",
+  "authors": [
+    {
+      "name": "Pneuma"
+    }
+  ],
+  "compatibility": {
+    "minimum": "12",
+    "verified": "12",
+    "maximum": "12"
+  },
+  "relationships": {
+    "systems": [
+      {
+        "id": "cyberpunk-red-core",
+        "type": "system"
+      }
+    ]
+  },
+  "esmodules": [
+    "scripts/pneuma-crewtools.js"
+  ],
+  "styles": [
+    "styles/pneuma-crewtools.css"
+  ]
+}

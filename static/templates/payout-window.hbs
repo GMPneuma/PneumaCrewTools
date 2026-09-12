@@ -1,0 +1,543 @@
+<form class="payout-form" autocomplete="off">
+  <nav class="wizard-steps" aria-label="Payout steps">
+    <span
+      class="wizard-step wizard-step--active"
+      data-step-indicator="participants"
+    ><b>1</b> Participants</span>
+    <i class="fas fa-chevron-right" aria-hidden="true"></i>
+    <span class="wizard-step" data-step-indicator="rewards"><b>2</b>
+      Payout</span>
+    <i class="fas fa-chevron-right" aria-hidden="true"></i>
+    <span class="wizard-step" data-step-indicator="preview"><b>3</b>
+      Preview</span>
+  </nav>
+
+  <section data-step-panel="participants">
+    <fieldset class="payout-heading session-info">
+      <legend><i class="fas fa-calendar-day"></i> Session Info</legend>
+      <div class="payout-metadata">
+        <label>
+          <span>Name</span>
+          <input
+            type="text"
+            name="sessionLabel"
+            placeholder="Session name or number"
+            maxlength="100"
+            required
+          />
+        </label>
+
+        <label>
+          <span>In-Game Date</span>
+          <input
+            type="text"
+            name="inGameDate"
+            value="{{inGameDate}}"
+            placeholder="In-game date"
+            maxlength="100"
+          />
+        </label>
+
+        <label>
+          <span>Notes</span>
+          <textarea
+            name="notes"
+            rows="8"
+            placeholder="Optional payout notes"
+            maxlength="100"
+          ></textarea>
+        </label>
+      </div>
+    </fieldset>
+
+    <fieldset class="participant-selection">
+      <legend>Participants</legend>
+      <p class="participant-instructions">Select the players and characters who
+        participated in this session.</p>
+      <section class="participant-list" aria-label="Session participants">
+        {{#each players}}
+          <article
+            class="participant {{eligibilityClass}}"
+            data-player-row
+            data-user-id="{{userId}}"
+          >
+            <header class="participant-header">
+              <label class="participant-toggle">
+                <input
+                  type="checkbox"
+                  name="userIds"
+                  value="{{userId}}"
+                  data-user-toggle
+                  data-selected="{{selected}}"
+                  data-eligible="{{eligible}}"
+                />
+                <strong>{{userName}}</strong>
+              </label>
+
+              {{#if defaultActor}}
+                <label class="actor-option actor-option--default">
+                  <input
+                    type="checkbox"
+                    name="actorIds"
+                    value="{{defaultActor.actorId}}"
+                    data-actor-toggle
+                    data-actor-id="{{defaultActor.actorId}}"
+                    data-actor-name="{{defaultActor.actorName}}"
+                    data-primary="true"
+                    data-selected="true"
+                  />
+                  <a
+                    class="actor-sheet-link"
+                    data-actor-link
+                    data-actor-id="{{defaultActor.actorId}}"
+                  >{{defaultActor.actorName}}</a>
+                  {{#if defaultActor.shared}}<span
+                      class="tag tag--warning"
+                    >Shared</span>{{/if}}
+                </label>
+              {{else}}
+                <span class="empty-actors" title="{{warningText}}">No eligible
+                  Actor</span>
+              {{/if}}
+
+              {{#if hasOtherActors}}
+                <button
+                  type="button"
+                  class="show-other-actors"
+                  data-show-other-actors
+                  aria-expanded="false"
+                >Show other actors</button>
+              {{/if}}
+
+              <span
+                class="presence {{presenceClass}}"
+                title="{{presenceLabel}}"
+              >
+                <i class="fas fa-circle" aria-hidden="true"></i>
+              </span>
+            </header>
+
+            {{#if hasOtherActors}}
+              <div class="other-actors" data-other-actors hidden>
+                {{#each otherActors}}
+                  <label class="actor-option">
+                    <input
+                      type="checkbox"
+                      name="actorIds"
+                      value="{{actorId}}"
+                      data-actor-toggle
+                      data-actor-id="{{actorId}}"
+                      data-actor-name="{{actorName}}"
+                      data-primary="false"
+                      data-selected="false"
+                    />
+                    <a
+                      class="actor-sheet-link"
+                      data-actor-link
+                      data-actor-id="{{actorId}}"
+                    >{{actorName}}</a>
+                    {{#if shared}}<span
+                        class="tag tag--warning"
+                      >Shared</span>{{/if}}
+                  </label>
+                {{/each}}
+              </div>
+            {{/if}}
+          </article>
+        {{else}}
+          <p class="empty-players">No player accounts exist in this world.</p>
+        {{/each}}
+      </section>
+    </fieldset>
+
+    <footer class="payout-footer">
+      <span data-selection-summary></span>
+      <button type="button" class="wizard-button" data-next-step>Next
+        <i class="fas fa-chevron-right"></i></button>
+    </footer>
+  </section>
+
+  <section data-step-panel="rewards" hidden>
+    <header class="preview-heading reward-summary">
+      <div>
+        <span class="preview-label"><i class="fas fa-calendar-day"></i>
+          Session</span>
+        <strong data-session-summary></strong>
+      </div>
+      <div>
+        <span class="preview-label"><i class="fas fa-users"></i>
+          Recipients</span>
+        <span data-recipient-list></span>
+      </div>
+      <div>
+        <span class="preview-label"><i class="fas fa-clock"></i>
+          In-Game Date</span>
+        <span data-reward-in-game-date></span>
+      </div>
+      <div>
+        <span class="preview-label"><i class="fas fa-note-sticky"></i>
+          Notes</span>
+        <span data-reward-notes></span>
+      </div>
+    </header>
+
+    <div class="payout-step-layout">
+      <div class="reward-layout">
+        <fieldset class="primary-payouts communal-payouts">
+          <legend><i class="fas fa-building"></i> Communal Payout</legend>
+          {{#if hqIntegration}}
+            <div class="payout-destination-selector payout-hq-selector">
+              <label for="payout-hq-destination">HQ
+                <span
+                  class="payout-help"
+                  tabindex="0"
+                  role="img"
+                  aria-label="HQ destination help"
+                  title="HQ IP is awarded once to this HQ. Its linked stash is selected below when available; you can choose another container. Payouts retains the award history."
+                >?</span></label>
+              <select id="payout-hq-destination" name="hqJournalId">
+                <option value="">Select an HQ</option>
+                {{#each headquarters}}<option
+                    value="{{id}}"
+                    data-balance="{{balance}}"
+                    data-stash-id="{{stashId}}"
+                  >{{name}}</option>{{/each}}
+              </select>
+              <small class="hq-balance" data-hq-balance hidden></small>
+            </div>
+          {{/if}}
+          <div class="payout-destination-selector payout-container-selector">
+            <label for="payout-container-destination"><i
+                class="fas fa-box-open"
+              ></i>
+              Container
+              <span
+                class="payout-help"
+                tabindex="0"
+                role="img"
+                aria-label="Container help"
+                title="Destination for communal money and items. Use a Container Actor with a linked token for player access."
+              >?</span></label>
+            <select
+              id="payout-container-destination"
+              name="payoutContainerId"
+              data-selected="{{defaultPayoutContainerId}}"
+            >
+              <option value="">None selected</option>
+              {{#each payoutContainers}}<option
+                  value="{{actorId}}"
+                >{{actorName}}</option>{{/each}}
+            </select>
+            <a
+              href="#"
+              class="actor-sheet-link"
+              data-actor-link
+              data-payout-container-link
+              hidden
+            ></a>
+          </div>
+
+          <label class="primary-payout-row">
+            <span><i class="fas fa-building"></i> HQ IP</span>
+            <input type="number" name="groupHqIp" value="0" step="1" />
+            <input
+              type="text"
+              name="groupHqIpDescription"
+              placeholder="Description"
+              maxlength="100"
+            />
+          </label>
+
+          <label class="primary-payout-row">
+            <span><i class="fas fa-vault"></i> Money</span>
+            <input type="number" name="communalMoney" value="0" step="1" />
+            <input
+              type="text"
+              name="communalMoneyDescription"
+              placeholder="Description"
+              maxlength="100"
+            />
+          </label>
+
+          <div
+            class="item-drop-zone"
+            data-item-drop-zone
+            data-communal-item-drop
+          >
+            <div class="item-drop-heading">
+              <i class="fas fa-box-open"></i>
+              <span>Items</span>
+              <small>Drop Items here</small>
+            </div>
+            <div class="dropped-item-list" data-item-drop-list></div>
+          </div>
+        </fieldset>
+
+        <fieldset class="additional-payouts group-payouts">
+          <legend><i class="fas fa-layer-group"></i> Primary Payout</legend>
+          <p class="fieldset-hint">All selected players receive each entry.</p>
+
+          <label class="primary-payout-row">
+            <span><i class="fas fa-coins"></i> Money</span>
+            <input type="number" name="groupMoney" value="0" step="1" />
+            <input
+              type="text"
+              name="groupMoneyDescription"
+              placeholder="Description"
+              maxlength="100"
+            />
+          </label>
+
+          <label class="primary-payout-row">
+            <span><i class="fas fa-graduation-cap"></i> IP</span>
+            <input type="number" name="groupIp" value="0" step="1" />
+            <input
+              type="text"
+              name="groupIpDescription"
+              placeholder="Description"
+              maxlength="100"
+            />
+          </label>
+
+          <label class="primary-payout-row">
+            <span><i class="fas fa-calendar-days"></i> Downtime</span>
+            <input
+              type="number"
+              name="groupDowntime"
+              value="0"
+              min="0"
+              step="1"
+              aria-label="Downtime days"
+            />
+            <input
+              type="text"
+              name="groupDowntimeDescription"
+              placeholder="Description"
+              maxlength="100"
+            />
+          </label>
+
+          <div data-additional-entries></div>
+          <button type="button" class="add-entry" data-add-entry>
+            <i class="fas fa-plus"></i>
+            Add entry
+          </button>
+
+          <template data-additional-entry-template>
+            <div
+              class="payout-entry additional-entry"
+              data-additional-entry
+              data-payout-entry
+            >
+              <select
+                aria-label="Reward type"
+                data-additional-field="type"
+                data-entry-type
+              >
+                <option value="money">Money</option>
+                <option value="ip">IP</option>
+                <option value="humanityGain">Gain Humanity</option>
+                <option value="humanityLoss">Lose Humanity</option>
+              </select>
+              <input
+                type="number"
+                value="0"
+                step="1"
+                placeholder="Amount"
+                aria-label="Payout amount"
+                data-additional-field="amount"
+                data-entry-amount
+              />
+              <select
+                aria-label="Humanity amount mode"
+                data-additional-field="mode"
+                data-entry-mode
+                hidden
+                disabled
+              >
+                <option value="fixed">Set amount</option>
+                <option value="1d6">1d6</option>
+                <option value="2d6">2d6</option>
+                <option value="3d6">3d6</option>
+                <option value="4d6">4d6</option>
+              </select>
+              <input
+                type="text"
+                placeholder="Description"
+                aria-label="Entry description"
+                maxlength="100"
+                data-additional-field="description"
+              />
+              <button
+                type="button"
+                class="remove-entry"
+                title="Remove entry"
+                aria-label="Remove entry"
+                data-remove-entry
+              ><i class="fas fa-trash"></i></button>
+            </div>
+          </template>
+        </fieldset>
+      </div>
+
+      <fieldset class="individual-rewards">
+        <legend><i class="fas fa-address-card"></i> Individual Payouts</legend>
+        <p class="fieldset-hint">Additional rewards applied only to the named
+          recipient.</p>
+
+        <div class="individual-payouts" data-individual-payouts></div>
+
+        <template data-individual-row-template>
+          <article class="individual-row" data-individual-row>
+            <header class="individual-row-header">
+              <strong data-individual-actor-name></strong>
+              <button type="button" class="add-entry" data-add-individual-entry>
+                <i class="fas fa-plus"></i>
+                Add entry
+              </button>
+            </header>
+            <div class="individual-entry-list" data-individual-entries></div>
+            <div
+              class="item-drop-zone item-drop-zone--individual"
+              data-item-drop-zone
+              data-individual-item-drop
+            >
+              <div class="item-drop-heading">
+                <i class="fas fa-box-open"></i>
+                <small>Drop Items here</small>
+              </div>
+              <div class="dropped-item-list" data-item-drop-list></div>
+            </div>
+          </article>
+        </template>
+
+        <template data-individual-entry-template>
+          <div class="payout-entry individual-entry" data-payout-entry>
+            <select
+              aria-label="Reward type"
+              data-entry-field="type"
+              data-entry-type
+            >
+              <option value="money">Money</option>
+              <option value="ip">IP</option>
+              <option value="humanityGain">Gain Humanity</option>
+              <option value="humanityLoss">Lose Humanity</option>
+              <option value="newReputation">Reputation</option>
+              <option value="specificReputation">Specific Reputation</option>
+            </select>
+            <input
+              type="text"
+              placeholder="Faction"
+              aria-label="Faction"
+              maxlength="30"
+              data-entry-field="faction"
+              data-entry-faction
+              hidden
+              disabled
+            />
+            <input
+              type="number"
+              value="0"
+              step="1"
+              placeholder="Amount"
+              aria-label="Payout amount"
+              data-entry-field="amount"
+              data-entry-amount
+            />
+            <select
+              aria-label="Humanity amount mode"
+              data-entry-field="mode"
+              data-entry-mode
+              hidden
+              disabled
+            >
+              <option value="fixed">Set amount</option>
+              <option value="1d6">1d6</option>
+              <option value="2d6">2d6</option>
+              <option value="3d6">3d6</option>
+              <option value="4d6">4d6</option>
+            </select>
+            <input
+              type="text"
+              placeholder="Reason / description"
+              aria-label="Reason or description"
+              maxlength="100"
+              data-entry-field="description"
+            />
+            <button
+              type="button"
+              class="remove-entry"
+              title="Remove entry"
+              aria-label="Remove entry"
+              data-remove-entry
+            ><i class="fas fa-trash"></i></button>
+          </div>
+        </template>
+      </fieldset>
+    </div>
+
+    <footer class="payout-footer">
+      <button type="button" class="wizard-button" data-previous-step><i
+          class="fas fa-chevron-left"
+        ></i>
+        Back</button>
+      <button type="button" class="wizard-button" data-preview-step>
+        Preview payout
+        <i class="fas fa-magnifying-glass"></i>
+      </button>
+    </footer>
+  </section>
+
+  <section data-step-panel="preview" hidden>
+    <header class="preview-heading">
+      <div>
+        <span class="preview-label"><i class="fas fa-calendar-day"></i>
+          Session</span>
+        <strong data-preview-session></strong>
+      </div>
+      <div>
+        <span class="preview-label"><i class="fas fa-users"></i>
+          Recipients</span>
+        <span data-preview-recipients></span>
+      </div>
+      <div>
+        <span class="preview-label"><i class="fas fa-clock"></i>
+          In-Game Date</span>
+        <span data-preview-in-game-date></span>
+      </div>
+      <div>
+        <span class="preview-label"><i class="fas fa-note-sticky"></i>
+          Notes</span>
+        <span data-preview-notes></span>
+      </div>
+    </header>
+
+    <div class="preview-columns">
+      <section class="preview-section">
+        <h3><i class="fas fa-building"></i> Communal payout</h3>
+        <p>Recorded for the crew; Items await the communal Container workflow.</p>
+        <ul class="preview-list" data-preview-communal></ul>
+        <h3><i class="fas fa-layer-group"></i> Primary payouts</h3>
+        <p>Each recipient receives every entry below.</p>
+        <ul class="preview-list" data-preview-group></ul>
+      </section>
+
+      <section class="preview-section">
+        <h3><i class="fas fa-address-card"></i> Final changes by recipient</h3>
+        <p>Combined group and individual results, before applying.</p>
+        <div class="preview-individual" data-preview-individual></div>
+      </section>
+    </div>
+
+    <footer class="payout-footer">
+      <button type="button" class="wizard-button" data-preview-back>
+        <i class="fas fa-chevron-left"></i>
+        Back
+      </button>
+      <button type="button" class="wizard-button" data-apply-payout>
+        Apply payout
+        <i class="fas fa-check"></i>
+      </button>
+    </footer>
+  </section>
+</form>
