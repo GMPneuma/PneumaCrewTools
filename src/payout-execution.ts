@@ -1,5 +1,18 @@
+import { advanceCampaignDays } from "./calendar";
+import {
+  buildContainerMoneyUpdate,
+  buildActorUpdate,
+  itemDocumentsForPayout,
+  createSnapshot,
+  valueAt,
+  type ActorSnapshot,
+} from "./payout-system";
+export { planActorChanges } from "./payout-plan";
+import { deliverItems } from "./actor-resources";
+import { isActorExcluded } from "./actor-policy";
+import { applyHeadquartersPayout } from "./headquarters";
+import { applyDowntimeAwards, withDowntimeLock } from "./downtime";
 import { appendPayoutRecord } from "./payout-ledger";
-import { MODULE_ID } from "./constants";
 import {
   applyPayoutToJournal,
   type FactionReputationRecord,
@@ -8,17 +21,14 @@ import {
 import {
   createHumanityPrompt,
   createPendingHumanityRoll,
-  getPendingHumanityRolls,
+  appendPendingHumanityRolls,
   type HumanityPrompt,
-  type PendingHumanityRoll,
 } from "./humanity-prompts";
 import { createPayoutAcknowledgments } from "./payout-inbox";
-import { appendPayoutLog } from "./payout-log";
 import {
   createPayoutRecord,
   type PayoutChange,
   type PayoutParticipant,
-  type PayoutRewardType,
 } from "./payout-record";
 
 export type CharacterReward =
@@ -37,6 +47,7 @@ export interface RewardEntry {
   setValue?: boolean;
   formula?: string;
   faction?: string;
+  factionId?: string;
   scope: "group" | "individual";
 }
 
@@ -63,11 +74,19 @@ export interface PayoutContainerInput {
   moneyDescription: string;
 }
 
+export interface AbsentDowntimeAward {
+  actor: FoundryActor;
+  participant: PayoutParticipant;
+  days: number;
+}
+
 export interface PayoutPlan {
+  advanceDays?: number;
   sessionLabel: string;
   inGameDate: string;
   notes: string;
   actors: PayoutActorInput[];
+  absentDowntime?: AbsentDowntimeAward[];
   changes: PayoutChange[];
   humanityPrompts: HumanityPrompt[];
   factionReputations: FactionReputationRecord[];
@@ -76,113 +95,67 @@ export interface PayoutPlan {
   payoutContainer: PayoutContainerInput | null;
 }
 
-interface ActorSnapshot {
-  actor: FoundryActor;
-  update: Record<string, unknown>;
-}
-
-const PATHS = {
-  money: "wealth",
-  ip: "improvementPoints",
-  reputation: "reputation",
-} as const;
-
-export function planActorChanges(input: PayoutActorInput): PayoutChange[] {
-  const actor = input.actor;
-  const values = {
-    money: numberAt(actor.system, "wealth.value"),
-    ip: numberAt(actor.system, "improvementPoints.value"),
-    humanity: numberAt(actor.system, "derivedStats.humanity.value"),
-    humanityMax: numberAt(actor.system, "derivedStats.humanity.max"),
-    reputation: numberAt(actor.system, "reputation.value"),
-  };
-  const changes: PayoutChange[] = [];
-
-  for (const entry of input.entries) {
-    if (entry.reward === "factionReputation") continue;
-    if (entry.reward === "downtime") {
-      changes.push({
-        reward: "downtime",
-        targetType: "actor",
-        targetId: actor.id,
-        targetName: actor.name,
-        amount: entry.amount,
-        previousValue: null,
-        newValue: null,
-        details: {
-          description: entry.description,
-          scope: entry.scope,
-          displayOnly: true,
-          unit: "days",
-        },
-      });
-      continue;
-    }
-    if (entry.formula) {
-      changes.push({
-        reward: entry.reward as PayoutRewardType,
-        targetType: "actor",
-        targetId: actor.id,
-        targetName: actor.name,
-        amount: 0,
-        previousValue: null,
-        newValue: null,
-        details: {
-          description: entry.description,
-          formula: entry.formula,
-          pendingPlayerRoll: true,
-          scope: entry.scope,
-        },
-      });
-      continue;
-    }
-    let previousValue: number;
-    let newValue: number;
-    if (entry.reward === "humanityGain" || entry.reward === "humanityLoss") {
-      previousValue = values.humanity;
-      const signed =
-        entry.reward === "humanityGain" ? entry.amount : -entry.amount;
-      newValue = Math.min(values.humanityMax, previousValue + signed);
-      values.humanity = newValue;
-    } else {
-      const key = entry.reward;
-      previousValue = values[key];
-      newValue = entry.setValue ? entry.amount : previousValue + entry.amount;
-      values[key] = newValue;
-    }
-    changes.push({
-      reward: entry.reward as PayoutRewardType,
-      targetType: "actor",
-      targetId: actor.id,
-      targetName: actor.name,
-      amount: newValue - previousValue,
-      previousValue,
-      newValue,
-      details: {
-        description: entry.description,
-        formula: entry.formula ?? "",
-        requestedAmount: entry.amount,
-        scope: entry.scope,
-      },
-    });
-  }
-  return changes;
-}
-
 export async function executePayoutPlan(plan: PayoutPlan): Promise<void> {
   if (!game.user?.isGM) throw new Error("Only a GM can apply payouts.");
+  return withDowntimeLock(() => executeLockedPayout(plan));
+}
+async function executeLockedPayout(plan: PayoutPlan): Promise<void> {
+  if (!game.user?.isGM) throw new Error("Only a GM can apply payouts.");
+  const advanceDays = plan.advanceDays ?? 0;
+  if (!Number.isSafeInteger(advanceDays) || advanceDays < 0)
+    throw new Error("Invalid GameTime day advance.");
+  let previousWorldTime: number | undefined;
+  const actorIds = new Set<string>();
+  for (const { actor } of plan.actors) {
+    if (isActorExcluded(actor.id))
+      throw new Error("This payout contains an excluded Actor: " + actor.name);
+    if (actorIds.has(actor.id))
+      throw new Error(
+        "An Actor can receive a payout only once per application.",
+      );
+    actorIds.add(actor.id);
+  }
+  for (const award of plan.absentDowntime ?? []) {
+    if (
+      !Number.isSafeInteger(award.days) ||
+      award.days < 1 ||
+      !plan.actors.some((a) =>
+        a.entries.some(
+          (e) => e.reward === "downtime" && e.scope === "group" && e.amount > 0,
+        ),
+      )
+    )
+      throw new Error(
+        "Absent-character downtime requires a positive primary downtime award.",
+      );
+    if (
+      isActorExcluded(award.actor.id) ||
+      award.actor.type !== "character" ||
+      actorIds.has(award.actor.id) ||
+      plan.actors.some((a) => a.participant.userId === award.participant.userId)
+    )
+      throw new Error("Invalid or duplicate absent downtime recipient.");
+    actorIds.add(award.actor.id);
+  }
+  if (plan.payoutContainer && isActorExcluded(plan.payoutContainer.actor.id))
+    throw new Error("The payout container is excluded from Crew Tools.");
   const record = createPayoutRecord({
     createdByUserId: game.user.id,
     createdByUserName: game.user.name,
     sessionLabel: plan.sessionLabel,
     inGameDate: plan.inGameDate,
     notes: plan.notes,
-    participants: plan.actors.map(({ participant }) => participant),
+    participants: plan.actors.map(({ actor, participant }) => ({
+      ...participant,
+      actorId: actor.id,
+      actorName: actor.name,
+    })),
     changes: plan.changes,
   });
   const pendingRolls = plan.humanityPrompts.map((prompt) =>
     createPendingHumanityRoll(prompt, record.id),
   );
+  const rollbackPending: Array<() => Promise<void>> = [];
   const snapshots = plan.actors.map(createSnapshot);
   const updated: ActorSnapshot[] = [];
   const createdItems: Array<{ actor: FoundryActor; ids: string[] }> = [];
@@ -196,9 +169,10 @@ export async function executePayoutPlan(plan: PayoutPlan): Promise<void> {
     : null;
   let containerUpdated = false;
   const promptMessages: FoundryChatMessage[] = [];
+  let rollbackHeadquarters: (() => Promise<void>) | null = null;
+  let rollbackDowntime: (() => Promise<void>) | null = null;
   let rollbackJournal: (() => Promise<void>) | null = null;
   let rollbackAcknowledgments: (() => Promise<void>) | null = null;
-  let rollbackPayoutLog: (() => Promise<void>) | null = null;
   try {
     if (plan.payoutContainer) {
       const { actor, moneyAmount, moneyDescription } = plan.payoutContainer;
@@ -214,8 +188,8 @@ export async function executePayoutPlan(plan: PayoutPlan): Promise<void> {
         containerUpdated = true;
       }
       if (plan.communalItems.length) {
-        const created = await actor.createEmbeddedDocuments(
-          "Item",
+        const created = await deliverItems(
+          actor,
           plan.communalItems.flatMap(itemDocumentsForPayout),
           { CPRsplitStack: true },
         );
@@ -226,177 +200,94 @@ export async function executePayoutPlan(plan: PayoutPlan): Promise<void> {
       const changes = plan.changes.filter(
         ({ targetId }) => targetId === actorInput.actor.id,
       );
-      await actorInput.actor.update(
-        buildActorUpdate(
-          actorInput.actor,
-          changes,
-          pendingRolls.filter(({ actorId }) => actorId === actorInput.actor.id),
-          plan.sessionLabel,
-        ),
+      const update = buildActorUpdate(
+        actorInput.actor,
+        changes,
+        plan.sessionLabel,
       );
-      const snapshot = snapshots.find(
-        ({ actor }) => actor === actorInput.actor,
-      );
-      if (snapshot) updated.push(snapshot);
+      // Journal-only rewards must not issue even an empty Actor/flag update.
+      if (Object.keys(update).length) {
+        await actorInput.actor.update(update);
+        const snapshot = snapshots.find(
+          ({ actor }) => actor === actorInput.actor,
+        );
+        if (snapshot) updated.push(snapshot);
+      }
       if (actorInput.items.length) {
         const itemData = actorInput.items.flatMap(itemDocumentsForPayout);
-        const created = await actorInput.actor.createEmbeddedDocuments(
-          "Item",
-          itemData,
-          { CPRsplitStack: true },
-        );
+        const created = await deliverItems(actorInput.actor, itemData, {
+          CPRsplitStack: true,
+        });
         createdItems.push({
           actor: actorInput.actor,
           ids: created.map(({ id }) => id),
         });
       }
     }
+    for (const { actor } of plan.actors) {
+      const rolls = pendingRolls.filter((r) => r.actorId === actor.id);
+      if (rolls.length)
+        rollbackPending.push(await appendPendingHumanityRolls(actor, rolls));
+    }
     for (const prompt of pendingRolls)
       promptMessages.push(await createHumanityPrompt(prompt));
+    rollbackDowntime = await applyDowntimeAwards(plan, record.id);
+    rollbackHeadquarters = await applyHeadquartersPayout(plan, record.id);
     rollbackJournal = await applyPayoutToJournal(plan);
     rollbackAcknowledgments = await createPayoutAcknowledgments(
       record.id,
       plan,
     );
-    rollbackPayoutLog = await appendPayoutLog(plan);
+    if (advanceDays > 0) {
+      previousWorldTime = game.time.worldTime;
+      await advanceCampaignDays(advanceDays);
+    }
     await appendPayoutRecord(record);
   } catch (error) {
-    await Promise.allSettled(
-      updated.map(({ actor, update }) => actor.update(update)),
-    );
-    await Promise.allSettled(
-      createdItems.map(({ actor, ids }) =>
+    const failures: string[] = [];
+    const restore = async (label: string, undo: () => Promise<unknown>) => {
+      try {
+        await undo();
+      } catch (failure) {
+        failures.push(label);
+        console.error("Crew Tools payout rollback failed: " + label, failure);
+      }
+    };
+    if (previousWorldTime !== undefined) {
+      const previous = previousWorldTime;
+      await restore("GameTime", () =>
+        game.time.advance(previous - game.time.worldTime),
+      );
+    }
+    for (const undo of rollbackPending.reverse())
+      await restore("Humanity records", undo);
+    for (const { actor, update } of updated)
+      await restore("Resources for " + actor.name, () => actor.update(update));
+    for (const { actor, ids } of createdItems)
+      await restore("Items for " + actor.name, () =>
         actor.deleteEmbeddedDocuments("Item", ids),
-      ),
-    );
-    if (containerUpdated && containerSnapshot)
-      await containerSnapshot.actor
-        .update({ "system.wealth": containerSnapshot.wealth })
-        .catch(() => undefined);
-    if (rollbackJournal) await rollbackJournal().catch(() => undefined);
+      );
+    if (containerUpdated && containerSnapshot) {
+      const snapshot = containerSnapshot;
+      await restore("Communal container money", () =>
+        snapshot.actor.update({ "system.wealth": snapshot.wealth }),
+      );
+    }
+    if (rollbackHeadquarters) await restore("HQ IP", rollbackHeadquarters);
+    if (rollbackDowntime) await restore("Downtime", rollbackDowntime);
+    if (rollbackJournal) await restore("Payout Journal", rollbackJournal);
     if (rollbackAcknowledgments)
-      await rollbackAcknowledgments().catch(() => undefined);
-    if (rollbackPayoutLog) await rollbackPayoutLog().catch(() => undefined);
-    await Promise.allSettled(promptMessages.map((message) => message.delete()));
+      await restore("Acknowledgments", rollbackAcknowledgments);
+    for (const message of promptMessages)
+      await restore("Humanity chat prompt", () => message.delete());
+    if (failures.length)
+      throw new Error(
+        "Rollback incomplete: " +
+          failures.join("; ") +
+          ". Inspect these records before retrying. Original error: " +
+          (error instanceof Error ? error.message : String(error)),
+        { cause: error },
+      );
     throw error;
   }
-}
-
-function buildContainerMoneyUpdate(
-  actor: FoundryActor,
-  amount: number,
-  description: string,
-  sessionLabel: string,
-): Record<string, unknown> {
-  const previousValue = numberAt(actor.system, "wealth.value");
-  const newValue = previousValue + amount;
-  const transactions = structuredClone(
-    arrayAt(actor.system, "wealth.transactions"),
-  );
-  transactions.push([
-    `${amount >= 0 ? "Increased" : "Decreased"} by ${Math.abs(amount)} to ${newValue}`,
-    `${sessionLabel.trim() || "Payout"} - ${description.trim() || "No description"}`,
-  ]);
-  return {
-    "system.wealth.value": newValue,
-    "system.wealth.transactions": transactions,
-  };
-}
-
-function buildActorUpdate(
-  actor: FoundryActor,
-  changes: PayoutChange[],
-  pendingRolls: PendingHumanityRoll[],
-  sessionLabel: string,
-): Record<string, unknown> {
-  const update: Record<string, unknown> = {
-    [`flags.${MODULE_ID}.pendingHumanityRolls`]: [
-      ...getPendingHumanityRolls(actor),
-      ...pendingRolls,
-    ],
-  };
-  for (const change of changes) {
-    if (change.newValue === null) continue;
-    if (change.reward === "humanityGain" || change.reward === "humanityLoss") {
-      update["system.derivedStats.humanity.value"] = change.newValue;
-      update["system.stats.emp.value"] = Math.floor(change.newValue / 10);
-      continue;
-    }
-    const path = PATHS[change.reward as keyof typeof PATHS];
-    if (!path) continue;
-    update[`system.${path}.value`] = change.newValue;
-    const transactions = structuredClone(
-      arrayAt(actor.system, `${path}.transactions`),
-    );
-    for (const related of changes.filter(
-      (item) => item.reward === change.reward,
-    )) {
-      const description = String(
-        related.details?.description ?? "PneumaCrewTools payout",
-      ).trim();
-      const transactionDescription = `${sessionLabel.trim() || "Payout"} - ${description || "No description"}`;
-      transactions.push([
-        `${related.amount >= 0 ? "Increased" : "Decreased"} by ${Math.abs(related.amount)} to ${related.newValue}`,
-        transactionDescription,
-      ]);
-    }
-    update[`system.${path}.transactions`] = transactions;
-  }
-  return update;
-}
-
-function itemDocumentsForPayout(item: PayoutItem): Record<string, unknown>[] {
-  const source = structuredClone(item.source);
-  delete source._id;
-  const system = source.system;
-  if (
-    typeof system === "object" &&
-    system !== null &&
-    typeof (system as Record<string, unknown>).amount === "number"
-  ) {
-    (system as Record<string, unknown>).amount = item.quantity;
-    return [source];
-  }
-  return Array.from({ length: item.quantity }, () => structuredClone(source));
-}
-
-function createSnapshot(input: PayoutActorInput): ActorSnapshot {
-  const actor = input.actor;
-  return {
-    actor,
-    update: {
-      "system.wealth": structuredClone(valueAt(actor.system, "wealth")),
-      "system.improvementPoints": structuredClone(
-        valueAt(actor.system, "improvementPoints"),
-      ),
-      "system.derivedStats.humanity": structuredClone(
-        valueAt(actor.system, "derivedStats.humanity"),
-      ),
-      "system.stats.emp": structuredClone(valueAt(actor.system, "stats.emp")),
-      "system.reputation": structuredClone(valueAt(actor.system, "reputation")),
-      [`flags.${MODULE_ID}.pendingHumanityRolls`]:
-        getPendingHumanityRolls(actor),
-    },
-  };
-}
-
-function valueAt(value: unknown, path: string): unknown {
-  return path.split(".").reduce<unknown>((current, key) => {
-    if (typeof current !== "object" || current === null) return undefined;
-    return (current as Record<string, unknown>)[key];
-  }, value);
-}
-
-function numberAt(value: unknown, path: string): number {
-  const result = valueAt(value, path);
-  if (typeof result !== "number" || !Number.isFinite(result))
-    throw new Error(`Actor is missing numeric system.${path}.`);
-  return result;
-}
-
-function arrayAt(value: unknown, path: string): unknown[] {
-  const result = valueAt(value, path);
-  if (!Array.isArray(result))
-    throw new Error(`Actor is missing system.${path}.`);
-  return result;
 }

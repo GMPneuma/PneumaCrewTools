@@ -1,3 +1,5 @@
+import { isPrimaryGM as primaryGM } from "./action-coordinator";
+import { CrewToolsForm } from "./foundry-form";
 import { MODULE_ID } from "./constants";
 import {
   DAY_SECONDS,
@@ -8,16 +10,8 @@ import {
   shimDate,
 } from "./calendar-date";
 let queue: Promise<unknown> = Promise.resolve();
-let changing = false;
 let ready = false;
 let calendarWindow: FormApplication | undefined;
-function primaryGM(): boolean {
-  return (
-    Array.from(game.users)
-      .filter((user) => user.active && user.isGM)
-      .sort((a, b) => a.id.localeCompare(b.id))[0]?.id === game.user?.id
-  );
-}
 function requireGM(): void {
   if (!game.user?.isGM)
     throw new Error("Only a GM can change the campaign date.");
@@ -56,12 +50,10 @@ async function changeDate(value: string, remainder = 0): Promise<void> {
     (game.time.calendar
       ? nativeTime(game.time.calendar, value)
       : parseDate(value).getTime() / 1000) + remainder;
-  changing = true;
   try {
     if (game.time.calendar && game.time.set) await game.time.set(target);
     else await game.time.advance(target - game.time.worldTime);
   } finally {
-    changing = false;
     renderCalendar();
   }
 }
@@ -75,7 +67,7 @@ export function advanceCampaignDays(days: number): Promise<void> {
     await changeDate(shiftDate(getCampaignDate(), days), remainder);
   });
 }
-export class CampaignCalendarForm extends FormApplication {
+export class CampaignCalendarForm extends CrewToolsForm {
   #busy = false;
   async #perform(action: () => Promise<void>): Promise<void> {
     if (this.#busy) return;
@@ -93,9 +85,10 @@ export class CampaignCalendarForm extends FormApplication {
     return {
       ...super.defaultOptions,
       id: "pneuma-crewtools-calendar-form",
-      title: "Campaign Calendar",
+      title: "Modify GameTime Date",
+      classes: [MODULE_ID],
       template: `modules/${MODULE_ID}/templates/calendar.hbs`,
-      width: 360,
+      width: 420,
       height: "auto",
       closeOnSubmit: false,
     };
@@ -104,6 +97,7 @@ export class CampaignCalendarForm extends FormApplication {
     const current = getCampaignDate();
     const selected = parseDate(current || "2045-01-01");
     return {
+      currentDate: `${String(selected.getUTCMonth() + 1).padStart(2, "0")}-${String(selected.getUTCDate()).padStart(2, "0")}-${selected.getUTCFullYear()}`,
       year: selected.getUTCFullYear(),
       day: selected.getUTCDate(),
       months: [
@@ -182,51 +176,52 @@ function renderCalendar(): void {
     root = document.createElement("div");
     root.id = "pneuma-crewtools-calendar";
     root.className = "pneuma-calendar";
-    root.setAttribute("aria-label", "Campaign calendar");
-    document.body.append(root);
+    root.setAttribute("aria-label", "Crew Tools HUD");
+    const logo = document.getElementById("logo");
+    if (logo) {
+      root.classList.add("pneuma-calendar--logo-slot");
+      logo.replaceWith(root);
+    } else {
+      document.body.append(root);
+    }
   }
-  let date: string;
+  let monthDay = "Calendar",
+    year = "unavailable";
   try {
-    date = getCampaignDate() || "Date not set";
-  } catch {
-    date = "Calendar unavailable";
-  }
-  root.replaceChildren();
-  const label = document.createElement(game.user?.isGM ? "button" : "span");
-  label.textContent = date;
-  label.title = game.user?.isGM
-    ? "Set campaign date or advance days"
-    : "Campaign date";
-  if (label instanceof HTMLButtonElement) {
-    label.type = "button";
-    label.addEventListener("click", openCampaignCalendar);
-  }
-  root.append(label);
-  if (primaryGM() && /^\d{4}-/.test(date)) {
-    const next = document.createElement("button");
-    next.type = "button";
-    next.textContent = "+1 day";
-    next.title = "Advance campaign date by one day";
-    next.disabled = changing;
-    next.addEventListener("click", () => {
-      next.disabled = true;
-      void advanceCampaignDays(1).catch(report).finally(renderCalendar);
+    const current = getCampaignDate();
+    if (
+      root.dataset.date === current &&
+      root.querySelector(".pneuma-calendar-date")
+    )
+      return;
+    root.dataset.date = current;
+    const date = parseDate(current);
+    monthDay = date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      timeZone: "UTC",
     });
-    root.append(next);
+    year = String(date.getUTCFullYear()).padStart(4, "0");
+  } catch {
+    /* Keep the HUD usable when the date cannot be read. */
   }
+  let label = root.querySelector<HTMLSpanElement>(".pneuma-calendar-date");
+  if (!label) {
+    label = document.createElement("span");
+    label.className = "pneuma-calendar-date";
+    const dayLine = document.createElement("span"),
+      yearLine = document.createElement("span");
+    dayLine.className = "pneuma-calendar-month-day";
+    yearLine.className = "pneuma-calendar-year";
+    label.append(dayLine, yearLine);
+    root.prepend(label);
+  }
+  label.querySelector(".pneuma-calendar-month-day")!.textContent = monthDay;
+  label.querySelector(".pneuma-calendar-year")!.textContent = year;
+  label.setAttribute("aria-label", monthDay + ", " + year);
 }
 export function registerCampaignCalendar(): void {
-  game.settings.registerMenu(MODULE_ID, "campaignCalendar", {
-    name: "Campaign Calendar",
-    label: "Set Date / Advance Days",
-    icon: "fas fa-calendar",
-    type: CampaignCalendarForm,
-    restricted: true,
-  });
   Hooks.on("updateWorldTime", () => renderCalendar());
-  Hooks.on("updateSetting", () => renderCalendar());
-  Hooks.on("updateUser", () => renderCalendar());
-  Hooks.on("userConnected", () => renderCalendar());
 }
 export function readyCampaignCalendar(): void {
   ready = true;

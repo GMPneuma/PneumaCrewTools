@@ -1,3 +1,5 @@
+import { CrewToolsForm } from "./foundry-form";
+import { isActorExcluded } from "./actor-policy";
 import { DEFAULT_PAYOUT_CONTAINER_SETTING, MODULE_ID } from "./constants";
 
 interface PayoutContainerConfigData {
@@ -26,24 +28,25 @@ export function registerPayoutContainerSettings(): void {
 
 export function getPayoutContainers(): FoundryActor[] {
   return Array.from(game.actors)
-    .filter(({ type }) => type === "container")
+    .filter(({ id, type }) => type === "container" && !isActorExcluded(id))
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
 export function getDefaultPayoutContainerId(): string {
   const value = game.settings.get(MODULE_ID, DEFAULT_PAYOUT_CONTAINER_SETTING);
   return typeof value === "string" &&
+    !isActorExcluded(value) &&
     game.actors.get(value)?.type === "container"
     ? value
     : "";
 }
 
-class PayoutContainerConfig extends FormApplication {
+class PayoutContainerConfig extends CrewToolsForm {
   static override get defaultOptions(): ApplicationOptions {
     return {
       ...super.defaultOptions,
       id: `${MODULE_ID}-payout-container`,
-      title: "PneumaCrewTools: Default Payout Container",
+      title: "Pneuma's Crew Tools: Default Payout Container",
       template: `modules/${MODULE_ID}/templates/payout-container.hbs`,
       width: 480,
       height: "auto",
@@ -76,7 +79,11 @@ class PayoutContainerConfig extends FormApplication {
     formData: Record<string, unknown>,
   ): Promise<void> {
     const actorId = String(formData.payoutContainerId ?? "");
-    if (actorId && game.actors.get(actorId)?.type !== "container")
+    if (
+      actorId &&
+      (isActorExcluded(actorId) ||
+        game.actors.get(actorId)?.type !== "container")
+    )
       throw new Error("The selected Payout Container is no longer available.");
     await game.settings.set(
       MODULE_ID,

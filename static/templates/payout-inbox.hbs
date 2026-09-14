@@ -1,4 +1,190 @@
 <form class="payout-inbox-form">
+
+  {{#if gmDashboard}}
+    <fieldset class="payout-heading hub-status gm-dashboard-panel">
+      <legend><i class="fas fa-gauge-high"></i> GM Action</legend>
+      <div class="gm-dashboard-actions">
+        <button type="button" data-gm-dashboard-action="payout"><i
+            class="fas fa-coins"
+          ></i>
+          Initiate Payout</button>
+        <button type="button" data-gm-dashboard-action="calendar"><i
+            class="fas fa-calendar"
+          ></i>
+          Modify GameTime Date</button>
+        <button type="button" data-gm-dashboard-action="rent"><i
+            class="fas fa-house"
+          ></i>
+          Mark Rent Due</button>
+        <button type="button" data-gm-dashboard-action="playerHub"><i
+            class="fas fa-users"
+          ></i>
+          Show Player Hub</button>
+      </div>
+    </fieldset>
+    <fieldset class="payout-heading hub-status gm-dashboard-panel">
+      <legend><i class="fas fa-hourglass-half"></i> Downtime</legend>
+      <div class="gm-dashboard-actions">
+        <button type="button" data-gm-dashboard-action="expire"><i
+            class="fas fa-hourglass-end"
+          ></i>
+          Expire Outstanding Downtime</button>
+        <button type="button" data-gm-dashboard-action="downtime"><i
+            class="fas fa-hourglass-half"
+          ></i>
+          Manage Player Downtime</button>
+        <button type="button" data-gm-dashboard-action="adjustDowntime"><i
+            class="fas fa-plus-minus"
+          ></i>
+          Adjust Player Downtime</button>
+      </div>
+    </fieldset>
+    <fieldset class="payout-heading hub-status gm-dashboard-panel">
+      <legend><i class="fas fa-building"></i> Headquarters</legend>
+      <div class="gm-dashboard-actions">
+        <button type="button" data-gm-dashboard-action="hqIp"><i
+            class="fas fa-star"
+          ></i>
+          Adjust Shared HQ IP</button>
+        <button type="button" data-gm-dashboard-action="headquarters"><i
+            class="fas fa-building"
+          ></i>
+          Manage Headquarters</button>
+      </div>
+    </fieldset>
+  {{else}}
+    <fieldset class="payout-heading hub-status">
+      <legend><i class="fas fa-user"></i> Current Status</legend>
+      <div class="hub-status-heading">
+        {{#if status.hasActor}}
+          <label>Character
+            <select data-hub-actor aria-label="Character">
+              {{#each status.actors}}{{#if selected}}<option
+                    value="{{id}}"
+                    selected
+                  >{{name}}</option>{{else}}<option
+                    value="{{id}}"
+                  >{{name}}</option>{{/if}}{{/each}}
+            </select></label>
+        {{else}}<strong>No eligible characters</strong>{{/if}}
+      </div>
+      <dl class="hub-metrics">
+        <div><dt>Downtime</dt><dd>{{status.downtime}}
+            <small>days</small>{{#if status.downtimeReady}}<span
+                class="hub-metric-detail"
+              >{{status.daysToHustle}} to next hustle</span>{{/if}}</dd></div>
+        <div><dt>Money{{#if status.hasActor}}<button
+                type="button"
+                class="hub-ledger-button"
+                data-hub-ledger="wealth"
+                title="Open Money ledger"
+                aria-label="Open Money ledger"
+              ><i class="fas fa-book-open" aria-hidden="true"></i>
+                Ledger</button>{{/if}}</dt><dd>{{status.money}}
+            <small>eb</small>
+            <span
+              class="hub-metric-detail hub-housing-detail"
+              title="Residence: {{rent.residence}}"
+            >{{rent.residence}}</span>
+            <span
+              class="hub-metric-detail hub-housing-detail"
+              title="Lifestyle: {{rent.lifestyle}}"
+            >{{rent.lifestyle}}</span>
+            {{#if rent.pending}}<span class="rent-pending">Pending Rent Payment:
+                {{rent.pending}}
+                eb</span>{{/if}}
+            {{#if rent.due}}<span class="rent-pending">Rent & Lifestyle Due</span>{{/if}}
+          </dd></div>
+        <div><dt>IP{{#if status.hasActor}}<button
+                type="button"
+                class="hub-ledger-button"
+                data-hub-ledger="improvementPoints"
+                title="Open IP ledger"
+                aria-label="Open IP ledger"
+              ><i class="fas fa-book-open" aria-hidden="true"></i>
+                Ledger</button>{{/if}}</dt><dd>{{status.ip}}<span
+              class="hub-metric-detail"
+            >HQ IP:
+              {{status.hqIp}}</span></dd></div>
+        <div><dt>Reputation{{#if status.hasActor}}<button
+                type="button"
+                class="hub-ledger-button"
+                data-hub-ledger="reputation"
+                title="Open Reputation ledger"
+                aria-label="Open Reputation ledger"
+              ><i class="fas fa-book-open" aria-hidden="true"></i>
+                Ledger</button>{{/if}}</dt><dd>{{status.reputation}}{{#each
+              status.topFactions
+            }}<span class="hub-metric-detail">{{reputation}}
+                {{faction}}</span>{{/each}}</dd></div>
+      </dl>
+      <div class="hub-actions">
+        <button type="button" data-hub-downtime><i
+            class="fas fa-hourglass-half"
+          ></i>
+          Spend Downtime</button>
+        <button type="button" data-hub-rent><i class="fas fa-house"></i>
+          Rent & Lifestyle</button>
+        <button type="button" data-hub-headquarters><i
+            class="fas fa-building"
+          ></i>
+          View HQ</button>
+        <button type="button" data-hub-reputation><i class="fas fa-flag"></i>
+          Faction Reputation</button>
+
+      </div>
+      {{#if rent.housingReminder}}<p class="hub-housing-reminder"><i
+            class="fas fa-bed"
+          ></i>
+          {{rent.housingReminder}}</p>{{/if}}
+      {{#if status.downtimeNote}}<p
+          class="notes"
+        >{{status.downtimeNote}}</p>{{/if}}
+
+    </fieldset>
+    {{#if status.isMedtech}}
+      <fieldset
+        class="payout-heading hub-status downtime-medical hub-pharma"
+        data-hub-pharma-panel
+      >
+        <legend><i class="fas fa-pills"></i> Administer Pharma</legend>
+        {{#with pharma}}
+          <div class="hub-pharma-layout">
+            <label class="hub-pharma-recipient">Recipient
+              <select name="recipientId" aria-label="Recipient">
+                <option value="">Choose character</option>
+                {{#each recipients}}<option
+                    value="{{id}}"
+                    {{ifThen selected "selected" ""}}
+                  >{{name}}</option>{{/each}}
+              </select>
+            </label>
+            <table class="hub-pharma-list" aria-label="Pharmaceuticals"><tbody>
+                {{#each pharma}}<tr data-pharma-item="{{id}}">
+                    <td>{{name}}</td><td title="Available doses">{{amount}}</td>
+                    <td><button
+                        type="button"
+                        data-transfer-pharma="{{id}}"
+                        {{ifThen amount "" "disabled"}}
+                      ><i class="fas fa-syringe"></i> Administer</button></td>
+                  </tr>{{else}}<tr><td colspan="3">No pharmaceuticals in
+                      inventory.</td></tr>{{/each}}
+              </tbody></table>
+          </div>
+          {{#if pending}}<h3>Awaiting acceptance</h3>{{#each pending}}
+              <div class="pharma-pending-row">
+                <span>{{itemName}} × {{amount}} → {{targetName}}</span>
+                <button type="button" data-show-pharma-offer="{{id}}">Show offer
+                  in chat</button>
+              </div>
+            {{/each}}{{/if}}
+        {{/with}}
+      </fieldset>
+    {{/if}}
+  {{/if}}
+  <h2 class="hub-payout-heading"><i class="fas fa-coins"></i>
+    {{#if gmDashboard}}Outstanding Acknowledgements & Rolls{{else}}Payouts{{/if}}</h2>
+
   {{#if isGM}}
     <section class="inbox-gm-panel">
       <label class="inbox-gm-actions">
@@ -33,7 +219,8 @@
 
   {{#unless hasItems}}
     <p class="inbox-empty"><i class="fas fa-check-circle"></i>
-      Nothing is waiting for you.</p>
+      {{#if gmDashboard}}No outstanding acknowledgements or rolls.{{else}}No
+        payouts are waiting for acknowledgement.{{/if}}</p>
   {{/unless}}
 
   <section class="inbox-card-list" aria-label="Pending payouts">

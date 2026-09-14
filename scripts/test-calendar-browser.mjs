@@ -4,7 +4,15 @@ import fs from "node:fs";
 import ts from "typescript";
 const { chromium } = createRequire(import.meta.url)("playwright");
 const sources = Object.fromEntries(
-  ["calendar-date", "calendar"].map((name) => [
+  [
+    "action-coordinator",
+    "ui-refresh",
+    "foundry-form",
+    "date-format",
+    "calendar-date",
+    "calendar",
+    "ui-appearance",
+  ].map((name) => [
     name,
     ts.transpileModule(
       fs.readFileSync(new URL(`../src/${name}.ts`, import.meta.url), "utf8"),
@@ -47,6 +55,8 @@ try {
         modules[`./${name}`] = exports;
       }
       window.api = modules["./calendar"];
+      window.appearance = modules["./ui-appearance"];
+      window.crewRefresh = modules["./ui-refresh"];
       api.registerCampaignCalendar();
       await api.readyCampaignCalendar();
     };
@@ -73,6 +83,13 @@ try {
     };
     window.reset = async (options = {}) => {
       document.body.replaceChildren();
+      const sidebar = document.createElement("aside");
+      sidebar.id = "ui-left";
+      sidebar.style.cssText =
+        "position:absolute;left:10px;top:10px;width:180px;display:flex;flex-direction:column";
+      sidebar.innerHTML =
+        '<img id="logo" alt="Foundry"><div id="controls">Scene controls</div>';
+      document.body.append(sidebar);
       window.hooks = new Map();
       window.fail = {};
       window.messages = [];
@@ -175,7 +192,9 @@ try {
     assert(
       document
         .getElementById("pneuma-crewtools-calendar")
-        .textContent.includes("2048-03-02"),
+        .querySelector(".pneuma-calendar-date")
+        .getAttribute("aria-label")
+        .includes("Mar 2, 2048"),
       "external clock changes update display",
     );
     assert(!hooks.has("updateJournalEntryPage"), "no Journal hooks");
@@ -214,35 +233,348 @@ try {
     await api.advanceCampaignDays(1);
     assert(api.getCampaignDate() === "2077-01-02", "native advance");
   });
+  await check("date form retains controls; display is passive", async () => {
+    await reset();
+    const form = new api.CampaignCalendarForm();
+    await form._updateObject(new Event("submit"), {
+      year: "2077",
+      month: "12",
+      day: "31",
+    });
+    assert(api.getCampaignDate() === "2077-12-31", "forward era change");
+    await form._updateObject(new Event("submit"), {
+      year: "2045",
+      month: "1",
+      day: "1",
+    });
+    assert(api.getCampaignDate() === "2045-01-01", "backward era change");
+    const before = game.time.worldTime;
+    await form._updateObject(new Event("submit"), {
+      year: "2045",
+      month: "2",
+      day: "30",
+    });
+    assert(game.time.worldTime === before, "invalid date rejected");
+    await api.setCampaignDate("2078-01-01");
+    const badge = document.getElementById("pneuma-crewtools-calendar");
+    assert(
+      badge.querySelector(".pneuma-calendar-month-day").textContent ===
+        "Jan 1" &&
+        badge.querySelector(".pneuma-calendar-year").textContent === "2078",
+      "two-line date format",
+    );
+    assert(
+      !document.getElementById("logo") && badge.parentElement.id === "ui-left",
+      "clock replaces logo in its own slot",
+    );
+    assert(
+      badge.querySelectorAll("button, a, [tabindex]").length === 0,
+      "no interactive elements for GM",
+    );
+    const unchanged = game.time.worldTime;
+    badge.click();
+    assert(game.time.worldTime === unchanged, "click does not change date");
+  });
+  await page.addStyleTag({
+    content: fs.readFileSync(
+      new URL("../src/styles/pneuma-crewtools.css", import.meta.url),
+      "utf8",
+    ),
+  });
+  await page.evaluate(() => {
+    assert(
+      getComputedStyle(document.getElementById("pneuma-crewtools-calendar"))
+        .pointerEvents === "none",
+      "badge ignores pointer input",
+    );
+  });
+  await page.evaluate(() => {
+    const badge = document
+      .getElementById("pneuma-crewtools-calendar")
+      .getBoundingClientRect();
+    const controls = document
+      .getElementById("controls")
+      .getBoundingClientRect();
+    assert(
+      badge.x === 0 &&
+        badge.y === 0 &&
+        badge.width === 138 &&
+        badge.height === 70 &&
+        controls.top === badge.bottom + 10,
+      "clock docks at 138 by 70px with a 10px gap above controls",
+    );
+  });
+  await page.evaluate(() => {
+    const configs = new Map();
+    const values = new Map();
+    game.settings = {
+      register(namespace, key, config) {
+        configs.set(key, config);
+        values.set(key, config.default);
+      },
+      get(namespace, key) {
+        return values.get(key);
+      },
+      async set(namespace, key, value) {
+        values.set(key, value);
+        configs.get(key).onChange(value);
+      },
+    };
+    appearance.registerUiAppearance();
+    appearance.applyUiAppearance();
+    const badge = document.getElementById("pneuma-crewtools-calendar");
+    assert(
+      getComputedStyle(badge, "::before").content === "none",
+      "no CITY DATE label",
+    );
+    assert(
+      configs.get("calendarFontColor").scope === "client",
+      "color is a client preference",
+    );
+    assert(
+      getComputedStyle(badge).color === "rgb(127, 255, 234)",
+      "default aqua color",
+    );
+    const form = document.createElement("form");
+    form.innerHTML =
+      '<input name="pneuma-crewtools.calendarFontColor" value="#7fffea">';
+    fire("renderSettingsConfig", {}, { 0: form });
+    const picker = form.querySelector("input");
+    assert(picker.type === "color", "settings use native color picker");
+    picker.value = "#ff8844";
+    game.settings.set(
+      "pneuma-crewtools",
+      "calendarFontColor",
+      new FormData(form).get(picker.name),
+    );
+    assert(
+      getComputedStyle(badge).color === "rgb(255, 136, 68)",
+      "saved color updates without reload",
+    );
+    game.settings.set("pneuma-crewtools", "calendarFontColor", "invalid");
+    assert(
+      getComputedStyle(badge).color === "rgb(127, 255, 234)",
+      "invalid stored color falls back to aqua",
+    );
+  });
+  console.log(
+    "PASS appearance picker, live updates, defaults, and removed label",
+  );
+
+  const hudSource = ts.transpileModule(
+    fs.readFileSync(new URL("../src/crew-hud.ts", import.meta.url), "utf8"),
+    {
+      compilerOptions: {
+        module: ts.ModuleKind.CommonJS,
+        target: ts.ScriptTarget.ES2022,
+      },
+    },
+  ).outputText;
+  await page.evaluate((source) => {
+    game.actors = ["a", "b"].map((id) => ({
+      id,
+      type: "character",
+      testUserPermission: (user) => id === user.id,
+    }));
+    window.hudData = {
+      payouts: 1,
+      days: { a: 0, b: 3 },
+      broken: false,
+      hubOpened: 0,
+      downtimeOpened: 0,
+      balanceReads: 0,
+    };
+    const dependencies = {
+      "./constants": { MODULE_ID: "pneuma-crewtools" },
+      "./ui-refresh": window.crewRefresh,
+      "./rent": { rentNeedsAttention: () => false },
+      "./actor-policy": { isActorExcluded: () => false },
+      "./payout-inbox": {
+        waitingPayoutCount: () => hudData.payouts,
+        openPlayerHub: () => hudData.hubOpened++,
+      },
+      "./downtime-store": {
+        getIndex: () => {
+          hudData.balanceReads++;
+          if (hudData.broken) throw Error("Invalid ledger");
+          return { accounts: [{ actorId: "a" }, { actorId: "b" }] };
+        },
+      },
+      "./downtime": { openDowntime: () => hudData.downtimeOpened++ },
+      "./downtime-records": {
+        storedDowntimeBalance: (id) => hudData.days[id] ?? 0,
+      },
+    };
+    const exports = {};
+    new Function("exports", "require", source)(
+      exports,
+      (id) => dependencies[id],
+    );
+    exports.registerCrewHud();
+    exports.readyCrewHud();
+    window.hud = exports;
+  }, hudSource);
+  await check("HUD refreshes only for Crew Tools Journal changes", async () => {
+    const before = hudData.balanceReads;
+    for (const changes of [
+      { "system.derivedStats.hp.value": 20 },
+      { "system.wealth.value": 500 },
+      { ownership: { b: 3 } },
+      { type: "container" },
+    ])
+      fire("updateActor", game.actors[0], changes);
+    for (const event of [
+      "updateSetting",
+      "updateUser",
+      "deleteActor",
+      "userConnected",
+    ])
+      fire(event, {});
+    const ordinary = { getFlag: () => undefined };
+    const journalEvents = [
+      "createJournalEntry",
+      "updateJournalEntry",
+      "deleteJournalEntry",
+    ];
+    const pageEvents = [
+      "createJournalEntryPage",
+      "updateJournalEntryPage",
+      "deleteJournalEntryPage",
+    ];
+    for (const event of [...journalEvents, ...pageEvents])
+      fire(event, ordinary);
+    await Promise.resolve();
+    assert(
+      hudData.balanceReads === before,
+      "unrelated changes cause no HUD balance reads",
+    );
+    for (const event of [...journalEvents, ...pageEvents]) {
+      const count = hudData.balanceReads;
+      const marker = journalEvents.includes(event) ? "recordKind" : "kind";
+      fire(event, {
+        getFlag: (ns, key) =>
+          ns === "pneuma-crewtools" && key === marker ? "character" : undefined,
+      });
+      await Promise.resolve();
+      assert(
+        hudData.balanceReads === count + 1,
+        "module Journal event refreshes status",
+      );
+    }
+  });
   await check(
-    "date form and toolbar retain forward/backward controls",
+    "HUD live status, ownership, unavailable state, and stable focus",
     async () => {
-      await reset();
-      const form = new api.CampaignCalendarForm();
-      await form._updateObject(new Event("submit"), {
-        year: "2077",
-        month: "12",
-        day: "31",
+      const root = document.getElementById("pneuma-crewtools-calendar");
+      const row = root.querySelector(".pneuma-crew-hud");
+      const hub = row.querySelector('[data-hud-action="hub"]');
+
+      assert(
+        row.children.length === 1 &&
+          row.querySelectorAll("button").length === 1,
+        "one large hub button",
+      );
+      assert(hub.classList.contains("has-attention"), "waiting indicators");
+      assert(hub.title.includes("3 unspent crew"), "GM crew total");
+      hub.focus();
+      const time = game.time.worldTime;
+      fire("updateWorldTime");
+      assert(
+        document.activeElement === hub &&
+          root.firstElementChild.className === "pneuma-calendar-date",
+        "clock update preserves focus and date placement",
+      );
+      hub.click();
+      assert(
+        hudData.hubOpened === 1 && game.time.worldTime === time,
+        "correct shortcuts without clock changes",
+      );
+      hudData.payouts = 0;
+      hudData.days.b = 0;
+      fire("updateUser");
+      fire("updateJournalEntryPage", {
+        getFlag: (_ns, key) => (key === "kind" ? "actorLedger" : undefined),
       });
-      assert(api.getCampaignDate() === "2077-12-31", "forward era change");
-      await form._updateObject(new Event("submit"), {
-        year: "2045",
-        month: "1",
-        day: "1",
+      await Promise.resolve();
+      assert(
+        !hub.classList.contains("has-attention"),
+        "indicators clear after acknowledgment and spending",
+      );
+      game.user = game.users[1];
+      hudData.days.a = 9;
+      fire("updateJournalEntryPage", {
+        getFlag: (_ns, key) => (key === "kind" ? "actorLedger" : undefined),
       });
-      assert(api.getCampaignDate() === "2045-01-01", "backward era change");
-      const before = game.time.worldTime;
-      await form._updateObject(new Event("submit"), {
-        year: "2045",
-        month: "2",
-        day: "30",
+      await Promise.resolve();
+      assert(
+        hub.title.includes("0 unspent downtime"),
+        "player does not see another account's balance",
+      );
+      hudData.broken = true;
+      fire("updateJournalEntryPage", {
+        getFlag: (_ns, key) => (key === "kind" ? "actorLedger" : undefined),
       });
-      assert(game.time.worldTime === before, "invalid date rejected");
-      document.querySelectorAll("#pneuma-crewtools-calendar button")[1].click();
-      await new Promise((resolve) => setTimeout(resolve, 0));
-      assert(api.getCampaignDate() === "2045-01-02", "toolbar advance");
+      await Promise.resolve();
+      assert(
+        hub.title.includes("unavailable") &&
+          !hub.classList.contains("has-attention"),
+        "bad ledger is not shown as zero",
+      );
+      hudData.broken = false;
+      hudData.payouts = 1;
+      hudData.days.b = 3;
+      fire("updateJournalEntryPage", {
+        getFlag: (_ns, key) => (key === "kind" ? "actorLedger" : undefined),
+      });
+      await Promise.resolve();
+      const dayLine = root
+        .querySelector(".pneuma-calendar-month-day")
+        .getBoundingClientRect();
+      const yearLine = root
+        .querySelector(".pneuma-calendar-year")
+        .getBoundingClientRect();
+      const icon = hub.getBoundingClientRect();
+      assert(
+        yearLine.top >= dayLine.bottom &&
+          icon.left >= dayLine.right &&
+          icon.height >= 38,
+        "date stacked on left and large hub on right",
+      );
+      const rect = root.getBoundingClientRect();
+      const controls = document
+        .getElementById("controls")
+        .getBoundingClientRect();
+      assert(
+        rect.width === 138 &&
+          rect.height === 70 &&
+          rect.x === 0 &&
+          rect.y === 0 &&
+          controls.top === rect.bottom + 10,
+        "compact dock and spacing",
+      );
+      assert(
+        getComputedStyle(hub).pointerEvents === "auto",
+        "buttons accept mouse input",
+      );
+      assert(
+        getComputedStyle(hub).color === "rgb(255, 195, 106)",
+        "amber attention color",
+      );
     },
   );
+  await page.locator('[data-hud-action="hub"]').click();
+  await page.evaluate(() => {
+    assert(
+      hudData.hubOpened === 2,
+      "real pointer clicks reach buttons through passive frame",
+    );
+  });
+  console.log("PASS HUD pointer interaction");
+
+  if (process.env.CALENDAR_SCREENSHOT)
+    await page
+      .locator("#pneuma-crewtools-calendar")
+      .screenshot({ path: process.env.CALENDAR_SCREENSHOT });
   console.log(
     "Calendar browser integration checks passed (mock Foundry services, real DOM).",
   );

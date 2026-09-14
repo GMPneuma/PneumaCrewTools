@@ -1,18 +1,36 @@
+import { registerRentSettings } from "./rent-form";
+import { registerRentReconciliation } from "./rent";
+import { registerPharmaTransfers } from "./pharma-transfer";
+import { registerFactions } from "./factions";
+import {
+  ensureActorPayoutJournal,
+  findRecordJournal,
+  refreshRecordTables,
+} from "./journal-records";
+import { registerHustleTables, readyHustleTables } from "./hustle-tables";
+import { registerActorExclusions } from "./actor-exclusions";
+import { registerSettingsLayout } from "./settings-layout";
+import { registerCrewHud, readyCrewHud } from "./crew-hud";
+import { registerHeadquarters, readyHeadquarters } from "./headquarters";
+import {
+  registerDowntime,
+  readyDowntime,
+  withDowntimeLock,
+  isDowntimeGM,
+} from "./downtime";
 import { registerCampaignCalendar, readyCampaignCalendar } from "./calendar";
+import { registerUiAppearance, applyUiAppearance } from "./ui-appearance";
 import "./styles/pneuma-crewtools.css";
 import { pneumaCrewToolsApi } from "./api";
 import { MODULE_ID } from "./constants";
 import { registerDiscordLinks } from "./discord-summary";
-import { registerPayoutLedger } from "./payout-ledger";
-import { ensurePayoutLog, registerPayoutLogSettings } from "./payout-log";
 import {
   hasInboxItemsForCurrentUser,
-  openPayoutInbox,
+  openPlayerHub,
   registerPayoutInboxSettings,
 } from "./payout-inbox";
 import {
   ensurePayoutJournal,
-  registerHqIpTotalHandler,
   registerPayoutJournalSettings,
 } from "./payout-journal";
 import { registerHumanityPromptHandler } from "./humanity-prompts";
@@ -25,18 +43,26 @@ import { registerPayoutWindowControl } from "./window-controls";
 // listener must be registered as soon as the module script is evaluated.
 registerPayoutWindowControl();
 registerHumanityPromptHandler();
-registerHqIpTotalHandler();
 
 Hooks.once("init", () => {
   console.info(`${MODULE_ID} | Initializing`);
 
+  registerActorExclusions();
+  registerFactions();
+  registerPharmaTransfers();
+  registerRentSettings();
+  registerRentReconciliation();
+  registerUiAppearance();
+  registerSettingsLayout();
   registerCampaignCalendar();
-  registerPayoutLedger();
+  registerCrewHud();
+  registerDowntime();
+  registerHeadquarters();
+  registerHustleTables();
   registerDiscordLinks();
   registerPayoutJournalSettings();
   registerPayoutInboxSettings();
   registerPayoutDateSetting();
-  registerPayoutLogSettings();
   registerPayoutContainerSettings();
   registerPayoutDataManager();
 
@@ -46,10 +72,40 @@ Hooks.once("init", () => {
 
 Hooks.once("ready", () => {
   console.info(`${MODULE_ID} | Ready`);
+  applyUiAppearance();
   readyCampaignCalendar();
-  if (game.user?.isGM) {
-    void ensurePayoutJournal();
-    void ensurePayoutLog();
+  readyCrewHud();
+  readyDowntime();
+  readyHeadquarters();
+  readyHustleTables();
+  if (isDowntimeGM()) {
+    void withDowntimeLock(async () => {
+      await ensurePayoutJournal();
+      await refreshRecordTables();
+      // Only the retired module-tagged duplicate log is removed; the ledger remains authoritative.
+      for (const journal of Array.from(game.journal))
+        if (journal.getFlag?.(MODULE_ID, "recordKind") === "payoutLog")
+          await journal.delete();
+      for (const actor of game.actors) {
+        if (findRecordJournal("character", actor.id))
+          await ensureActorPayoutJournal(actor);
+      }
+    }).catch((error) => ui.notifications.error(String(error)));
   }
-  if (!game.user?.isGM && hasInboxItemsForCurrentUser()) openPayoutInbox();
+  if (!game.user?.isGM && hasInboxItemsForCurrentUser()) openPlayerHub();
 });
+
+// Keep private payout Journal permissions aligned with native character ownership.
+Hooks.on(
+  "updateActor",
+  (actor: FoundryActor, changes: Record<string, unknown>) => {
+    if (
+      isDowntimeGM() &&
+      ("name" in changes || "ownership" in changes) &&
+      findRecordJournal("character", actor.id)
+    )
+      void withDowntimeLock(() => ensureActorPayoutJournal(actor)).catch(
+        (error) => ui.notifications.error(String(error)),
+      );
+  },
+);

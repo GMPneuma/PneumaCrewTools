@@ -1,3 +1,11 @@
+/* Rajdhani SemiBold, local Latin HUD subset. License: fonts/Rajdhani-OFL.txt. */
+@font-face {
+  font-family: "Pneuma HUD Rajdhani";
+  src: url("../fonts/rajdhani-hud.ttf") format("truetype");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
 /* Module styles belong under the .pneuma-crewtools namespace. */
 .pneuma-crewtools {
   --pneuma-accent: #8f2028;
@@ -113,13 +121,15 @@
   display: grid;
   min-height: 0;
   flex: 1;
-  grid-template-columns: minmax(14rem, 0.75fr) minmax(26rem, 2fr);
+  grid-template-columns: minmax(20rem, 1.1fr) minmax(26rem, 1.7fr);
   grid-template-rows: minmax(0, 1fr) auto;
   gap: 0.5rem;
 }
 
 .pneuma-crewtools [data-step-panel="participants"] .payout-heading {
-  align-self: start;
+  align-self: stretch;
+  min-width: 0;
+  box-sizing: border-box;
   margin: 0;
   border: 1px solid var(--color-border-light-primary, #777);
   border-left: 3px solid var(--pneuma-purple);
@@ -1055,6 +1065,8 @@
 }
 
 .pneuma-crewtools .inbox-gm-panel {
+  /* Keep the opt-in controls readable when the surrounding form scrolls. */
+  flex: 0 0 auto;
   position: sticky;
   z-index: 2;
   top: 0;
@@ -1113,12 +1125,14 @@
 }
 
 .pneuma-crewtools .inbox-card-list {
+  flex: 0 0 auto;
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
 }
 
 .pneuma-crewtools .inbox-card {
+  flex: 0 0 auto;
   border: 1px solid var(--color-border-light-primary, #777);
   border-left: 3px solid var(--pneuma-green);
   border-radius: 4px;
@@ -1457,36 +1471,1599 @@ html[data-cpr-theme="darkmode"]
   background: rgba(227, 170, 83, 0.12);
 }
 
-/* Restrained, date-only toolbar; native controls and inherited typography. */
+/* Glass display with a dark housing, docked in the Foundry logo's slot. */
 #pneuma-crewtools-calendar {
   position: fixed;
-  top: 8px;
-  left: 50%;
-  transform: translateX(-50%);
+  top: 0;
+  left: 0;
   z-index: 60;
   display: flex;
+  flex-direction: row;
   align-items: center;
-  gap: 4px;
-  padding: 3px 6px;
-  border: 1px solid var(--color-border-light-primary, #777);
-  border-radius: 4px;
-  background: var(--color-bg-option, #e8e6df);
-  color: var(--color-text-dark-primary, #222);
-  font-size: 13px;
+  justify-content: center;
+  gap: 8px;
+  width: 138px;
+  max-width: 100%;
+  min-height: 70px;
+  padding: 16px 9px 8px 15px;
+  box-sizing: border-box;
+  border: 0;
+
+  border-radius: 0 0 9px 0;
+  background:
+    linear-gradient(125deg, rgba(220, 255, 250, 0.1), transparent 45%),
+    repeating-linear-gradient(
+      0deg,
+      transparent 0 3px,
+      rgba(91, 255, 231, 0.025) 3px 4px
+    ),
+    rgba(3, 14, 17, 0.38);
+  box-shadow:
+    2px 3px 4px rgba(0, 0, 0, 0.35),
+    inset -1px -1px rgba(190, 210, 215, 0.18);
+  color: var(--pneuma-calendar-font-color, #7fffea);
+  font-family:
+    "Pneuma HUD Rajdhani", "Roboto Condensed", "Arial Narrow", sans-serif;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1.15;
   font-variant-numeric: tabular-nums;
-  pointer-events: auto;
+  white-space: nowrap;
+  text-align: center;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  pointer-events: none;
+  user-select: none;
 }
-#pneuma-crewtools-calendar button {
-  width: auto;
+#pneuma-crewtools-calendar > span {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  gap: 3px;
   margin: 0;
-  padding: 0 6px;
-  line-height: 24px;
-  font: inherit;
-  color: inherit;
+  padding: 0;
+  line-height: 1;
 }
-#pneuma-crewtools-calendar span {
-  padding: 3px 6px;
+#pneuma-crewtools-calendar .pneuma-calendar-month-day {
+  font-size: 26px;
+}
+#pneuma-crewtools-calendar .pneuma-calendar-year {
+  font-size: 12px;
+}
+#pneuma-crewtools-calendar::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  clip-path: polygon(
+    calc(100% - 5px) 0,
+    100% 0,
+    100% 100%,
+    0 100%,
+    0 calc(100% - 5px),
+    calc(100% - 5px) calc(100% - 5px)
+  );
+  background:
+    linear-gradient(
+      135deg,
+      transparent 65%,
+      rgba(215, 227, 230, 0.18) 83%,
+      transparent 94%
+    ),
+    repeating-linear-gradient(
+      0deg,
+      rgba(255, 255, 255, 0.025) 0 1px,
+      transparent 1px 3px
+    ),
+    linear-gradient(90deg, #22292d, #424c52 55%, #69767c 97%, #1b2226);
+  box-shadow:
+    inset -1px -1px 0 #101619,
+    inset -2px -2px 0 rgba(181, 195, 200, 0.45),
+    inset -4px -4px 0 rgba(0, 0, 0, 0.45);
+}
+#pneuma-crewtools-calendar.pneuma-calendar--logo-slot {
+  position: relative;
+  top: auto;
+  left: auto;
+  flex: 0 0 auto;
+  align-self: flex-start;
+  margin: -10px 10px 10px -10px;
 }
 .pneuma-calendar-form .form-group {
   margin: 8px 0;
+}
+
+/* Player hub uses the payout forms' existing panels, colors, and spacing. */
+.pneuma-crewtools .hub-status {
+  flex: 0 0 auto;
+  margin: 0;
+  border: 1px solid var(--color-border-light-primary, #777);
+  border-left: 3px solid var(--pneuma-purple);
+  border-radius: 4px;
+}
+.pneuma-crewtools .hub-status > legend {
+  padding: 0 0.35rem;
+  color: var(--pneuma-purple);
+  font-weight: 700;
+}
+.pneuma-crewtools .hub-status-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  margin-bottom: 0.35rem;
+}
+.pneuma-crewtools .hub-status-heading label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.pneuma-crewtools .hub-status-heading > span {
+  font-size: 0.85rem;
+}
+.pneuma-crewtools .hub-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 0 0 0.4rem;
+  gap: 0.4rem;
+}
+/* Use the inherited text color so tiles remain distinct in light and dark themes. */
+.pneuma-crewtools .hub-metrics > div {
+  min-width: 0;
+  border: 1px solid color-mix(in srgb, currentColor 25%, transparent);
+  border-radius: 3px;
+  background: color-mix(in srgb, currentColor 10%, transparent);
+  padding: 0.3rem 0.45rem;
+}
+.pneuma-crewtools .hub-metrics dt {
+  font-size: 0.8rem;
+}
+.pneuma-crewtools .hub-metrics dd {
+  margin: 0.15rem 0 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.pneuma-crewtools .hub-metrics small {
+  font-size: 0.75rem;
+  font-weight: 400;
+}
+.pneuma-crewtools .hub-actions {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.4rem;
+}
+.pneuma-crewtools .hub-actions button {
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 0.3rem;
+  line-height: 1.2;
+  white-space: normal;
+}
+.pneuma-crewtools .hub-payout-heading {
+  margin: 0;
+  padding: 0.3rem 0.45rem;
+  border-bottom: 1px solid var(--color-border-light-primary, #777);
+  font-size: 1rem;
+}
+.pneuma-crewtools .pneuma-downtime .form-group {
+  display: grid;
+  grid-template-columns: 8rem minmax(0, 1fr);
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+}
+
+.pneuma-crewtools .downtime-projects {
+  list-style: none;
+  margin: 0 0 0.4rem;
+  padding: 0;
+}
+.pneuma-crewtools .downtime-projects li {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid var(--color-border-light-primary, #777);
+}
+.pneuma-crewtools .downtime-projects li > span {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.pneuma-crewtools .downtime-projects small {
+  display: block;
+}
+.pneuma-crewtools .downtime-projects button {
+  width: auto;
+  margin: 0;
+  white-space: nowrap;
+}
+.pneuma-crewtools .pneuma-downtime fieldset .form-group {
+  margin-bottom: 0.4rem;
+}
+
+.pneuma-crewtools .hq-image {
+  display: block;
+  width: 100%;
+  max-height: 180px;
+  object-fit: cover;
+  border: 0;
+  border-radius: 3px;
+  margin-bottom: 0.4rem;
+}
+.pneuma-crewtools .hq-improvements {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.pneuma-crewtools .hq-improvements li {
+  padding: 0.4rem;
+  background: var(--pneuma-panel);
+  margin-bottom: 0.35rem;
+  border-radius: 3px;
+}
+.pneuma-crewtools .hq-improvements li > span {
+  float: right;
+}
+.pneuma-crewtools .hq-improvements p {
+  margin-top: 0.25rem;
+}
+#pneuma-crewtools-headquarters .form-group {
+  display: grid;
+  grid-template-columns: 9rem minmax(0, 1fr);
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0.4rem 0;
+}
+
+/* Compact shortcuts share the clock glass; only real buttons accept input. */
+#pneuma-crewtools-calendar::after {
+  pointer-events: none;
+}
+#pneuma-crewtools-calendar .pneuma-crew-hud {
+  display: grid;
+  grid-template-columns: 1fr;
+  flex: 0 0 34px;
+  width: 34px;
+}
+#pneuma-crewtools-calendar .pneuma-crew-hud button {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 42px;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  color: var(--pneuma-hud-icon-color, #86aaa8);
+  box-shadow: none;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  pointer-events: auto;
+}
+#pneuma-crewtools-calendar .pneuma-crew-hud button i {
+  margin: 0;
+}
+#pneuma-crewtools-calendar .pneuma-crew-hud button.has-attention {
+  color: var(--pneuma-hud-attention-color, #ffc36a);
+}
+#pneuma-crewtools-calendar .pneuma-crew-hud button:hover {
+  background: transparent;
+  box-shadow: none;
+  text-shadow: 0 0 5px currentColor;
+}
+#pneuma-crewtools-calendar .pneuma-crew-hud button:focus-visible {
+  outline: 1px solid currentColor;
+  outline-offset: 1px;
+}
+
+/* A restrained shaded group inside Foundry's native module settings. */
+.pneuma-discord-settings {
+  min-width: 0;
+  margin: 12px 0;
+  padding: 8px 12px 4px;
+  border: 1px solid rgba(128, 128, 128, 0.35);
+  border-radius: 5px;
+  background: rgba(128, 128, 128, 0.12);
+}
+.pneuma-discord-settings > legend {
+  padding: 0 6px;
+  font-weight: 600;
+  font-size: inherit;
+}
+.pneuma-discord-settings > .form-group {
+  margin: 6px 0 10px;
+}
+
+/* Healing uses the same compact fieldset and native buttons as other activities. */
+.pneuma-crewtools .downtime-heal-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0.75rem;
+}
+.pneuma-crewtools .downtime-heal-main .notes {
+  margin: 0.25rem 0 0;
+}
+.pneuma-crewtools .downtime-hustle-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.pneuma-crewtools .downtime-hustle-row button {
+  width: auto;
+  flex: 0 0 auto;
+}
+.pneuma-crewtools .downtime-hustle-row select {
+  flex: 1;
+  min-width: 0;
+}
+.pneuma-crewtools .downtime-heal-summary {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+.pneuma-crewtools .downtime-heal-total {
+  font-size: 1.25rem;
+  line-height: 1.2;
+}
+.pneuma-crewtools .downtime-heal-formula {
+  min-width: 0;
+}
+.pneuma-crewtools .downtime-heal-formula p {
+  margin: 0 0 0.35rem;
+}
+.pneuma-crewtools .downtime-heal-summary button {
+  width: auto;
+  min-width: 5rem;
+}
+.pneuma-crewtools .downtime-heal-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+.pneuma-crewtools .downtime-heal-options label {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.pneuma-crewtools .actor-exclusions-list {
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+.pneuma-crewtools .actor-exclusions-list label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem;
+  border-bottom: 1px solid var(--color-border-light-primary, #777);
+}
+.pneuma-crewtools .actor-exclusions-list small {
+  display: block;
+  margin-top: 0.15rem;
+}
+
+/* Character and balance share one row; TECH slots remain compact native controls. */
+.pneuma-crewtools .downtime-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 0 0 0.5rem;
+}
+.pneuma-crewtools .downtime-header label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  max-width: 65%;
+  min-width: 0;
+}
+.pneuma-crewtools .downtime-header select {
+  width: auto;
+  min-width: 8rem;
+  max-width: 55%;
+}
+.pneuma-crewtools .downtime-header .downtime-balance {
+  margin: 0;
+  white-space: nowrap;
+}
+.pneuma-crewtools .downtime-header .downtime-balance strong {
+  font-size: 2rem;
+  line-height: 1;
+  margin-right: 0.25rem;
+}
+.pneuma-crewtools .tech-slot {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  padding: 0.4rem 0;
+  border-bottom: 1px solid color-mix(in srgb, currentColor 20%, transparent);
+}
+.pneuma-crewtools .tech-slot:last-child {
+  border-bottom: none;
+}
+.pneuma-crewtools .tech-slot select {
+  width: auto;
+  flex: 0 1 9rem;
+}
+.pneuma-crewtools .tech-slot button {
+  width: auto;
+  flex: 0 0 auto;
+}
+.pneuma-crewtools .tech-slot-title {
+  flex: 1;
+  min-width: 9rem;
+}
+.pneuma-crewtools .tech-slot-title small {
+  display: block;
+}
+.pneuma-crewtools .tech-slot-actions {
+  display: flex;
+  gap: 0.3rem;
+}
+.pneuma-crewtools .tech-drop {
+  flex: 1;
+  min-width: 5rem;
+  text-align: center;
+  border: 1px dashed currentColor;
+  padding: 0.25rem;
+}
+
+/* Native progress elements sit behind labels without adding another vertical row. */
+.pneuma-crewtools .downtime-progress {
+  position: relative;
+  isolation: isolate;
+  padding: 0.3rem 0.45rem;
+  border-radius: 3px;
+  overflow: hidden;
+}
+.pneuma-crewtools .downtime-progress progress {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  border: 0;
+  border-radius: inherit;
+  appearance: none;
+  background: color-mix(in srgb, currentColor 6%, transparent);
+  color: color-mix(in srgb, var(--downtime-accent, #9470b1) 32%, transparent);
+  z-index: -1;
+  pointer-events: none;
+}
+.pneuma-crewtools .downtime-progress progress::-webkit-progress-bar {
+  background: transparent;
+}
+.pneuma-crewtools .downtime-progress progress::-webkit-progress-value {
+  background: color-mix(
+    in srgb,
+    var(--downtime-accent, #9470b1) 32%,
+    transparent
+  );
+}
+.pneuma-crewtools .downtime-progress progress::-moz-progress-bar {
+  background: color-mix(
+    in srgb,
+    var(--downtime-accent, #9470b1) 32%,
+    transparent
+  );
+}
+.pneuma-crewtools .downtime-hustle-row > .downtime-progress {
+  flex: 0 0 auto;
+}
+
+/* Compact medical controls follow the same native form layout as payouts. */
+.pneuma-crewtools .medical-workday-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: 0.7rem;
+  margin-top: 0.4rem;
+}
+.pneuma-crewtools .medical-workday-setup,
+.pneuma-crewtools .medical-workday-actions {
+  min-width: 0;
+}
+.pneuma-crewtools .medical-workday-actions {
+  border-left: 1px solid color-mix(in srgb, currentColor 20%, transparent);
+  padding-left: 0.7rem;
+}
+.pneuma-crewtools .medical-add-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.4rem;
+  align-items: center;
+  margin: 0.35rem 0;
+}
+.pneuma-crewtools .medical-add-row label {
+  grid-column: 1 / -1;
+  font-weight: 600;
+}
+.pneuma-crewtools .medical-add-row select {
+  min-width: 0;
+  width: 100%;
+}
+.pneuma-crewtools .medical-add-row button,
+.pneuma-crewtools .medical-task button {
+  width: auto;
+  flex: 0 0 auto;
+}
+.pneuma-crewtools .medical-task {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  padding: 0.4rem 0;
+  border-top: 1px solid var(--color-border-light-tertiary, #777);
+}
+.pneuma-crewtools .medical-task-details {
+  flex: 1;
+  min-width: 0;
+}
+.pneuma-crewtools .medical-task-result {
+  flex: 0 0 1rem;
+  text-align: center;
+}
+.pneuma-crewtools .medical-success {
+  color: #218238;
+}
+.pneuma-crewtools .medical-failure {
+  color: #c22c2c;
+}
+html[data-cpr-theme="darkmode"] .pneuma-crewtools .medical-success {
+  color: #80d88a;
+}
+html[data-cpr-theme="darkmode"] .pneuma-crewtools .medical-failure {
+  color: #ff8585;
+}
+.pneuma-crewtools .medical-task-details strong {
+  overflow-wrap: anywhere;
+}
+.pneuma-crewtools .medical-workday-actions [data-medical-action="finishDay"] {
+  margin-top: 0.4rem;
+}
+.pneuma-crewtools .medical-task small {
+  display: block;
+}
+.pneuma-crewtools .medical-day-status {
+  justify-content: space-between;
+}
+
+/* One vertically scrolling dashboard, with role sections following common activities. */
+#pneuma-crewtools-downtime .window-content {
+  overflow: hidden;
+}
+#pneuma-crewtools-downtime .pneuma-downtime {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+.pneuma-crewtools .downtime-stack {
+  display: block;
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-gutter: stable;
+}
+.pneuma-crewtools .downtime-common,
+.pneuma-crewtools .downtime-roles {
+  min-width: 0;
+}
+.pneuma-crewtools .downtime-roles {
+  margin-top: 0.5rem;
+}
+.pneuma-crewtools .downtime-tech {
+  --downtime-accent: #347cb5;
+  --pneuma-purple: #347cb5;
+  background: rgba(100, 175, 235, 0.14);
+}
+.pneuma-crewtools .downtime-medical {
+  --downtime-accent: #b74444;
+  --pneuma-purple: #b74444;
+  background: rgba(230, 125, 125, 0.14);
+}
+.pneuma-crewtools .pneuma-downtime .downtime-use-day {
+  min-height: 28px;
+  line-height: 26px;
+  width: auto;
+  flex: 0 0 auto;
+  white-space: nowrap;
+  padding: 0 0.5rem;
+  border: 1px solid #578575;
+  background: rgba(95, 160, 135, 0.18);
+  color: inherit;
+  font-weight: 600;
+}
+.pneuma-crewtools .pneuma-downtime .downtime-use-day:disabled {
+  opacity: 0.45;
+}
+.pneuma-crewtools .downtime-other-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.pneuma-crewtools .downtime-other-row input[name="days"] {
+  width: 3.5rem;
+  flex: 0 0 3.5rem;
+  text-align: center;
+}
+.pneuma-crewtools .downtime-other-row input[name="reason"] {
+  flex: 1;
+  min-width: 0;
+}
+.pneuma-crewtools .downtime-hustle-row {
+  flex-wrap: wrap;
+}
+#pneuma-crewtools-downtime .window-resizable {
+  cursor: ns-resize;
+}
+
+/* Native settings rows grouped without changing their controls or themes. */
+.pneuma-settings-groups {
+  min-width: 0;
+}
+.pneuma-settings-group {
+  min-width: 0;
+  margin: 12px 0;
+  padding: 8px 12px;
+  border: 1px solid rgba(128, 128, 128, 0.35);
+  border-radius: 4px;
+}
+.pneuma-settings-group > legend {
+  padding: 0 6px;
+  font-weight: 600;
+  font-size: inherit;
+}
+.pneuma-settings-group > .form-group {
+  margin: 6px 0 10px;
+}
+
+/* Native settings allocate too much width to simple controls. Let labels use it. */
+.pneuma-settings-groups .form-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 0.6rem;
+  row-gap: 0.2rem;
+}
+.pneuma-settings-groups .form-group > label {
+  flex: 1 1 0 !important;
+  width: auto;
+  min-width: 0;
+  max-width: none;
+}
+.pneuma-settings-groups .form-group > .form-fields {
+  flex: 0 1 auto !important;
+  width: auto;
+  max-width: 100%;
+  gap: 0.4rem;
+}
+.pneuma-settings-groups .form-group input[type="color"] {
+  flex: 0 0 3.5rem !important;
+  width: 3.5rem !important;
+  min-width: 0;
+  max-width: 3.5rem;
+  height: 1.8rem;
+  padding: 2px;
+}
+.pneuma-settings-groups .form-group input[type="range"] {
+  flex: 0 1 9rem !important;
+  width: 9rem;
+  min-width: 4rem;
+  max-width: 9rem;
+}
+.pneuma-settings-groups .form-group .range-value {
+  flex: 0 0 2.8rem !important;
+  width: 2.8rem;
+  min-width: 0;
+}
+.pneuma-settings-groups .form-group button,
+.pneuma-settings-groups .form-group select {
+  flex: 0 1 auto;
+  width: auto;
+  max-width: 100%;
+}
+.pneuma-settings-groups .form-group > .notes,
+.pneuma-settings-groups .form-group > .hint {
+  flex: 0 0 100%;
+  margin: 0.1rem 0 0.3rem;
+}
+
+/* Keep primary fields aligned, with optional downtime directly beneath. */
+.pneuma-crewtools .absent-downtime-control {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0 0 0.6rem;
+  padding: 0.15rem;
+}
+.pneuma-crewtools .absent-downtime-control > label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex: 1;
+}
+.pneuma-crewtools .absent-downtime-control input[type="number"] {
+  flex: 0 0 4rem;
+  width: 4rem;
+}
+
+/* Native CPR frame with the same compact result hierarchy as QuickHack cards. */
+.crewtools-roll-card {
+  padding: 0.55rem 0.65rem;
+}
+.crewtools-roll-card p {
+  margin: 0.3rem 0;
+}
+.crewtools-roll-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  border-bottom: 1px solid currentColor;
+  margin: -0.15rem -0.2rem 0.4rem;
+  padding: 0.3rem 0.35rem;
+}
+.crewtools-roll-title h3 {
+  border: 0;
+  margin: 0;
+  font-size: 1.1em;
+}
+.crewtools-roll-title.success {
+  background: rgba(71, 123, 36, 0.08);
+}
+.crewtools-roll-title.failure {
+  background: rgba(180, 0, 0, 0.09);
+}
+.crewtools-roll-outcome {
+  border: 1px solid currentColor;
+  border-radius: 3px;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  padding: 0.2rem 0.35rem;
+  white-space: nowrap;
+}
+.crewtools-roll-outcome.success {
+  color: #168216;
+  background: rgba(0, 128, 0, 0.1);
+}
+.crewtools-roll-outcome.failure {
+  color: #c22c2c;
+  background: rgba(180, 0, 0, 0.08);
+}
+.crewtools-roll-actor {
+  font-size: 1.05em;
+}
+.crewtools-roll-subject {
+  font-weight: 600;
+}
+.crewtools-roll-check {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  margin: 0.5rem 0;
+  padding: 0.4rem 0;
+  border-block: 1px solid color-mix(in srgb, currentColor 25%, transparent);
+}
+.crewtools-roll-check > span {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.9em;
+}
+.crewtools-roll-check > strong {
+  font-size: 1.6em;
+  white-space: nowrap;
+}
+.crewtools-roll-check small {
+  font-size: 0.55em;
+  font-weight: normal;
+}
+.crewtools-roll-effect {
+  border: 1px solid color-mix(in srgb, currentColor 55%, transparent);
+  background: rgba(0, 0, 0, 0.045);
+  padding: 0.4rem 0.5rem;
+  margin-top: 0.45rem;
+  font-weight: 600;
+}
+.crewtools-roll-effect.failure {
+  background: rgba(180, 0, 0, 0.08);
+}
+.crewtools-roll-card {
+  overflow-wrap: anywhere;
+}
+
+html[data-cpr-theme="darkmode"] .crewtools-roll-outcome.success,
+.theme-dark .crewtools-roll-outcome.success {
+  color: #80d88a;
+}
+html[data-cpr-theme="darkmode"] .crewtools-roll-outcome.failure,
+.theme-dark .crewtools-roll-outcome.failure {
+  color: #ff8585;
+}
+
+/* Patient therapy is configured in place, with only the relevant extra field. */
+.pneuma-crewtools .patient-setup-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.pneuma-crewtools .patient-setup-row select {
+  flex: 1;
+  min-width: 0;
+}
+.pneuma-crewtools .patient-setup-row button {
+  flex: 0 0 auto;
+  width: auto;
+}
+.pneuma-crewtools .patient-pc-choice {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin: 0.3rem 0;
+}
+
+/* GM actions share the native payout panels; outstanding records remain the main scroll area. */
+.pneuma-crewtools .gm-dashboard-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+.pneuma-crewtools .gm-dashboard-actions button {
+  margin: 0;
+  min-height: 2rem;
+}
+
+/* Make unavailable medical actions unmistakable without changing native checkbox styling. */
+.pneuma-crewtools .medical-add-row button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  border-style: dashed;
+  box-shadow: none;
+  background: rgba(128, 128, 128, 0.18);
+}
+.pneuma-crewtools .medical-unavailable-note {
+  margin: 0.15rem 0 0.5rem;
+  font-style: italic;
+}
+
+/* The workday's final action spans its list and uses the medical panel's accent. */
+.pneuma-crewtools
+  .pneuma-downtime
+  .medical-workday-actions
+  button[data-medical-action="finishDay"] {
+  display: block;
+  width: 100%;
+  min-height: 34px;
+  padding: 0.3rem 0.5rem;
+  line-height: 1.3;
+  white-space: normal;
+  border: 1px solid var(--downtime-accent, #b74444);
+  background: color-mix(
+    in srgb,
+    var(--downtime-accent, #b74444) 16%,
+    transparent
+  );
+  color: inherit;
+}
+.pneuma-crewtools
+  .pneuma-downtime
+  .medical-workday-actions
+  button[data-medical-action="finishDay"]:disabled {
+  opacity: 0.6;
+  border-style: dashed;
+  background: transparent;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+/* Compact administration: recipient beside inventory, with one-dose actions. */
+.pneuma-crewtools .hub-pharma-layout {
+  display: grid;
+  grid-template-columns: minmax(140px, 1fr) minmax(0, 2fr);
+  gap: 0.75rem;
+  align-items: start;
+}
+.pneuma-crewtools .hub-pharma-recipient {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 0;
+}
+.pneuma-crewtools .hub-pharma-recipient select {
+  width: 100%;
+  min-width: 0;
+}
+.pneuma-crewtools .hub-pharma-list {
+  width: 100%;
+  margin: 0;
+}
+.pneuma-crewtools .hub-pharma-list td {
+  padding: 0.2rem 0.35rem;
+}
+.pneuma-crewtools .hub-pharma-list td:nth-child(2) {
+  width: 2rem;
+  text-align: center;
+}
+.pneuma-crewtools .hub-pharma-list td:last-child {
+  width: 1%;
+  text-align: right;
+}
+.pneuma-crewtools .hub-pharma-list button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  width: auto;
+  min-height: 26px;
+  margin: 0;
+  padding: 0.15rem 0.4rem;
+  line-height: 1.2;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+/* Keep the role selector compact beside Hustle's allocation controls. */
+.pneuma-crewtools .downtime-hustle-main {
+  gap: 0.35rem;
+}
+.pneuma-crewtools .downtime-hustle-main select {
+  flex: 0 1 8rem;
+  width: 8rem;
+  max-width: 100%;
+}
+
+/* Rent uses the payout form panels and compact native controls. */
+.pneuma-crewtools .rent-charge {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.5rem 0;
+}
+.pneuma-crewtools .rent-charge > div:first-child {
+  flex: 1;
+}
+.pneuma-crewtools .rent-charge button {
+  width: auto;
+  flex: 0 0 auto;
+}
+.pneuma-crewtools .rent-charge input[type="number"] {
+  flex: 0 0 6rem;
+  width: 6rem;
+}
+.pneuma-crewtools .rent-form select[name="modifier"],
+.pneuma-crewtools select[data-hq-modifier] {
+  flex: 0 0 5rem;
+}
+.pneuma-crewtools .rent-pending {
+  font-size: 0.8rem;
+  color: #a65b13;
+  display: block;
+}
+.pneuma-crewtools .rent-paid {
+  color: #287e37;
+  font-weight: bold;
+}
+
+/* Keep each pending administration and its chat shortcut on one compact row. */
+.pneuma-crewtools .pharma-pending-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 4px 0;
+}
+.pneuma-crewtools .pharma-pending-row > span {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.pneuma-crewtools .pharma-pending-row > button {
+  flex: 0 0 auto;
+  width: auto;
+  margin: 0;
+}
+
+/* HQ controls use the same compact fieldsets as the player hub. */
+.pneuma-crewtools .hq-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 6px 0;
+}
+.pneuma-crewtools .hq-toolbar > label,
+.pneuma-crewtools .hq-toolbar > strong:first-child {
+  flex: 1;
+}
+.pneuma-crewtools .hq-toolbar > button {
+  width: auto;
+  flex: 0 0 auto;
+}
+.pneuma-crewtools .hq-toolbar > select {
+  flex: 1;
+  min-width: 100px;
+}
+.pneuma-crewtools .hq-toolbar > input[type="number"] {
+  flex: 0 0 75px;
+  width: 75px;
+}
+.pneuma-crewtools .hq-toolbar > input[name="ipReason"] {
+  flex: 1;
+  min-width: 120px;
+}
+.pneuma-crewtools .hq-overview {
+  display: flex;
+  align-items: start;
+  gap: 12px;
+}
+.pneuma-crewtools .hq-overview .hq-image {
+  width: 160px;
+  height: 110px;
+  object-fit: cover;
+  margin: 0;
+  border-radius: 4px;
+}
+.pneuma-crewtools .hq-overview > div {
+  flex: 1;
+  min-width: 0;
+}
+.pneuma-crewtools .hq-description {
+  white-space: pre-wrap;
+  margin-top: 0;
+}
+.pneuma-crewtools .hq-improvement {
+  padding: 6px 0;
+  border-bottom: 1px solid var(--color-border-light-primary, #aaa);
+}
+.pneuma-crewtools .hq-improvement p {
+  margin: 4px 0;
+  white-space: pre-wrap;
+}
+.pneuma-crewtools .hq-management summary {
+  cursor: pointer;
+  padding: 5px 0;
+}
+.pneuma-crewtools .hq-rent-bill {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 5px;
+  margin: 8px 0;
+}
+.pneuma-crewtools .hq-rent-bill progress {
+  width: 100%;
+  height: 8px;
+}
+
+/* Native ledger shortcuts stay inside their resource tile headings. */
+.pneuma-crewtools .hub-metrics dt {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+}
+.pneuma-crewtools .hub-metrics .hub-ledger-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  flex: 0 0 auto;
+  width: auto;
+  min-height: 28px;
+  line-height: 1;
+  padding: 0.3rem 0.4rem;
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid currentColor;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+
+/* Keep the therapy notice and free treatment choice on the same row. */
+.pneuma-crewtools .patient-payment-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+.pneuma-crewtools .patient-payment-row .notes {
+  margin: 0;
+}
+.pneuma-crewtools .patient-payment-row .patient-pc-choice {
+  flex: 0 0 auto;
+}
+.pneuma-crewtools .downtime-days-label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+/* Secondary balances and saved choices stay compact beneath each resource. */
+.pneuma-crewtools .hub-metrics .hub-metric-detail {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: normal;
+  line-height: 1.3;
+  margin-top: 0.25rem;
+  overflow-wrap: anywhere;
+}
+
+/* Long saved housing names stay within their resource tile. */
+.pneuma-crewtools .hub-metrics .hub-housing-detail {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pneuma-crewtools .hub-metrics > div {
+  min-width: 0;
+}
+
+/* HQ management uses simple sections and compact native form controls. */
+.pneuma-crewtools .hq-management {
+  gap: 0.65rem;
+}
+.pneuma-crewtools .hq-management .hq-section {
+  min-width: 0;
+  margin: 0;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--color-border-light-primary, #888);
+  border-radius: 4px;
+}
+.pneuma-crewtools .hq-section > legend {
+  padding: 0 0.35rem;
+  font-weight: 600;
+  font-size: 1rem;
+}
+.pneuma-crewtools .hq-header {
+  gap: 0.75rem;
+  margin: 0;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--color-border-light-primary, #888);
+}
+.pneuma-crewtools .hq-header > label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+.pneuma-crewtools .hq-header select {
+  flex: 1;
+  min-width: 0;
+}
+.pneuma-crewtools .hq-ip-balance {
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+.pneuma-crewtools .hq-ip-balance strong {
+  font-size: 1.1rem;
+  margin-left: 0.25rem;
+}
+.pneuma-crewtools .hq-overview .hq-image {
+  width: 96px;
+  height: 76px;
+  object-fit: contain;
+  border: 0;
+}
+.pneuma-crewtools .hq-management button {
+  width: auto;
+  min-height: 28px;
+  padding: 0.15rem 0.6rem;
+}
+.pneuma-crewtools .hq-management .form-group {
+  display: flex;
+  gap: 0.5rem;
+  margin: 0.4rem 0;
+  align-items: center;
+}
+.pneuma-crewtools .hq-management .form-group > label {
+  flex: 0 0 115px;
+  font-weight: normal;
+}
+.pneuma-crewtools .hq-management .form-group > input,
+.pneuma-crewtools .hq-management .form-group > select,
+.pneuma-crewtools .hq-management .form-group > textarea,
+.pneuma-crewtools .hq-management .form-fields {
+  flex: 1;
+  min-width: 0;
+}
+.pneuma-crewtools .hq-management .form-fields {
+  display: flex;
+  gap: 0.35rem;
+}
+.pneuma-crewtools .hq-management .form-fields input {
+  flex: 1;
+  min-width: 0;
+}
+
+.pneuma-crewtools .hq-rent-fields {
+  flex-wrap: nowrap;
+}
+.pneuma-crewtools .hq-rent-fields select[name="rentType"] {
+  flex: 1;
+  min-width: 0;
+}
+.pneuma-crewtools .hq-rent-fields select[name="rentModifier"] {
+  flex: 0 0 85px;
+  min-width: 0;
+}
+.pneuma-crewtools .hq-management summary {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+.pneuma-crewtools .hq-management details[open] > summary {
+  margin-bottom: 0.4rem;
+}
+.pneuma-crewtools .hq-improvement-editor {
+  margin-top: 0.4rem;
+}
+.pneuma-crewtools .hq-improvement-editor[open],
+.pneuma-crewtools .hq-purchase[open] {
+  padding: 0.4rem 0.6rem;
+  background: rgba(127, 127, 127, 0.08);
+  border-radius: 3px;
+}
+.pneuma-crewtools .hq-purchase {
+  margin-top: 0.5rem;
+}
+.pneuma-crewtools .hq-management input[type="number"] {
+  max-width: 90px;
+}
+.pneuma-crewtools .hq-rent-bill {
+  padding: 0.45rem 0;
+  border-top: 1px solid var(--color-border-light-primary, #888);
+}
+.pneuma-crewtools .hq-management .hq-editor > summary {
+  padding: 0;
+}
+
+.pneuma-crewtools .payout-advance-days {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.pneuma-crewtools .payout-advance-days input {
+  width: 80px;
+  flex: 0 0 80px;
+}
+.pneuma-crewtools [data-preview-advance-days] {
+  display: block;
+  margin-top: 0.3rem;
+}
+
+/* HQ identity and editable metadata sit beside its native Container image. */
+.pneuma-crewtools .hq-properties {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr);
+  gap: 0.8rem;
+  align-items: start;
+}
+.pneuma-crewtools .hq-picture img,
+.pneuma-crewtools .hq-image-link img {
+  width: 120px;
+  height: 140px;
+  object-fit: contain;
+  border: 0;
+}
+.pneuma-crewtools .hq-management .hq-image-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  width: 120px;
+  height: auto;
+  cursor: pointer;
+}
+.pneuma-crewtools .hq-image-link:hover {
+  outline: 1px solid var(--color-border-highlight, #999);
+}
+.pneuma-crewtools .hq-property-fields {
+  min-width: 0;
+}
+.pneuma-crewtools .hq-management .hq-property-fields .form-group > label {
+  flex-basis: 95px;
+  font-size: 0.85rem;
+}
+.pneuma-crewtools .hq-capacity-fields {
+  display: flex;
+  gap: 0.75rem;
+}
+.pneuma-crewtools .hq-capacity-fields label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex: 1;
+  font-size: 0.85rem;
+}
+.pneuma-crewtools .hq-capacity-fields input {
+  width: 70px;
+  min-width: 55px;
+}
+.pneuma-crewtools .hq-property-fields select[name="rentModifier"] {
+  flex: 0 0 72px;
+}
+.pneuma-crewtools .hq-improvements-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0.8rem;
+  align-items: start;
+}
+.pneuma-crewtools .hq-buy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  border-left: 1px solid var(--color-border-light-primary, #888);
+  padding-left: 0.8rem;
+  min-width: 0;
+}
+.pneuma-crewtools .hq-buy select {
+  width: 100%;
+}
+.pneuma-crewtools .hq-installed table {
+  margin: 0;
+  width: 100%;
+}
+.pneuma-crewtools .hq-installed td,
+.pneuma-crewtools .hq-installed th {
+  padding: 0.35rem;
+  text-align: left;
+}
+.pneuma-crewtools .hq-installed td:last-child button {
+  padding: 0.1rem 0.3rem;
+}
+.pneuma-crewtools .hq-catalog-defaults {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.4rem;
+}
+.pneuma-crewtools .hq-custom-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0;
+}
+
+/* Keep the rent selectors together despite native form-group wrapping. */
+.pneuma-crewtools .hq-management .hq-rent-property {
+  display: grid;
+  grid-template-columns: 95px minmax(0, 1fr) 72px;
+  gap: 0.5rem;
+}
+.pneuma-crewtools .hq-rent-property select {
+  width: 100%;
+  min-width: 0;
+}
+.pneuma-crewtools .hq-picture {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.5rem;
+}
+.pneuma-crewtools .hq-management .hq-save-properties {
+  width: 100%;
+}
+/* Align residence and lifestyle selectors, reserving the same modifier column. */
+.pneuma-crewtools .rent-form .rent-choice-row {
+  display: grid;
+  grid-template-columns: 6rem minmax(0, 1fr) 5rem;
+  gap: 0.5rem;
+  align-items: center;
+}
+.pneuma-crewtools .rent-choice-row > select {
+  width: 100%;
+  min-width: 0;
+}
+.pneuma-crewtools .rent-save-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+.pneuma-crewtools .rent-save-row > button {
+  width: auto;
+  flex: 0 0 auto;
+}
+.pneuma-crewtools .rent-save-row > .notes {
+  flex: 1;
+  margin: 0;
+}
+
+.crewtools-roll-title.neutral {
+  background: rgba(127, 127, 127, 0.1);
+}
+.crewtools-roll-outcome.neutral {
+  color: inherit;
+  background: rgba(127, 127, 127, 0.12);
+}
+.crewtools-card-actions {
+  display: flex;
+  gap: 0.5rem;
+  padding-top: 0.5rem;
+  margin-top: 0.5rem;
+  border-top: 1px solid var(--color-border-light-primary, #888);
+}
+.crewtools-card-actions button {
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+}
+
+/* Calendar separates an exact date from a relative advance. */
+.pneuma-crewtools .calendar-current {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+.pneuma-crewtools .calendar-current strong {
+  font-size: 1.15rem;
+}
+.pneuma-crewtools .calendar-date-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 65px 90px;
+  gap: 0.5rem;
+}
+.pneuma-crewtools .calendar-date-fields label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.pneuma-crewtools .calendar-date-fields input,
+.pneuma-crewtools .calendar-date-fields select {
+  width: 100%;
+  min-width: 0;
+}
+.pneuma-crewtools .calendar-date-action {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: 0.65rem;
+}
+.pneuma-crewtools .pneuma-calendar-form button {
+  width: auto;
+  flex: 0 0 auto;
+  padding: 0.2rem 0.7rem;
+}
+.pneuma-crewtools .calendar-advance-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+.pneuma-crewtools .calendar-advance-row label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.pneuma-crewtools .calendar-advance-row input {
+  width: 65px;
+}
+.pneuma-crewtools .pneuma-calendar-form > .notes {
+  margin: 0;
+}
+
+/* Keep session and time controls in the left column; players occupy the right. */
+.pneuma-crewtools .payout-session-column {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-height: 0;
+  overflow-y: auto;
+}
+.pneuma-crewtools [data-step-panel="participants"] > .payout-session-column {
+  grid-column: 1;
+  grid-row: 1;
+}
+.pneuma-crewtools [data-step-panel="participants"] > .participant-selection {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+/* Compact shared-IP adjustment dialog; native controls retain their behavior. */
+.pneuma-crewtools.hq-ip-adjustment {
+  padding: 6px 4px 12px;
+}
+.pneuma-crewtools .hq-ip-balance {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  margin-bottom: 14px;
+  border-left: 4px solid var(--pneuma-purple);
+  border-radius: 4px;
+  background: rgba(111, 75, 139, 0.12);
+  font-weight: 600;
+}
+.pneuma-crewtools .hq-ip-balance strong {
+  font-size: 26px;
+  line-height: 1.2;
+}
+.pneuma-crewtools .hq-ip-fields {
+  display: grid;
+  grid-template-columns: 80px minmax(0, 1fr);
+  gap: 8px 12px;
+  align-items: center;
+}
+.pneuma-crewtools .hq-ip-fields label {
+  margin: 0;
+  font-weight: 600;
+}
+.pneuma-crewtools .hq-ip-fields input {
+  margin: 0;
+  min-width: 0;
+  height: 32px;
+  width: 100%;
+}
+.pneuma-crewtools .hq-ip-fields input[type="number"] {
+  width: 100px;
+  text-align: center;
+}
+.pneuma-crewtools .hq-ip-hint {
+  grid-column: 2;
+  margin: -3px 0 3px;
+  font-size: 12px;
+  opacity: 0.8;
+}
+.crew-hq-ip-dialog .dialog-buttons {
+  gap: 8px;
+}
+.crew-hq-ip-dialog .dialog-buttons button {
+  min-height: 34px;
+}
+.crew-hq-ip-dialog .dialog-buttons button[data-button="apply"] {
+  background: rgba(111, 75, 139, 0.16);
+  border-color: #6f4b8b;
+  font-weight: 600;
+}
+
+.pneuma-crewtools .payout-time-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.pneuma-crewtools .payout-time-section .payout-advance-days {
+  justify-content: space-between;
+  gap: 0.4rem;
+  font-size: 0.95em;
+}
+.pneuma-crewtools .payout-time-section .payout-advance-days input,
+.pneuma-crewtools
+  .payout-time-section
+  .absent-downtime-control
+  input[type="number"] {
+  width: 3.2rem;
+  flex: 0 0 3.2rem;
+}
+.pneuma-crewtools .payout-time-section .absent-downtime-control {
+  margin: 0;
+  padding: 0;
+  font-size: 0.95em;
+}
+.pneuma-crewtools .payout-time-section .absent-downtime-control label {
+  min-width: 0;
+  line-height: 1.3;
+}
+.pneuma-crewtools .payout-time-section input[type="checkbox"] {
+  flex: 0 0 auto;
+}
+.pneuma-crewtools .payout-time-section [data-expire-downtime] {
+  width: 100%;
+  margin: 0;
 }

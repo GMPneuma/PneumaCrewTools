@@ -1,8 +1,13 @@
 import { MODULE_ID } from "./constants";
+import { openDashboard } from "./gm-dashboard";
 import { PayoutWindow } from "./payout-window";
-import { hasInboxItemsForCurrentUser, openPayoutInbox } from "./payout-inbox";
+import { hasInboxItemsForCurrentUser, openPlayerHub } from "./payout-inbox";
 
 let payoutWindow: PayoutWindow | null = null;
+
+export function openGMDashboard(): void {
+  openDashboard(openPayoutWindow);
+}
 
 export function openPayoutWindow(): void {
   if (!game.user?.isGM) {
@@ -20,20 +25,20 @@ export function registerPayoutWindowControl(): void {
     if (!tokenControls) return;
     tokenControls.tools.push({
       name: `${MODULE_ID}-inbox`,
-      title: "Open Payout Inbox",
+      title: "Open Crew Tools Player Hub",
       icon: `fas fa-inbox${hasInboxItemsForCurrentUser() ? " pneuma-crewtools-inbox-pending" : ""}`,
       button: true,
       visible: true,
-      onClick: openPayoutInbox,
+      onClick: openPlayerHub,
     });
     if (!game.user?.isGM) return;
     tokenControls.tools.push({
       name: MODULE_ID,
-      title: "Open PneumaCrewTools",
-      icon: "fas fa-coins",
+      title: "Crew Tools GM Dashboard",
+      icon: "fas fa-gauge-high",
       button: true,
       visible: true,
-      onClick: openPayoutWindow,
+      onClick: openGMDashboard,
     });
   });
 }

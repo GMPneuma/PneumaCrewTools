@@ -2,15 +2,20 @@
 
 ## Using it
 
-The small toolbar at the top center of the screen shows Foundry's current world
+The aqua city-clock display replaces the Foundry logo in the upper-left corner and shows the current world
 date to players and GMs. It does not change the clock merely to initialize the UI.
 On v12, a world time of zero displays 1970-01-01 under the Gregorian shim.
 
-Click the date as GM, or open **Module Settings > PneumaCrewTools > Campaign
+The aqua date reads, for example, **Jan 1, 2078**. The date itself is passive and
+does not respond to clicks. Its transparent face has a subtle metal frame,
+and subtle scan lines. It occupies the logo slot above the scene controls;
+if no logo exists, it falls back to the upper-left corner.
+
+To edit the date, open **Module Settings > Pneuma's Crew Tools > Campaign
 Calendar**. Enter the year, select the month, and enter the day, then click
 **Set date**. This supports jumps forward or backward, including between 2045
 and 2077. Invalid dates are rejected. The form also advances a positive whole
-number of days, and the toolbar offers **+1 day**.
+number of days.
 
 Players see the date without editing controls. When multiple GMs are connected,
 the active GM with the lowest Foundry User ID handles writes. Controls update
@@ -22,6 +27,16 @@ they fall back to the existing last-payout-date preference. Existing payout
 records and dates already entered in a form are not changed.
 
 Calendar changes do not award downtime, charge rent, or renew lifestyles.
+
+## Compact Crew Tools HUD
+
+The docked HUD shows the month and day on the left (for example, **Nov 21**) with the four-digit year underneath. Month/day text is 26px; the year is 12px. A single 23px Player Hub icon sits to the right. It uses the attention color when payout acknowledgments or unspent downtime need attention; its tooltip shows the counts.
+
+Players see their own payout status and unspent days across owned characters; GMs see crew totals. Only module Journal changes refresh status. An unreadable downtime ledger is shown as unavailable, while known waiting payouts still light the icon.
+
+The HUD retains its 132px by 70px metal/glass frame and 10px gap to scene controls. An extra 8px of top padding moves the date and icon down together. The date remains passive and the icon opens the Player Hub. No additional HUD data is stored.
+
+Appearance settings now include HUD Icon Color and HUD Attention Color, using the same native client color-picker framework as the date text.
 
 ## Native world time is authoritative
 
@@ -80,3 +95,9 @@ world; verify v13/v14 when compatible system releases are available.
 - [v14 GameTime](https://foundryvtt.com/api/v14/classes/foundry.helpers.GameTime.html)
 - [CalendarData](https://foundryvtt.com/api/v13/classes/foundry.data.CalendarData.html)
 - [TimeComponents](https://foundryvtt.com/api/v13/interfaces/foundry.data.types.TimeComponents.html)
+
+## Appearance settings
+
+Module Settings > Pneuma's Crew Tools > Appearance: Calendar Font Color provides a native color picker. The default is aqua (#7fffea). Saving applies immediately. This client setting affects only this device; it does not change campaign data or create Journals.
+
+Future UI color options belong in the UI_COLORS registry in src/ui-appearance.ts. Each entry defines its setting key, label, hint, default six-digit hex color, and CSS custom property. Registration, color pickers, validation fallback, and immediate application are shared. Calendar styles consume --pneuma-calendar-font-color.

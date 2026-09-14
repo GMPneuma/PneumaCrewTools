@@ -1,176 +1,86 @@
 # Journal guide and specifications
 
-## What every Journal must explain
+Journal pages use Foundry’s page title and compact tables. Active activities are visible; completed activities are collapsed. A short About this page section explains purpose, storage and editing. Routine pages do not repeat raw field dumps; technical attempt details appear only when an interrupted action needs review. Structured flags and readable content live on the same native document. The readable content is a generated view; editing prose does not change stored bookkeeping or apply rewards. Keep personal notes on separate pages.
 
-Each Journal specification must have a plain-language explanation, and each
-module-generated page must include a short **About this page** section. Readers
-should not need code knowledge to understand their world's records.
+## Folders and ownership
 
-For every Journal or page, explain:
+- **CrewTools** contains shared references and private per-character Journals.
+- **CrewTools / CrewTools-GM** contains private GM history and technical records.
+- Shared references grant players Observer access and GMs Owner access.
+- Character Journals grant the character's owners and GMs Owner access, and everyone else no access.
+- Folder names do not grant permissions.
 
-- **Purpose:** what it records and why it exists.
-- **Visibility:** who can read it and who can change it.
-- **Format:** what each section, row, column, symbol, unit, and identifier means.
-- **Updates:** which action creates or changes it, what is calculated, and whether
-  it holds current values or historical entries.
-- **Editing:** which parts are safe to edit, which are regenerated, and whether
-  saving an edit changes another resource.
-- **Storage:** whether this is the authoritative record or a readable copy, and
-  where any related settings, flags, Actor values, or Item data live.
-- **Removal:** what disabling the module, deleting a page, or clearing data does.
-  Explain whether the module recreates anything. Never imply that deleting a log
-  reverses a payment unless that behavior is actually implemented.
+## Attendance / Attendance
 
-Use ordinary headings, paragraphs, and labeled tables. Explain abbreviations on
-first use, put units in column labels, distinguish blank values from zero, and
-show dates consistently. Explain any machine-readable section next to the data:
-list its fields, explain its links to other records, and say which parts the
-module maintains. Never use an unexplained block of IDs or JSON as the only
-explanation. Do not claim the module has no hidden storage while it still does.
+A shared current summary of payout participation, keyed by Actor ID. Each applied payout increments each selected character once, regardless of multiple owners. Two payouts with the same session label count twice.
 
-## Folder specification
+**Columns:** Character is a named Actor link; Sessions Played is the count; Last Session Name is the name entered on the latest payout. Excluded Actors are hidden from the summary but retained fields remain readable in the complete-fields section.
 
-The required organization is:
+**Stored fields:** **actorId**, **actorName**, **sessions**, **lastSession**. The page's **recordKey** is **attendance** and its **data** flag contains the row array. GMs update through payouts or clear through Module Data. This page is authoritative; no settings copy exists.
 
-- **CrewTools:** player-facing references.
-- **CrewTools / CrewTools-GM:** private GM records and technical/database records.
+## Factions / Factions
 
-These are the agreed folder specifications; automatic folder placement is not
-implemented yet. Current code creates Payouts and Payout Log without a folder.
-Permissions must be applied to the Journals themselves, not assumed from folder
-names. Player-specific records need an explicit audience; do not assume they are
-shared with the whole crew.
+The GM manages factions through Settings > Faction Reputation > Manage Factions, or adds one directly from a payout dropdown. Each faction has a stable **id**, display **name**, and **active** flag. Inactive factions are hidden from new payouts; existing reputation remains. The table shows names and availability. Page **recordKey** is **factions**. This Journal is created only when the list is saved.
 
-## Journals currently implemented
+## Character Journal / Faction Reputation
 
-### Payouts / HQ
+Created on the first faction reputation award. Payouts set the selected faction's reputation, separately from native character-sheet Reputation. The compact table shows **Faction**, **Reputation**, and latest **Reason**. Owners and GMs can read this character Journal.
 
-**Purpose and audience:** a shared headquarters reference. Current permissions
-allow every player to read it and GMs to edit it. Intended folder: CrewTools.
+Page **recordKey** is **factionReputation**. Its **data** rows contain **actorId**, **actorName**, **factionId**, **faction** (name), **reputation**, and **reason**. IDs identify the Actor and faction. Renaming a faction updates the current summary without rewriting historical receipts. Editing visible Journal text does not change these structured records. Payout history remains in the Payout Ledger.
 
-**Format:**
+## CrewTools-GM / Payout Ledger
 
-| Section                | Meaning                                                                                                                |
-| ---------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| Current HQ IP          | Sum of the signed adjustments below. IP means Improvement Points.                                                      |
-| Purchased Improvements | Improvement name and recorded IP cost.                                                                                 |
-| HQ IP Journal          | Date, signed Adjustment, and Reason for each entry. A positive amount adds IP; a negative amount spends or removes it. |
+GM-only authoritative history with one page per payout. Each page's **recordKey** is the payout ID; **data** contains the payout record, with all fields rendered in readable labeled sections.
 
-**Updates and edits:** applying a payout appends its HQ IP entries. Saving GM
-edits recalculates the displayed total from the adjustment table. Entering an
-improvement does **not** automatically subtract its cost; a matching negative
-adjustment must be recorded separately. The current implementation does not
-validate improvement eligibility or prevent overspending through manual edits.
-Keep the HQ page name, headings, column order, and the table immediately after
-its heading intact: the module uses those to find the data. Edit adjustments,
-not the calculated total.
+**Fields:**
 
-**Storage:** manually edited HQ text remains on the page. The inherited world
-setting also retains payout-generated HQ entries and improvement seed data;
-manual edits do not synchronize those tables back into that setting. This is an
-existing implementation limitation, not the intended final Journal-first design.
+- **schemaVersion**, **id**: format and stable payout identity.
+- **createdAt**, **createdByUserId**, **createdByUserName**: recorded timestamp and GM author.
+- **sessionLabel**, **inGameDate**, **notes**: session context and campaign date.
+- **participants**: Actor IDs/names and recipient User IDs/names.
+- **changes**: reward type, target type/ID/name, signed amount, previous/new values, description, source scope and reward-specific fields such as Item or faction details.
+- **correctsRecordId**: reserved relationship; normally empty. No correction workflow is supplied.
 
-**Removal:** clearing HQ data replaces the HQ tables. Deleting the registered
-Payouts Journal causes it to be recreated when next needed and resets its stored
-reference data. Deleting only the HQ page recreates it from the stored data;
-manual-only edits on the deleted page are lost. Neither action reverses Actor
-rewards. Saved text can be read with the module disabled; recalculation stops.
+Amounts describe recorded changes, not a second balance. Null before/after values mean no numeric native resource value was recorded for that change. Reading or editing the page cannot repeat payment. Clearing history removes ledger pages without changing Actors.
 
-### Payouts / Player Reputation
+## Crew Tools — Character / Payout Receipts
 
-**Purpose and audience:** a shared view of reputation with specific factions.
-Every player can read it. Intended folder: CrewTools.
+Private to the character's owners and GMs. **recordKey** is **acknowledgments**; **data** holds the receipts.
 
-| Column     | Meaning                                                |
-| ---------- | ------------------------------------------------------ |
-| Actor      | Character name.                                        |
-| Reputation | Current recorded score for this character and faction. |
-| Faction    | The group this reputation applies to.                  |
-| Reason     | Reason attached to the latest recorded update.         |
+**Fields:** **id**, **payoutRecordId**, **actorId**, **actorName**, **sessionLabel**, **inGameDate**, **userId**, **userName**, **createdAt**, **acknowledgedAt**, and **awards**. Each award has readable **text**, and may include **label**, **value**, **description**, **img**, or **icon** for display.
 
-**Updates and edits:** faction-reputation payouts replace the matching character
-and faction row. This is a current summary, not a transaction history, and is
-separate from standard Reputation on the character sheet. Direct edits are
-replaced when the generated page refreshes and do not change the underlying data.
+Actor ID identifies the character; User ID identifies the recipient. A blank **acknowledgedAt** means the recipient has not marked the receipt as seen. A timestamp means it has been acknowledged. This is never payment approval: rewards are applied before acknowledgment.
 
-**Storage and removal:** world settings currently hold the source records. An
-empty table says No entries yet. Clearing this section clears its source data
-and regenerates the page. Deleting a page is not the same as clearing its source
-records. The Journal-wide deletion behavior is described under HQ above.
+Acknowledgment preserves the Journal receipt and removes it from the active Hub/HUD list. Module Data can explicitly clear receipts. Reading or deleting receipts never pays or undoes an award.
 
-### Payouts / Attendance
+## Crew Tools — Character / Humanity Rolls
 
-**Purpose and audience:** a shared summary of payout participation by Foundry
-player account. Intended folder: CrewTools.
+Private to the character's owners and GMs. **recordKey** is **humanity**; **data** holds pending and completed payout Humanity actions.
 
-| Column          | Meaning                                                      |
-| --------------- | ------------------------------------------------------------ |
-| Player          | Foundry account name, independent of the assigned character. |
-| Sessions Played | Number of applied payouts in which the account was selected. |
-| Last Session    | Most recent payout session label; a dash means no label.     |
+**Fields:** **id**, **payoutRecordId**, **actorId**, **actorName**, **userId**, **reward** (humanityGain/humanityLoss), **formula**, **description**, **createdAt**. Completed entries additionally have **resolvedAt**, **rollTotal**, **previousHumanity**, and **newHumanity**.
 
-**Updates:** each applied payout increments selected players once. Two payouts
-with the same session label count twice. Rows sort by count, then name. This is
-not connection monitoring or time-online tracking.
+An unresolved entry requires a roll. Completing it updates native Humanity and EMP, then retains the result here. Clearing pending rolls removes unresolved entries without changing Humanity; completed results remain. Chat cards reference Actor/roll IDs, and are not the authoritative pending-action store.
 
-**Editing, storage, and removal:** source values currently live in world settings.
-The page is generated and direct edits are replaced on refresh. Clearing
-attendance clears the source counters. Deleting just the page does not clear
-those counters; the module recreates it. With the module disabled the last
-written summary remains readable.
+Players can process their prepared Journal actions without a connected GM. Journal ownership follows native character ownership; recipient User IDs still control the action's intended recipient.
 
-### Payout Log / one page per payout
+## Downtime, projects and medical records
 
-**Purpose and audience:** a GM-only written payout summary. Intended folder:
-CrewTools / CrewTools-GM. The current default permissions deny players access.
+[Downtime](downtime.md) documents the shared Actor/session directory and each character's authoritative balance/events. [TECH projects](tech-projects.md) documents project fields and held upgrade inventory. [Medical records](medtech.md) documents therapy, hourly work and results. They share the same character Journal with payout receipts. **Downtime Log** stores day charges and resource changes; **Active Projects** stores active and completed TECH/medical records. A click does not create a new Journal page.
 
-**Format:** the page name contains the session label and any supplied game date.
-The opening fields show In-Game Date, Recipients, and Notes. Communal Payout
-contains shared rewards. Primary Payout contains group-scoped awards intended
-for each selected character. Individual Payouts adds an Actor column for targeted
-awards. Rows identify the reward Type, Amount, and Description. Amounts may be
-signed adjustments, item quantities marked with ×, downtime days, or a dice
-formula. None means no entries in that section.
+## Headquarters
 
-**Updates and limits:** a page is added during payout execution and normally
-retained afterward. Its amounts/formulas describe the payout plan; it is not a
-complete record of final roll results or before-and-after balances. The separate
-world-setting ledger holds more detailed changes. A failed payout may remove
-the newly created page as part of rollback.
+[Headquarters](headquarters.md) documents the shared HQ registry, images, native container Actor links, improvements and HQ IP transactions.
 
-**Editing and removal:** reading or editing this page does not apply or undo
-rewards and does not modify the separate ledger, Actors, Items, pending rolls, or
-acknowledgments. Deleting a page removes only that summary. The Module Data
-history-clear action clears both written pages and the separate ledger. Deleting
-the whole Payout Log leaves the separate ledger intact; a new empty log is created
-when next needed. Text already written remains readable without the module.
+## Editing, disabling and removal
 
-## Planned Journal specifications
+All payout **recordKind**, **actorId**, **recordKey**, and **data** tags use the **flags.pneuma-crewtools** namespace. Human-readable fields are stored in standard page text. Direct text edits are replaced when that record refreshes; they do not change structured data. Removing records does not reverse native resources. Deleted reference pages may be recreated empty; history is not restored from another storage location.
 
-These are proposed readable formats, not implemented automation. Each feature
-must complete the explanation checklist above before its Journal is introduced.
-Undecided rules must stay explicitly undecided.
+The module uses settings for preferences and references, native Actors/Items for game resources, and Foundry world time for the calendar. Campaign bookkeeping is not stored in hidden settings, User flags or character flags. No development-data migration or hidden preservation copy is created.
 
-| Record                          | Purpose and proposed readable format                                                                                                                                                   | Audience and behavior to specify                                                                                                |
-| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| Player payout reference         | Session/date, recipient, reward, amount or quantity, and explanation; clearly distinguish pending rolls from final outcomes.                                                           | CrewTools; decide what is crew-wide versus recipient-only. Reading must not repeat a payout.                                    |
-| Downtime                        | Balance followed by dated rows for days awarded, used, adjusted, activity, and linked project. Label units as days.                                                                    | CrewTools; decide ownership and approval. Explain exactly when days are deducted.                                               |
-| TECH projects                   | Project title, owner, intended output, status, requirements, costs/materials, work required/completed/remaining, and dated work entries.                                               | CrewTools; decide visibility and crafting rules. Explain whether an update spends days or delivers an Item.                     |
-| Headquarters                    | One clearly named HQ record, its improvements, and HQ IP awards/spending with costs and reasons.                                                                                       | CrewTools; decide separate versus shared IP pools and spending permissions. Explain how balances are calculated.                |
-| Housing and rent                | Housing description, standard rent, actual rent, pricing adjustment/reason, billing period, payment coverage, and next due date.                                                       | CrewTools with an explicitly chosen audience. Specify whether recording payment deducts money.                                  |
-| Lifestyle                       | Purchased lifestyle, cost, purchase date, covered period, and next purchase date, followed by purchase history.                                                                        | CrewTools with an explicitly chosen audience. Specify renewal behavior and any money deduction.                                 |
-| GM transaction/database records | Plain-language summary followed by labeled fields for record identity, related records, action, status, and relevant before/after values. Explain every technical field and its units. | CrewTools-GM. State which records are authoritative and which are copies. Define edit and delete effects before implementation. |
-| Pending player actions          | Action required, affected player/character, source payout, status, and what completing or canceling it changes.                                                                        | Separate player instructions from private GM detail. The planned Journal storage does not exist yet; current actions use flags. |
+[Rent & Lifestyle](rent.md) defines character residence/bill/contribution pages, shared rate/billing pages, and readable HQ rent summaries. Confirmed HQ rent totals are stored on the HQ Container Actor; pending payments are stored in the paying character’s Journal.
 
-## What is not a Journal
+Existing character and payout ledger pages refresh their display when the GM loads the module. Presentation refreshes do not change structured records or native resources.
 
-The calendar reads Foundry's native world time. It has no calendar Journal,
-ledger, or module data setting. Actor money, standard IP, Humanity, EMP, standard
-Reputation, and delivered Items remain native system data. The current module
-still uses settings for the detailed payout ledger and some reference data, and
-flags for pending player actions. See [the data model](data-model.md) for the
-current inventory. These exceptions must remain disclosed until their designs
-change.
+Displayed dates use **MM-DD-YYYY**. Structured dates retain ISO ordering for calculations. Payout Ledger uses Communal, Primary and Individual tables; before/after values remain in expandable details. There is no separate payout log.
 
-This project is not in use. Do not add migration or preservation machinery for
-pre-release world data unless the owner changes that instruction.
+On GM startup, the obsolete module-tagged Payout Log is removed. The Payout Ledger remains the sole history.

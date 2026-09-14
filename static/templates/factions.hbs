@@ -1,0 +1,23 @@
+<form autocomplete="off">
+  <p>Uncheck Available to hide a faction from new payouts. Existing reputation
+    is kept.</p>
+  <table><thead><tr><th>Faction</th><th>Available</th></tr></thead><tbody>
+      {{#each factions}}<tr><td><input
+              type="text"
+              name="name.{{id}}"
+              value="{{name}}"
+              maxlength="80"
+              aria-label="Faction name"
+            /></td><td><input
+              type="checkbox"
+              name="active.{{id}}"
+              {{checked active}}
+              aria-label="Available for payouts"
+            /></td></tr>{{/each}}
+    </tbody></table>
+  <footer class="sheet-footer flexrow"><button type="button" data-add-faction><i
+        class="fas fa-plus"
+      ></i>
+      Add Faction</button><button type="submit"><i class="fas fa-save"></i>
+      Save</button></footer>
+</form>

@@ -1,64 +1,64 @@
-<form class="pneuma-calendar-form">
-  <p class="notes">Set any campaign date, forward or backward. Type the year
-    directly to switch between eras such as 2045 and 2077.</p>
-  <div class="form-group">
-    <label for="crew-calendar-year">Year</label>
-    <input
-      id="crew-calendar-year"
-      name="year"
-      type="number"
-      value="{{year}}"
-      min="1"
-      max="9999"
-      step="1"
-      required
-      {{disabled readOnly}}
-    />
-  </div>
-  <div class="form-group">
-    <label for="crew-calendar-month">Month</label>
-    <select id="crew-calendar-month" name="month" {{disabled readOnly}}>
-      {{#each months}}
-        <option
-          value="{{value}}"
-          {{ifThen selected "selected" ""}}
-        >{{name}}</option>
-      {{/each}}
-    </select>
-  </div>
-  <div class="form-group">
-    <label for="crew-calendar-day">Day</label>
-    <input
-      id="crew-calendar-day"
-      name="day"
-      type="number"
-      value="{{day}}"
-      min="1"
-      max="31"
-      step="1"
-      required
-      {{disabled readOnly}}
-    />
-  </div>
-  {{#unless initialized}}<p class="notes">Set the starting date to begin
-      tracking the campaign calendar.</p>{{/unless}}
-  {{#unless canEdit}}<p class="notes">The first active GM manages date changes.</p>{{/unless}}
-  <button type="submit" {{disabled readOnly}}>Set date</button>
-  {{#if initialized}}
-    <hr />
-    <div class="form-group">
-      <label for="crew-calendar-days">Days to advance</label>
-      <input
-        id="crew-calendar-days"
-        name="days"
-        type="number"
-        value="1"
-        min="1"
-        step="1"
+<form class="pneuma-calendar-form payout-inbox-form">
+  <div class="calendar-current"><span>Current GameTime date</span><strong
+    >{{currentDate}}</strong></div>
+  <fieldset class="payout-heading hub-status"><legend><i
+        class="fas fa-calendar-day"
+      ></i>
+      Set Exact Date</legend>
+    <div class="calendar-date-fields"><label
+        for="crew-calendar-month"
+      >Month<select
+          id="crew-calendar-month"
+          name="month"
+          {{disabled readOnly}}
+        >{{#each months}}<option
+              value="{{value}}"
+              {{ifThen selected "selected" ""}}
+            >{{name}}</option>{{/each}}</select></label><label
+        for="crew-calendar-day"
+      >Day<input
+          id="crew-calendar-day"
+          name="day"
+          type="number"
+          value="{{day}}"
+          min="1"
+          max="31"
+          step="1"
+          required
+          {{disabled readOnly}}
+        /></label><label for="crew-calendar-year">Year<input
+          id="crew-calendar-year"
+          name="year"
+          type="number"
+          value="{{year}}"
+          min="1"
+          max="9999"
+          step="1"
+          required
+          {{disabled readOnly}}
+        /></label></div>
+    <div class="calendar-date-action"><small>Move forward or backward.</small><button
+        type="submit"
         {{disabled readOnly}}
-      />
-    </div>
-    <button type="button" data-calendar-advance {{disabled readOnly}}>Advance
-      days</button>
-  {{/if}}
-</form>
+      >Set Date</button></div></fieldset>
+  {{#if initialized}}<fieldset class="payout-heading hub-status"><legend><i
+          class="fas fa-forward"
+        ></i>
+        Advance Days</legend><div class="calendar-advance-row"><label
+          for="crew-calendar-days"
+        >Days<input
+            id="crew-calendar-days"
+            name="days"
+            type="number"
+            value="1"
+            min="1"
+            step="1"
+            {{disabled readOnly}}
+          /></label><button
+          type="button"
+          data-calendar-advance
+          {{disabled readOnly}}
+        >Advance GameTime</button></div></fieldset>{{/if}}
+  <p class="notes">Changes Foundry GameTime for the entire world.</p>{{#unless
+    canEdit
+  }}<p class="notes">The first active GM manages date changes.</p>{{/unless}}</form>

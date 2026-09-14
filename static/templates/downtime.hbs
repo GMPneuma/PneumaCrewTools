@@ -1,0 +1,565 @@
+<form class="pneuma-downtime payout-inbox-form">
+  <div class="downtime-stack">
+    <section class="downtime-common" aria-label="General downtime">
+      {{#unless ready}}<p>A GM must open Downtime to prepare your Journal.</p>{{/unless}}
+      <div class="downtime-header">
+        {{#if hasActor}}<span class="downtime-balance"><strong
+            >{{balance}}</strong>
+            downtime days</span>{{else}}<span>No owned characters</span>{{/if}}
+        {{#if hasMultipleActors}}
+          <select name="actorId" aria-label="Character">{{#each actors}}{{#if
+                selected
+              }}<option value="{{id}}" selected>{{name}}</option>{{else}}<option
+                  value="{{id}}"
+                >{{name}}</option>{{/if}}{{/each}}</select>
+        {{else}}
+          <input type="hidden" name="actorId" value="{{actorId}}" />
+        {{/if}}
+      </div>
+      {{#if canClearMedicalRoll}}<button
+          type="button"
+          data-medical-action="clearRoll"
+        >Clear Interrupted Medical Roll…</button>{{/if}}
+      {{#if ready}}
+        <fieldset class="payout-heading hub-status downtime-heal">
+          <legend><i class="fas fa-heart"></i> Heal</legend>
+          <div class="downtime-heal-layout"><div class="downtime-heal-main">
+              {{#if healing}}
+                <div class="downtime-heal-summary">
+                  <strong class="downtime-heal-total">{{healing.restored}}
+                    HP Restored</strong>
+                  {{#if canHeal}}<button
+                      class="downtime-use-day"
+                      type="button"
+                      data-heal-day
+                    >Use 1 Day</button>{{else}}<button
+                      class="downtime-use-day"
+                      type="button"
+                      data-heal-day
+                      disabled
+                    >Use 1 Day</button>{{/if}}
+                </div>
+              {{else}}
+                <p class="notes">{{healingError}}</p>
+                <button class="downtime-use-day" type="button" disabled>Use 1
+                  Day</button>
+              {{/if}}
+            </div><div class="downtime-heal-options">
+              <label>{{#if medbayAvailable}}{{#if healingOptions.medbay}}<input
+                      type="checkbox"
+                      data-healing-option="medbay"
+                      checked
+                    />{{else}}<input
+                      type="checkbox"
+                      data-healing-option="medbay"
+                    />{{/if}}{{else}}<input
+                    type="checkbox"
+                    data-healing-option="medbay"
+                    disabled
+                  />{{/if}}
+                Use medbay (+2 BODY)</label>
+              <label>{{#if healingOptions.antibiotic}}<input
+                    type="checkbox"
+                    data-healing-option="antibiotic"
+                    checked
+                  />{{else}}<input
+                    type="checkbox"
+                    data-healing-option="antibiotic"
+                  />{{/if}}
+                Used Antibiotic (+2 HP/day)</label>
+              <label>{{#if healingOptions.cryotank}}<input
+                    type="checkbox"
+                    data-healing-option="cryotank"
+                    checked
+                  />{{else}}<input
+                    type="checkbox"
+                    data-healing-option="cryotank"
+                  />{{/if}}
+                Use cryotank (×2)</label>
+            </div>
+            {{#if healing}}<div class="downtime-heal-formula">
+                <p>{{healingFormula}}</p>
+                <small>{{healing.before}}
+                  →
+                  {{healing.after}}
+                  /
+                  {{healing.maximum}}
+                  HP</small>
+              </div>{{/if}}
+          </div>
+        </fieldset>
+
+        <fieldset class="payout-heading hub-status">
+          <legend><i class="fas fa-coins"></i> Hustle</legend>
+          <div class="downtime-hustle-row downtime-hustle-main">
+            {{#unless fullWeek}}
+              <span class="downtime-progress"><progress
+                  value="{{hustleProgress}}"
+                  max="100"
+                  aria-label="Hustle progress"
+                  aria-valuetext="{{hustleDays}} / 7 days"
+                ></progress><strong>{{hustleDays}}
+                  / 7 days</strong></span>
+              {{#if canAddHustle}}<button
+                  class="downtime-use-day"
+                  type="button"
+                  data-hustle-day
+                  title="Allocate one downtime day"
+                  aria-label="Allocate one hustle day"
+                >Use 1 Day</button>{{else}}<button
+                  class="downtime-use-day"
+                  type="button"
+                  data-hustle-day
+                  disabled
+                  title="Allocate one downtime day"
+                  aria-label="Allocate one hustle day"
+                >Use 1 Day</button>{{/if}}
+              {{#if hustleDaysNeeded}}
+                {{#if canFillHustle}}<button
+                    type="button"
+                    class="downtime-use-day"
+                    data-hustle-fill
+                  >Use {{hustleDaysNeeded}} Days</button>{{else}}<button
+                    type="button"
+                    class="downtime-use-day"
+                    data-hustle-fill
+                    disabled
+                    title="Not enough available downtime to reach seven allocated days"
+                  >Use {{hustleDaysNeeded}} Days</button>{{/if}}
+              {{/if}}
+            {{/unless}}
+            {{#if multipleRoles}}
+              <select name="hustleRoleItemId" aria-label="Hustle role">{{#each
+                  roles
+                }}{{#if selected}}<option value="{{id}}" selected>{{name}}
+                      {{rank}}</option>{{else}}<option value="{{id}}">{{name}}
+                      {{rank}}</option>{{/if}}{{/each}}</select>
+            {{else}}
+              {{#each roles}}<input
+                  type="hidden"
+                  name="hustleRoleItemId"
+                  value="{{id}}"
+                /><span>{{name}} {{rank}}</span>{{/each}}
+            {{/if}}
+            {{#if canRollHustle}}<button type="button" data-hustle-roll>Roll
+                Hustle</button>{{else}}<button
+                type="button"
+                data-hustle-roll
+                disabled
+              >Roll Hustle</button>{{/if}}
+          </div>
+          {{#unless canHustle}}<p class="notes">A ranked role is required to
+              hustle.</p>{{/unless}}
+        </fieldset>
+
+        <fieldset class="payout-heading hub-status">
+          <legend><i class="fas fa-heart-pulse"></i> Therapy · Patient</legend>
+          {{#if patient}}
+            <div class="downtime-hustle-row">
+              {{#unless fullWeek}}<span class="downtime-progress"><progress
+                    value="{{patient.progress}}"
+                    max="100"
+                    aria-label="Patient therapy progress"
+                  ></progress><strong>{{patient.days}}
+                    / 7 days</strong></span>{{/unless}}
+              <span>{{patient.name}}{{#if patient.pc}}
+                  · PC therapist{{/if}}</span>
+              {{#if fullWeek}}{{#if patient.needsDays}}{{#if
+                    patient.canAdd
+                  }}<button type="button" data-medical-action="patientDay">Use 7
+                      days</button>{{else}}<button
+                      type="button"
+                      data-medical-action="patientDay"
+                      disabled
+                    >Use 7 days</button>{{/if}}{{/if}}{{else}}{{#if
+                  patient.canAdd
+                }}<button
+                    class="downtime-use-day"
+                    type="button"
+                    data-medical-action="patientDay"
+                    title="Allocate one therapy day"
+                  >Use 1 Day</button>{{else}}<button
+                    class="downtime-use-day"
+                    type="button"
+                    data-medical-action="patientDay"
+                    disabled
+                    title="Allocate one therapy day"
+                  >Use 1 Day</button>{{/if}}
+                {{#if patient.daysNeeded}}
+                  {{#if patient.canFill}}<button
+                      class="downtime-use-day"
+                      type="button"
+                      data-medical-action="patientDay"
+                      data-therapy-fill="true"
+                    >Use {{patient.daysNeeded}} Days</button>{{else}}<button
+                      class="downtime-use-day"
+                      type="button"
+                      data-medical-action="patientDay"
+                      data-therapy-fill="true"
+                      disabled
+                      title="Not enough available downtime to reach seven allocated days"
+                    >Use {{patient.daysNeeded}} Days</button>{{/if}}
+                {{/if}}
+              {{/if}}
+              {{#if patient.canFinish}}{{#if patient.pc}}<label
+                    class="patient-pc-choice"
+                  ><input type="checkbox" name="patientSuccess" />PC therapist
+                    succeeded</label><button
+                    type="button"
+                    data-medical-action="patientFailed"
+                  >Therapy Failed</button>{{/if}}{{/if}}
+              {{#if patient.canFinish}}<button
+                  type="button"
+                  data-medical-action="patientComplete"
+                >{{#if patient.formula}}Roll
+                    {{patient.formula}}
+                    Humanity{{else}}Complete Therapy{{/if}}</button>{{else}}<button
+                  type="button"
+                  data-medical-action="patientComplete"
+                  disabled
+                >{{#if patient.formula}}Roll
+                    {{patient.formula}}
+                    Humanity{{else}}Complete Therapy{{/if}}</button>{{/if}}
+              <button type="button" data-medical-action="patientCancel">Cancel
+                Therapy</button>
+            </div>
+          {{else}}
+            <div class="patient-setup-row">
+              <select name="patientType" aria-label="Therapy type">{{#each
+                  patientChoices
+                }}{{#if selected}}<option
+                      value="{{id}}"
+                      selected
+                    >{{label}}</option>{{else}}<option
+                      value="{{id}}"
+                    >{{label}}</option>{{/if}}{{/each}}</select>
+              {{#if canStartPatient}}<button
+                  type="button"
+                  data-medical-action="patientStart"
+                >Start Therapy{{#if fullWeek}}
+                    · 7 days{{/if}}</button>{{else}}<button
+                  type="button"
+                  data-medical-action="patientStart"
+                  disabled
+                >Start Therapy{{#if fullWeek}} · 7 days{{/if}}</button>{{/if}}
+            </div>
+            <div class="patient-payment-row">
+              <p class="notes">Money will be spent as soon as you start therapy.</p>
+              <label class="patient-pc-choice">{{#if patientPC}}<input
+                    type="checkbox"
+                    name="patientPC"
+                    checked
+                  />{{else}}<input type="checkbox" name="patientPC" />{{/if}}PC
+                therapist · no charge</label>
+            </div>
+            {{#if patientNeedsAddiction}}<input
+                type="text"
+                name="patientAddiction"
+                aria-label="Addiction"
+                placeholder="Addiction being treated"
+                maxlength="200"
+                value="{{patientAddiction}}"
+              />{{/if}}
+          {{/if}}
+        </fieldset>
+        <fieldset class="payout-heading hub-status">
+          <legend>Other Activity</legend>
+          <div class="downtime-other-row">
+            <label class="downtime-days-label"># of days
+              <input
+                type="number"
+                name="days"
+                min="1"
+                max="99"
+                step="1"
+                value="1"
+                aria-label="Days"
+                required
+              />
+            </label>
+            <input
+              type="text"
+              name="reason"
+              maxlength="500"
+              placeholder="Describe the activity"
+              aria-label="Description"
+              required
+            />
+            <button type="submit" class="downtime-use-day">Use Days</button>
+          </div>
+        </fieldset>
+      {{/if}}
+    </section>
+    {{#if hasRoleAreas}}
+      <section class="downtime-roles" aria-label="Role downtime">
+        {{#if ready}}
+          {{#if canCraft}}
+            <fieldset class="payout-heading hub-status downtime-tech">
+              <legend>TECH Projects</legend>
+              {{#each techSlots}}
+                <div class="tech-slot" data-tech-slot="{{slot}}">
+                  {{#if project}}
+                    <div class="tech-slot-title downtime-progress"><progress
+                        value="{{progressPercent}}"
+                        max="100"
+                        aria-label="TECH project progress"
+                        aria-valuetext="{{project.progress}} of {{project.required}} days"
+                      ></progress><strong>{{number}}.
+                        {{project.name}}</strong><small>{{project.mode}}
+                        ·
+                        {{project.progress}}
+                        /
+                        {{project.required}}
+                        days · DV
+                        {{project.dv}}{{#if project.success}}
+                          · Check passed{{/if}}</small></div>
+                    <div class="tech-slot-actions">
+                      {{#if canAdd}}<button
+                          class="downtime-use-day"
+                          type="button"
+                          data-tech-action="techDay"
+                          data-tech-project="{{project.id}}"
+                          title="Allocate one downtime day"
+                        >Use 1 Day</button>{{else}}<button
+                          class="downtime-use-day"
+                          type="button"
+                          disabled
+                        >Use 1 Day</button>{{/if}}
+                      {{#if canRoll}}<button
+                          type="button"
+                          data-tech-action="techRoll"
+                          data-tech-project="{{project.id}}"
+                        >Roll skill</button>{{else}}<button
+                          type="button"
+                          disabled
+                        >Roll skill</button>{{/if}}
+                      <button
+                        type="button"
+                        data-tech-action="techCancel"
+                        data-tech-project="{{project.id}}"
+                        title="Cancel project; upgrade item returns to this character"
+                      >Cancel</button>
+                    </div>
+                    {{#unless enabled}}<small>Requires Workshop</small>{{/unless}}
+                  {{else}}
+                    {{#if enabled}}
+                      <strong>{{number}}.</strong>
+                      <select data-tech-mode aria-label="Project type"><option
+                          value="fabricate"
+                        >Fabricate Item</option><option value="upgrade">Upgrade
+                          Item</option><option
+                          value="invention"
+                        >Invention</option></select>
+                      <div data-tech-drop class="tech-drop">Drop Item here</div>
+                      <button type="button" data-tech-new hidden>Create</button>
+                    {{else}}<strong>{{number}}.</strong><span
+                        class="notes"
+                      >Requires Workshop</span>{{/if}}
+                  {{/if}}
+                </div>
+              {{/each}}
+            </fieldset>
+          {{/if}}
+          {{#if canMedtech}}
+            <fieldset class="payout-heading hub-status downtime-medical">
+              <legend><i class="fas fa-user-doctor"></i>
+                Medtech · Therapy</legend>
+              {{#if provider}}
+                <div class="downtime-hustle-row">
+                  {{#unless fullWeek}}<span class="downtime-progress"><progress
+                        value="{{provider.progress}}"
+                        max="100"
+                        aria-label="Provider therapy progress"
+                      ></progress><strong>{{provider.days}}
+                        / 7 days</strong></span>{{/unless}}
+                  <span>{{provider.name}} · {{provider.targetName}}</span>
+                  {{#if fullWeek}}{{#if provider.needsDays}}{{#if
+                        provider.canAdd
+                      }}<button
+                          type="button"
+                          data-medical-action="providerDay"
+                        >Use 7 days</button>{{else}}<button
+                          type="button"
+                          data-medical-action="providerDay"
+                          disabled
+                        >Use 7 days</button>{{/if}}{{/if}}{{else}}{{#if
+                      provider.canAdd
+                    }}<button
+                        class="downtime-use-day"
+                        type="button"
+                        data-medical-action="providerDay"
+                        title="Allocate one therapy day"
+                      >Use 1 Day</button>{{else}}<button
+                        class="downtime-use-day"
+                        type="button"
+                        data-medical-action="providerDay"
+                        disabled
+                        title="Allocate one therapy day"
+                      >Use 1 Day</button>{{/if}}
+                    {{#if provider.daysNeeded}}
+                      {{#if provider.canFill}}<button
+                          class="downtime-use-day"
+                          type="button"
+                          data-medical-action="providerDay"
+                          data-therapy-fill="true"
+                        >Use
+                          {{provider.daysNeeded}}
+                          Days</button>{{else}}<button
+                          class="downtime-use-day"
+                          type="button"
+                          data-medical-action="providerDay"
+                          data-therapy-fill="true"
+                          disabled
+                          title="Not enough available downtime to reach seven allocated days"
+                        >Use {{provider.daysNeeded}} Days</button>{{/if}}
+                    {{/if}}
+                  {{/if}}
+                  {{#if provider.canFinish}}<button
+                      type="button"
+                      data-medical-action="providerComplete"
+                    >Roll Medical Tech</button>{{else}}<button
+                      type="button"
+                      data-medical-action="providerComplete"
+                      disabled
+                    >Roll Medical Tech</button>{{/if}}
+                  <button
+                    type="button"
+                    data-medical-action="providerCancel"
+                  >Cancel Therapy</button>
+                </div>
+              {{else}}
+                {{#if canStartProvider}}<button
+                    type="button"
+                    data-medical-action="providerStart"
+                  >Provide Therapy{{#if fullWeek}}
+                      · 7 days{{else}}…{{/if}}</button>{{else}}<button
+                    type="button"
+                    data-medical-action="providerStart"
+                    disabled
+                  >Provide Therapy{{#if fullWeek}}
+                      · 7 days{{else}}…{{/if}}</button>{{/if}}
+              {{/if}}
+            </fieldset>
+            <fieldset class="payout-heading hub-status downtime-medical">
+              <legend><i class="fas fa-briefcase-medical"></i>
+                Medtech · Workday</legend>
+              <div class="downtime-hustle-row medical-day-status"><strong
+                >{{medicalHours}} / 16 hours</strong></div>
+              <div class="medical-workday-layout"><div
+                  class="medical-workday-setup"
+                >
+                  <div class="medical-add-row"><label for="crew-surgery">Surgery
+                      · 4 h</label><select
+                      id="crew-surgery"
+                      name="surgeryItem"
+                      aria-label="Critical Injury"
+                    >{{#each injuries}}<option value="{{uuid}}">{{name}}
+                          · DV{{dv}}</option>{{else}}<option value="">No
+                          surgical injuries available</option>{{/each}}</select>{{#if
+                      surgeryRank
+                    }}<button
+                        type="button"
+                        data-medical-action="taskAddSurgery"
+                      >Add</button>{{else}}<button
+                        type="button"
+                        data-medical-action="taskAddSurgery"
+                        title="Requires at least one Surgery Skill rank"
+                        disabled
+                      >Add</button>{{/if}}</div>
+                  {{#unless surgeryRank}}<p
+                      class="notes medical-unavailable-note"
+                    >Requires Surgery Skill ranks.</p>{{/unless}}
+                  <div class="medical-add-row"><label for="crew-pharma">Pharma ·
+                      1 h</label><select
+                      id="crew-pharma"
+                      name="pharmaItem"
+                      aria-label="Pharmaceutical"
+                    >{{#each pharma}}<option
+                          value="{{uuid}}"
+                        >{{name}}</option>{{else}}<option value="">No
+                          pharmaceuticals available</option>{{/each}}</select>{{#if
+                      medicalRank
+                    }}<button
+                        type="button"
+                        data-medical-action="taskAddPharma"
+                      >Add</button>{{else}}<button
+                        type="button"
+                        data-medical-action="taskAddPharma"
+                        title="Requires at least one Medical Tech Skill rank"
+                        disabled
+                      >Add</button>{{/if}}</div>
+                  {{#unless medicalRank}}<p
+                      class="notes medical-unavailable-note"
+                    >Requires Medical Tech Skill ranks.</p>{{/unless}}
+                  <p class="notes">Pharma: 200 eb per batch · DV13 ·
+                    {{medicalRank}}
+                    doses on success</p>
+                </div><div
+                  class="medical-workday-actions"
+                  aria-label="Workday actions"
+                >
+                  {{#each medicalTasks}}
+                    <div class="medical-task">
+                      <span class="medical-task-result">{{#if success}}<span
+                            class="medical-success"
+                            role="img"
+                            aria-label="Successful"
+                            title="Successful"
+                          >✓</span>{{else if attempts}}<span
+                            class="medical-failure"
+                            role="img"
+                            aria-label="Failed"
+                            title="Failed"
+                          >✕</span>{{else}}<span
+                            role="img"
+                            aria-label="Not rolled"
+                            title="Not rolled"
+                          >○</span>{{/if}}</span>
+                      <span class="medical-task-details"><strong
+                        >{{name}}</strong><small>{{hours}}
+                          h / attempt · DV{{dv}}
+                          ·
+                          {{attempts}}
+                          attempts{{#if doses}}
+                            ·
+                            {{doses}}
+                            doses added{{/if}}</small></span>
+                      {{#unless success}}{{#if canRoll}}<button
+                            type="button"
+                            data-medical-action="taskRoll"
+                            data-task-id="{{id}}"
+                          >Roll</button>{{else}}<button
+                            type="button"
+                            data-medical-action="taskRoll"
+                            data-task-id="{{id}}"
+                            disabled
+                          >Roll</button>{{/if}}{{/unless}}
+                      {{#if canRemove}}<button
+                          type="button"
+                          data-medical-action="taskRemove"
+                          data-task-id="{{id}}"
+                          aria-label="Remove {{name}}"
+                          title="Remove unattempted task"
+                        ><i class="fas fa-times"></i></button>{{/if}}
+                    </div>
+                  {{else}}<p class="notes">No actions added.</p>{{/each}}
+                  {{#if canFinishMedicalDay}}<button
+                      class="downtime-use-day"
+                      type="button"
+                      data-medical-action="finishDay"
+                    >Spend 1 Downtime Day</button>{{else}}<button
+                      class="downtime-use-day"
+                      type="button"
+                      data-medical-action="finishDay"
+                      disabled
+                    >Spend 1 Downtime Day</button>{{/if}}
+                  <p class="notes">Spending the day clears the list and forfeits
+                    unused hours.</p>
+                </div></div>
+            </fieldset>
+          {{/if}}
+        {{/if}}
+      </section>
+    {{/if}}
+  </div>
+</form>

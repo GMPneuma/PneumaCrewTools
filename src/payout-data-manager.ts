@@ -1,21 +1,20 @@
-import {
-  MODULE_ID,
-  PAYOUT_JOURNAL_ID_SETTING,
-  PAYOUT_LOG_JOURNAL_ID_SETTING,
-} from "./constants";
+import { CrewToolsForm } from "./foundry-form";
+import { MODULE_ID } from "./constants";
+import { findRecordJournal } from "./journal-records";
 import {
   clearAllPendingHumanityRolls,
   getPendingHumanityRolls,
 } from "./humanity-prompts";
-import { clearAllPayoutAcknowledgments } from "./payout-inbox";
+import {
+  clearAllPayoutAcknowledgments,
+  getAcknowledgments,
+} from "./payout-inbox";
 import { clearPayoutJournalData, getPayoutJournalData } from "./payout-journal";
 import { clearPayoutLedger, getPayoutLedger } from "./payout-ledger";
-import { clearPayoutLog } from "./payout-log";
 
 type ClearSection =
   | "reputation"
   | "attendance"
-  | "hq"
   | "acknowledgments"
   | "humanity"
   | "history"
@@ -24,7 +23,6 @@ type ClearSection =
 interface PayoutDataManagerData {
   reputationCount: number;
   attendanceCount: number;
-  hqCount: number;
   acknowledgmentCount: number;
   humanityCount: number;
   historyCount: number;
@@ -35,14 +33,14 @@ export function registerPayoutDataManager(): void {
   game.settings.registerMenu(MODULE_ID, "payoutDataManager", {
     name: "Module Data",
     label: "View or Clear Module Data",
-    hint: "Inspect and selectively clear recorded or pending PneumaCrewTools data.",
+    hint: "Inspect and selectively clear recorded or pending Pneuma's Crew Tools data.",
     icon: "fas fa-database",
     type: PayoutDataManager,
     restricted: true,
   });
 }
 
-class PayoutDataManager extends FormApplication {
+class PayoutDataManager extends CrewToolsForm {
   #busy = false;
 
   static override get defaultOptions(): ApplicationOptions {
@@ -50,7 +48,7 @@ class PayoutDataManager extends FormApplication {
       ...super.defaultOptions,
       id: `${MODULE_ID}-data-manager`,
       classes: [...(super.defaultOptions.classes ?? []), MODULE_ID],
-      title: "PneumaCrewTools: Module Data",
+      title: "Pneuma's Crew Tools: Module Data",
       template: `modules/${MODULE_ID}/templates/payout-data-manager.hbs`,
       width: 720,
       height: 760,
@@ -62,7 +60,7 @@ class PayoutDataManager extends FormApplication {
     const journalData = getPayoutJournalData();
     const ledger = getPayoutLedger();
     const acknowledgments = Array.from(game.users).flatMap((user) => {
-      const entries = user.getFlag(MODULE_ID, "payoutAcknowledgments");
+      const entries = getAcknowledgments(user);
       return Array.isArray(entries)
         ? [{ userId: user.id, userName: user.name, entries }]
         : [];
@@ -73,8 +71,7 @@ class PayoutDataManager extends FormApplication {
         ? [{ actorId: actor.id, actorName: actor.name, entries }]
         : [];
     });
-    const payoutJournal = journalSnapshot(PAYOUT_JOURNAL_ID_SETTING);
-    const payoutLog = journalSnapshot(PAYOUT_LOG_JOURNAL_ID_SETTING);
+    const payoutJournal = journalSnapshot("payoutReference");
     const acknowledgmentCount = acknowledgments.reduce(
       (total, user) => total + user.entries.length,
       0,
@@ -86,18 +83,33 @@ class PayoutDataManager extends FormApplication {
     return {
       reputationCount: journalData.factionReputations.length,
       attendanceCount: journalData.attendance.length,
-      hqCount:
-        journalData.hqImprovements.length + journalData.hqIpTransactions.length,
       acknowledgmentCount,
       humanityCount,
-      historyCount: ledger.records.length + (payoutLog?.pages.length ?? 0),
+      historyCount: ledger.records.length,
       storedDataJson: JSON.stringify(
         {
           journalReferenceData: journalData,
           internalPayoutLedger: ledger,
           unacknowledgedPayouts: acknowledgments,
           pendingHumanityRolls,
-          moduleJournals: { payouts: payoutJournal, payoutLog },
+          moduleJournals: {
+            payouts: payoutJournal,
+            ledger: journalSnapshot("payoutLedger"),
+            characters: Array.from(game.journal)
+              .filter(
+                (j) => j.getFlag?.(MODULE_ID, "recordKind") === "character",
+              )
+              .map((j) => ({
+                id: j.id,
+                name: j.name,
+                actorId: j.getFlag?.(MODULE_ID, "actorId"),
+                pages: Array.from(j.pages).map((p) => ({
+                  name: p.name,
+                  key: p.getFlag?.(MODULE_ID, "recordKey"),
+                  data: p.getFlag?.(MODULE_ID, "data"),
+                })),
+              })),
+          },
         },
         null,
         2,
@@ -151,7 +163,6 @@ class PayoutDataManager extends FormApplication {
 async function clearSection(section: ClearSection): Promise<void> {
   if (section === "reputation") return clearPayoutJournalData("reputation");
   if (section === "attendance") return clearPayoutJournalData("attendance");
-  if (section === "hq") return clearPayoutJournalData("hq");
   if (section === "acknowledgments") {
     await clearAllPayoutAcknowledgments();
     return;
@@ -162,14 +173,12 @@ async function clearSection(section: ClearSection): Promise<void> {
   }
   if (section === "history") {
     await clearPayoutLedger();
-    await clearPayoutLog();
     return;
   }
   await clearPayoutJournalData("all");
   await clearAllPayoutAcknowledgments();
   await clearAllPendingHumanityRolls();
   await clearPayoutLedger();
-  await clearPayoutLog();
 }
 
 function journalSnapshot(settingKey: string): {
@@ -177,8 +186,7 @@ function journalSnapshot(settingKey: string): {
   name: string;
   pages: Array<{ id: string; name: string; content: string }>;
 } | null {
-  const id = game.settings.get(MODULE_ID, settingKey);
-  const journal = typeof id === "string" ? game.journal.get(id) : undefined;
+  const journal = findRecordJournal(settingKey);
   return journal
     ? {
         id: journal.id,
@@ -196,7 +204,6 @@ function isClearSection(value: unknown): value is ClearSection {
   return [
     "reputation",
     "attendance",
-    "hq",
     "acknowledgments",
     "humanity",
     "history",
@@ -207,9 +214,8 @@ function isClearSection(value: unknown): value is ClearSection {
 function clearLabel(section: ClearSection): string {
   return (
     {
-      reputation: "Reputation data",
+      reputation: "Faction reputation data",
       attendance: "Attendance data",
-      hq: "HQ data",
       acknowledgments: "Unacknowledged payouts",
       humanity: "Pending Humanity rolls",
       history: "Payout history",

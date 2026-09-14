@@ -17,13 +17,13 @@ export const PAYOUT_REWARD_TYPES = [
 
 export type PayoutRewardType = (typeof PAYOUT_REWARD_TYPES)[number];
 
-export type PayoutTargetType = "actor" | "user" | "world" | "journal";
+export type PayoutTargetType = "actor" | "world" | "journal";
 
 export interface PayoutParticipant {
   userId: string;
   userName: string;
-  actorId: string | null;
-  actorName: string | null;
+  actorId: string;
+  actorName: string;
 }
 
 export interface PayoutChange {

@@ -1,3 +1,14 @@
+import { confirmExpireDowntime } from "./expire-downtime";
+import { getFactions, promptNewFaction } from "./factions";
+import {
+  absentRecipients,
+  syncAbsentDowntimeControl,
+  populateTimeDowntime,
+} from "./payout-absence";
+import { CrewToolsForm } from "./foundry-form";
+import { buildPayoutPlan } from "./payout-plan";
+import { displayDate, storageDate } from "./date-format";
+import { isActorExcluded } from "./actor-policy";
 import { getCampaignDate } from "./calendar";
 import { MODULE_ID } from "./constants";
 import {
@@ -8,7 +19,6 @@ import {
 } from "./discord-summary";
 import {
   executePayoutPlan,
-  planActorChanges,
   type CharacterReward,
   type PayoutItem,
   type PayoutPlan,
@@ -21,7 +31,6 @@ import {
   getDefaultPayoutContainerId,
   getPayoutContainers,
 } from "./payout-container";
-import type { PayoutChange } from "./payout-record";
 import {
   discoverPlayerAccounts,
   type PlayerAccount,
@@ -52,6 +61,7 @@ interface PlayerView {
 }
 
 interface PayoutWindowData {
+  factions: ReturnType<typeof getFactions>;
   players: PlayerView[];
   playerCount: number;
   activePlayerCount: number;
@@ -77,7 +87,7 @@ class PayoutValidationError extends Error {
   }
 }
 
-export class PayoutWindow extends FormApplication {
+export class PayoutWindow extends CrewToolsForm {
   #additionalEntryIndex = 0;
   #individualEntryIndex = 0;
   #plan: PayoutPlan | null = null;
@@ -102,10 +112,11 @@ export class PayoutWindow extends FormApplication {
   override getData(): PayoutWindowData {
     const accounts = discoverPlayerAccounts();
     return {
+      factions: getFactions().filter((f) => f.active),
       players: accounts.map(toPlayerView),
       playerCount: accounts.length,
       activePlayerCount: accounts.filter(({ active }) => active).length,
-      inGameDate: getPayoutDefaultDate(),
+      inGameDate: displayDate(getPayoutDefaultDate()),
       payoutContainers: getPayoutContainers().map(({ id, name }) => ({
         actorId: id,
         actorName: name,
@@ -119,6 +130,22 @@ export class PayoutWindow extends FormApplication {
 
     const root = html[0];
     if (!root) return;
+    root
+      .querySelector<HTMLButtonElement>("[data-expire-downtime]")
+      ?.addEventListener("click", async (event) => {
+        const button = event.currentTarget as HTMLButtonElement;
+        if (button.disabled) return;
+        button.disabled = true;
+        try {
+          await confirmExpireDowntime();
+        } catch (error) {
+          ui.notifications.error(
+            error instanceof Error ? error.message : String(error),
+          );
+        } finally {
+          button.disabled = false;
+        }
+      });
 
     root.addEventListener("click", (event) => this.#openActorLink(event));
     root.addEventListener("dragover", (event) => this.#allowItemDrop(event));
@@ -127,10 +154,17 @@ export class PayoutWindow extends FormApplication {
     this.#initializeSelection(root);
     this.#initializePayoutContainer(root);
     root
+      .querySelector('[name="advanceDays"]')
+      ?.addEventListener("input", () => populateTimeDowntime(root));
+    syncAbsentDowntimeControl(root);
+    root
+      .querySelector('[name="groupDowntime"]')
+      ?.addEventListener("change", () => syncAbsentDowntimeControl(root));
+    root
       .querySelector<HTMLInputElement>('[name="inGameDate"]')
       ?.addEventListener("change", (event) => {
         const input = event.currentTarget as HTMLInputElement;
-        void saveLastPayoutDate(input.value).catch(() =>
+        void saveLastPayoutDate(storageDate(input.value)).catch(() =>
           ui.notifications.warn("The default in-game date could not be saved."),
         );
       });
@@ -180,6 +214,7 @@ export class PayoutWindow extends FormApplication {
 
     root.addEventListener("input", (event) => {
       this.#plan = null;
+      syncAbsentDowntimeControl(root);
       const target = event.target;
       if (target instanceof HTMLElement) this.#clearFieldError(target);
       if (
@@ -340,7 +375,7 @@ export class PayoutWindow extends FormApplication {
       this.#showValidationError(
         root,
         new PayoutValidationError(
-          "Select at least one player and Actor before continuing.",
+          "Select at least one character before continuing.",
           root.querySelector<HTMLElement>(".participant-list") ?? undefined,
         ),
       );
@@ -481,6 +516,10 @@ export class PayoutWindow extends FormApplication {
         const name = field.dataset.entryField;
         if (name) field.name = `individual.${actorId}.${index}.${name}`;
       });
+    const faction = entry.querySelector<HTMLSelectElement>(
+      "[data-entry-faction]",
+    );
+    if (faction) this.#fillFactions(faction);
     container.append(entry);
   }
 
@@ -741,16 +780,43 @@ export class PayoutWindow extends FormApplication {
       : null;
   }
 
+  #fillFactions(select: HTMLSelectElement, selected = select.value): void {
+    select.replaceChildren(
+      new Option("Choose faction", ""),
+      ...getFactions()
+        .filter((f) => f.active)
+        .map((f) => new Option(f.name, f.id)),
+      new Option("Add new...", "__add__"),
+    );
+    select.value = selected;
+    if (select.selectedIndex < 0) select.value = "";
+  }
   #syncEntryControls(event: Event): void {
     const target = event.target;
     if (!(target instanceof HTMLSelectElement)) return;
+    this.#plan = null;
+    if (target.matches("[data-entry-faction]") && target.value === "__add__") {
+      target.value = "";
+      void promptNewFaction().then((faction) => {
+        target
+          .closest("form")
+          ?.querySelectorAll<HTMLSelectElement>("[data-entry-faction]")
+          .forEach((select) =>
+            this.#fillFactions(
+              select,
+              select === target && faction ? faction.id : select.value,
+            ),
+          );
+      });
+      return;
+    }
     const entry = target.closest<HTMLElement>("[data-payout-entry]");
     if (!entry) return;
 
     const type = entry.querySelector<HTMLSelectElement>("[data-entry-type]");
     const mode = entry.querySelector<HTMLSelectElement>("[data-entry-mode]");
     const amount = entry.querySelector<HTMLInputElement>("[data-entry-amount]");
-    const faction = entry.querySelector<HTMLInputElement>(
+    const faction = entry.querySelector<HTMLSelectElement>(
       "[data-entry-faction]",
     );
     if (!type || !mode || !amount) return;
@@ -809,8 +875,17 @@ export class PayoutWindow extends FormApplication {
       .querySelector<HTMLElement>("[data-preview-recipients]")
       ?.replaceChildren(...this.#actorLinkList(selectedActors));
     this.#setText(root, "[data-preview-notes]", notes?.value.trim() || "None");
-    this.#setText(root, "[data-preview-in-game-date]", this.#plan.inGameDate);
+    this.#setText(
+      root,
+      "[data-preview-in-game-date]",
+      displayDate(this.#plan.inGameDate),
+    );
 
+    this.#setText(
+      root,
+      "[data-preview-advance-days]",
+      `Advance GameTime: ${this.#plan.advanceDays ?? 0} days`,
+    );
     const communalList = root.querySelector<HTMLElement>(
       "[data-preview-communal]",
     );
@@ -888,6 +963,24 @@ export class PayoutWindow extends FormApplication {
         groupList.textContent = "No primary payouts entered.";
     }
 
+    const absentSection = root.querySelector<HTMLElement>(
+      "[data-preview-absent-section]",
+    );
+    if (absentSection) {
+      const awards = this.#plan.absentDowntime ?? [];
+      absentSection.hidden = awards.length === 0;
+      absentSection
+        .querySelector("[data-preview-absent]")
+        ?.replaceChildren(
+          ...awards.map(({ actor, days }) =>
+            this.#createPreviewItem(
+              actor.name,
+              this.#formatDays(days),
+              "Downtime only — no attendance credit",
+            ),
+          ),
+        );
+    }
     const individualPreview = root.querySelector<HTMLElement>(
       "[data-preview-individual]",
     );
@@ -956,10 +1049,9 @@ export class PayoutWindow extends FormApplication {
         root.querySelector<HTMLInputElement>('[name="sessionLabel"]') ??
           undefined,
       );
-    const inGameDate =
-      root
-        .querySelector<HTMLInputElement>('[name="inGameDate"]')
-        ?.value.trim() ?? "";
+    const inGameDate = storageDate(
+      root.querySelector<HTMLInputElement>('[name="inGameDate"]')?.value ?? "",
+    );
     const communalItems = this.#readDroppedItems(
       root.querySelector("[data-communal-item-drop]"),
     );
@@ -1061,9 +1153,6 @@ export class PayoutWindow extends FormApplication {
       : [];
 
     const actors: PayoutPlan["actors"] = [];
-    const humanityPrompts: PayoutPlan["humanityPrompts"] = [];
-    const factionReputations: PayoutPlan["factionReputations"] = [];
-    const journalChanges: PayoutChange[] = [];
     for (const selected of root.querySelectorAll<HTMLInputElement>(
       "[data-actor-toggle]:checked:not(:disabled)",
     )) {
@@ -1072,7 +1161,12 @@ export class PayoutWindow extends FormApplication {
       const playerRow = selected.closest<HTMLElement>("[data-player-row]");
       const userId = playerRow?.dataset.userId;
       const user = Array.from(game.users).find(({ id }) => id === userId);
-      if (!actor || actor.type !== "character" || !user)
+      if (
+        !actor ||
+        isActorExcluded(actor.id) ||
+        actor.type !== "character" ||
+        !user
+      )
         throw new Error("A selected recipient is missing or unsupported.");
       const row = Array.from(
         root.querySelectorAll<HTMLElement>("[data-individual-row]"),
@@ -1100,151 +1194,62 @@ export class PayoutWindow extends FormApplication {
         entries,
         items: individualItems,
       });
-      for (const item of individualItems)
-        journalChanges.push({
-          reward: "item",
-          targetType: "actor",
-          targetId: actor.id,
-          targetName: actor.name,
-          amount: item.quantity,
-          previousValue: null,
-          newValue: null,
-          details: {
-            itemName: item.name,
-            itemType: item.type,
-            img: item.img,
-            uuid: item.uuid,
-            description: item.description,
-            scope: "individual",
-          },
-        });
-      for (const entry of entries) {
-        if (entry.reward === "factionReputation") {
-          const faction = entry.faction ?? "";
-          const previous = journalData.factionReputations.find(
-            (record) =>
-              record.actorId === actor.id &&
-              record.faction.toLocaleLowerCase() ===
-                faction.toLocaleLowerCase(),
-          );
-          factionReputations.push({
-            actorId: actor.id,
-            actorName: actor.name,
-            reputation: entry.amount,
-            faction,
-            reason: entry.description,
-          });
-          journalChanges.push({
-            reward: "factionReputation",
-            targetType: "journal",
-            targetId: actor.id,
-            targetName: actor.name,
-            amount: entry.amount - (previous?.reputation ?? 0),
-            previousValue: previous?.reputation ?? 0,
-            newValue: entry.amount,
-            details: {
-              faction,
-              description: entry.description,
-              scope: "individual",
-            },
-          });
-          continue;
-        }
-        if (!entry.formula) continue;
-        if (entry.reward !== "humanityGain" && entry.reward !== "humanityLoss")
-          throw new Error("Only Humanity entries can use dice.");
-        humanityPrompts.push({
-          actorId: actor.id,
-          actorName: actor.name,
-          userId: user.id,
-          reward: entry.reward,
-          formula: entry.formula,
-          description: entry.description,
-        });
-      }
     }
-    if (!actors.length) throw new Error("Select at least one recipient.");
-    if (hqIpAmount) {
-      journalChanges.push({
-        reward: "hqIp",
-        targetType: "world",
-        targetId: null,
-        targetName: "HQ",
-        amount: hqIpAmount,
-        previousValue: null,
-        newValue: null,
-        details: {
-          description: hqIpDescription,
-          scope: "group",
-        },
-      });
-    }
-    if (payoutContainer && communalMoneyAmount) {
-      const previousValue = Number(
-        this.#valueAt(payoutContainer.actor.system, "wealth.value"),
+    const absenceField = root.querySelector<HTMLInputElement>(
+      '[name="absentDowntime"]',
+    );
+    const absenceDays = root.querySelector<HTMLInputElement>(
+      '[name="grantAbsentDowntime"]',
+    )?.checked
+      ? Number(absenceField?.value || 0)
+      : 0;
+    if (!Number.isSafeInteger(absenceDays) || absenceDays < 0)
+      throw new PayoutValidationError(
+        "Downtime for absent characters must be a non-negative whole number.",
+        absenceField ?? undefined,
       );
-      if (!Number.isFinite(previousValue))
-        throw new Error("The Payout Container has no valid Money balance.");
-      journalChanges.push({
-        reward: "communalMoney",
-        targetType: "actor",
-        targetId: payoutContainer.actor.id,
-        targetName: payoutContainer.actor.name,
-        amount: communalMoneyAmount,
-        previousValue,
-        newValue: previousValue + communalMoneyAmount,
-        details: {
-          description: communalMoneyDescription,
-          scope: "communal",
-        },
-      });
+    const choices = new Map<string, string>();
+    for (const row of root.querySelectorAll<HTMLElement>("[data-player-row]")) {
+      const choice = row.querySelector<HTMLInputElement>(
+        "[data-actor-toggle]:checked",
+      )?.dataset.actorId;
+      if (choice && row.dataset.userId) choices.set(row.dataset.userId, choice);
     }
-    for (const item of communalItems)
-      journalChanges.push({
-        reward: "item",
-        targetType: "actor",
-        targetId: payoutContainer?.actor.id ?? null,
-        targetName: payoutContainer?.actor.name ?? "Payout Container",
-        amount: item.quantity,
-        previousValue: null,
-        newValue: null,
-        details: {
-          itemName: item.name,
-          itemType: item.type,
-          img: item.img,
-          uuid: item.uuid,
-          description: item.description,
-          scope: "communal",
-        },
-      });
-    for (const { participant } of actors) {
-      const previous =
-        journalData.attendance.find(
-          ({ userId }) => userId === participant.userId,
-        )?.sessions ?? 0;
-      journalChanges.push({
-        reward: "attendance",
-        targetType: "user",
-        targetId: participant.userId,
-        targetName: participant.userName,
-        amount: 1,
-        previousValue: previous,
-        newValue: previous + 1,
-      });
-    }
-    return {
-      sessionLabel,
-      inGameDate,
-      notes:
-        root.querySelector<HTMLTextAreaElement>('[name="notes"]')?.value ?? "",
-      actors,
-      changes: [...actors.flatMap(planActorChanges), ...journalChanges],
-      humanityPrompts,
-      factionReputations,
-      hqIpTransactions,
-      communalItems,
-      payoutContainer,
-    };
+    const absentDowntime = absenceDays
+      ? absentRecipients(discoverPlayerAccounts(), actors, choices).map(
+          (participant) => {
+            const actor = game.actors.get(participant.actorId);
+            if (!actor)
+              throw new Error("An absent character is no longer available.");
+            return { actor, participant, days: absenceDays };
+          },
+        )
+      : [];
+    const advanceField = root.querySelector<HTMLInputElement>(
+      '[name="advanceDays"]',
+    );
+    const advanceDays = Number(advanceField?.value || 0);
+    if (!Number.isSafeInteger(advanceDays) || advanceDays < 0)
+      throw new PayoutValidationError(
+        "Advance GameTime Days must be a non-negative whole number.",
+        advanceField ?? undefined,
+      );
+    return buildPayoutPlan(
+      {
+        sessionLabel,
+        advanceDays,
+        inGameDate,
+        notes:
+          root.querySelector<HTMLTextAreaElement>('[name="notes"]')?.value ??
+          "",
+        actors,
+        absentDowntime,
+        communalItems,
+        payoutContainer,
+        hqIpTransactions,
+      },
+      journalData,
+    );
   }
 
   #readRewardEntry(entry: HTMLElement): RewardEntry {
@@ -1297,13 +1302,17 @@ export class PayoutWindow extends FormApplication {
         "Reputation cannot be negative.",
         amountField,
       );
-    const faction = entry
-      .querySelector<HTMLInputElement>("[data-entry-faction]")
-      ?.value.trim();
-    if (reward === "factionReputation" && !faction)
+    const factionId = entry.querySelector<HTMLSelectElement>(
+      "[data-entry-faction]",
+    )?.value;
+    const selectedFaction = getFactions().find(
+      (f) => f.id === factionId && f.active,
+    );
+    const faction = selectedFaction?.name;
+    if (reward === "factionReputation" && !selectedFaction)
       throw new PayoutValidationError(
-        "Enter a faction for Specific Reputation.",
-        entry.querySelector<HTMLInputElement>("[data-entry-faction]") ??
+        "Choose a faction for Faction Reputation.",
+        entry.querySelector<HTMLSelectElement>("[data-entry-faction]") ??
           undefined,
       );
     return {
@@ -1312,6 +1321,7 @@ export class PayoutWindow extends FormApplication {
       scope: "individual",
       formula,
       faction,
+      factionId: selectedFaction?.id,
       setValue: reward === "reputation",
       description: this.#entryDescription(entry),
     };
@@ -1427,9 +1437,7 @@ export class PayoutWindow extends FormApplication {
       if (isDiscordMarkdownEnabled())
         showDiscordSummary(buildDiscordMarkdown(plan, discordLinks));
     } catch (error) {
-      ui.notifications.error(
-        `Payout failed and was rolled back: ${this.#errorMessage(error)}`,
-      );
+      ui.notifications.error(`Payout failed: ${this.#errorMessage(error)}`);
       this.#submitting = false;
       if (button) button.disabled = false;
     }
@@ -1457,7 +1465,7 @@ export class PayoutWindow extends FormApplication {
           humanityGain: "Gain Humanity",
           humanityLoss: "Lose Humanity",
           reputation: "Reputation",
-          factionReputation: "Specific Reputation",
+          factionReputation: "Faction Reputation",
           item: "Item",
           downtime: "Downtime",
         } as Record<string, string>
@@ -1467,13 +1475,6 @@ export class PayoutWindow extends FormApplication {
 
   #errorMessage(error: unknown): string {
     return error instanceof Error ? error.message : String(error);
-  }
-
-  #valueAt(value: unknown, path: string): unknown {
-    return path.split(".").reduce<unknown>((current, key) => {
-      if (typeof current !== "object" || current === null) return undefined;
-      return (current as Record<string, unknown>)[key];
-    }, value);
   }
 
   #previewItemFromEntry(entry: HTMLElement): HTMLLIElement {

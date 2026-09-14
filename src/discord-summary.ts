@@ -1,3 +1,6 @@
+import { CrewToolsForm } from "./foundry-form";
+import { displayDate } from "./date-format";
+import { accessibleCrewActors, isActorExcluded } from "./actor-policy";
 import {
   DISCORD_LINKS_SETTING,
   DISCORD_MARKDOWN_ENABLED_SETTING,
@@ -23,8 +26,8 @@ export function registerDiscordLinks(): void {
     default: true,
   });
   game.settings.register(MODULE_ID, DISCORD_LINKS_SETTING, {
-    name: "Discord User Links",
-    hint: "Maps Foundry users to Discord user IDs for payout summaries.",
+    name: "Discord Actor Links",
+    hint: "Maps character Actors to Discord user IDs for payout summaries.",
     scope: "world",
     config: false,
     type: Object,
@@ -33,7 +36,7 @@ export function registerDiscordLinks(): void {
   game.settings.registerMenu(MODULE_ID, "discordLinksMenu", {
     name: "Discord Links",
     label: "Configure Discord Links",
-    hint: "Link Foundry player accounts to Discord user IDs for mention-ready payout summaries.",
+    hint: "Link character Actors to Discord user IDs for mention-ready payout summaries.",
     icon: "fab fa-discord",
     type: DiscordLinksConfig,
     restricted: true,
@@ -49,19 +52,19 @@ export function isDiscordMarkdownEnabled(): boolean {
 interface DiscordLinksConfigData {
   crewRoleId: string;
   players: Array<{
-    userId: string;
-    userName: string;
+    actorId: string;
+    actorName: string;
     discordId: string;
     mentionKind: "user" | "role";
   }>;
 }
 
-class DiscordLinksConfig extends FormApplication {
+class DiscordLinksConfig extends CrewToolsForm {
   static override get defaultOptions(): ApplicationOptions {
     return {
       ...super.defaultOptions,
       id: `${MODULE_ID}-discord-links`,
-      title: "PneumaCrewTools: Discord Links",
+      title: "Pneuma's Crew Tools: Discord Links",
       template: `modules/${MODULE_ID}/templates/discord-links.hbs`,
       width: 520,
       height: "auto",
@@ -73,14 +76,12 @@ class DiscordLinksConfig extends FormApplication {
     const links = getDiscordLinks();
     return {
       crewRoleId: links[CREW_LINK_KEY]?.id ?? "",
-      players: Array.from(game.users)
-        .filter(({ isGM }) => !isGM)
-        .map(({ id, name }) => ({
-          userId: id,
-          userName: name,
-          discordId: links[id]?.id ?? "",
-          mentionKind: links[id]?.kind === "role" ? "role" : "user",
-        })),
+      players: accessibleCrewActors().map(({ id, name }) => ({
+        actorId: id,
+        actorName: name,
+        discordId: links[id]?.id ?? "",
+        mentionKind: links[id]?.kind === "role" ? "role" : "user",
+      })),
     };
   }
 
@@ -100,14 +101,14 @@ class DiscordLinksConfig extends FormApplication {
     const ids = formMap(formData, "ids");
     const kinds = formMap(formData, "kinds");
     const links: DiscordLinks = {};
-    for (const [userId, rawValue] of Object.entries(ids)) {
+    for (const [actorId, rawValue] of Object.entries(ids)) {
       const discordId = String(rawValue ?? "").trim();
       if (!discordId) continue;
       if (!/^\d{15,22}$/.test(discordId))
         throw new Error("Discord user and role IDs must contain 15–22 digits.");
-      links[userId] = {
+      links[actorId] = {
         kind:
-          userId === CREW_LINK_KEY || kinds[userId] === "role"
+          actorId === CREW_LINK_KEY || kinds[actorId] === "role"
             ? "role"
             : "user",
         id: discordId,
@@ -123,15 +124,13 @@ export function getDiscordLinks(): DiscordLinks {
   if (typeof value !== "object" || value === null || Array.isArray(value))
     return {};
   return Object.fromEntries(
-    Object.entries(value).flatMap(([userId, link]) => {
-      if (typeof link === "string")
-        return [[userId, { kind: "user" as const, id: link }]];
+    Object.entries(value).flatMap(([actorId, link]) => {
       if (typeof link !== "object" || link === null) return [];
       const candidate = link as Record<string, unknown>;
       if (typeof candidate.id !== "string") return [];
       return [
         [
-          userId,
+          actorId,
           {
             kind:
               candidate.kind === "role" ? ("role" as const) : ("user" as const),
@@ -153,7 +152,7 @@ export function buildDiscordMarkdown(
 ): string {
   const lines = [`## ${plan.sessionLabel}`, ""];
   if (plan.inGameDate.trim())
-    lines.push(`**In-Game Date:** ${plan.inGameDate.trim()}`);
+    lines.push(`**In-Game Date:** ${displayDate(plan.inGameDate.trim())}`);
   if (plan.notes.trim()) lines.push(`**Notes:** ${plan.notes.trim()}`);
   if (plan.inGameDate.trim() || plan.notes.trim()) lines.push("");
 
@@ -202,13 +201,14 @@ export function buildDiscordMarkdown(
     lines.push("");
   }
 
-  for (const { actor, participant } of plan.actors) {
-    const link = links[participant.userId];
+  for (const { actor } of plan.actors) {
+    if (isActorExcluded(actor.id)) continue;
+    const link = links[actor.id];
     const mention = link
       ? link.kind === "role"
         ? `<@&${link.id}>`
         : `<@${link.id}>`
-      : participant.userName;
+      : actor.name;
     const changes = plan.changes.filter(
       ({ targetId, details }) =>
         targetId === actor.id && details?.scope === "individual",
@@ -230,6 +230,18 @@ export function buildDiscordMarkdown(
       return `**${label}:** ${result}${description ? ` — ${description}` : ""}`;
     });
     lines.push(`- ${mention} — **${actor.name}:** ${awards.join("; ")}`);
+  }
+  if (plan.absentDowntime?.length) {
+    lines.push("", "**Downtime — not in payout**");
+    for (const { actor, days } of plan.absentDowntime) {
+      const link = links[actor.id];
+      const mention = link
+        ? link.kind === "role"
+          ? "<@&" + link.id + ">"
+          : "<@" + link.id + ">"
+        : actor.name;
+      lines.push("- " + mention + " — **Downtime:** " + formatDays(days));
+    }
   }
   return lines.join("\n").trim();
 }
@@ -285,7 +297,7 @@ function rewardLabel(reward: string): string {
         humanityGain: "Gain Humanity",
         humanityLoss: "Lose Humanity",
         reputation: "Reputation",
-        factionReputation: "Specific Reputation",
+        factionReputation: "Faction Reputation",
         item: "Item",
         downtime: "Downtime",
       } as Record<string, string>

@@ -1,8 +1,9 @@
 <form class="discord-links-form" autocomplete="off">
   <p>
-    Link each Foundry player to either their Discord User ID or an individual
-    Discord Role ID. An individual role should be assigned only to that player;
-    shared roles mention everyone who has the role. In Discord, enable
+    Link each character Actor to either their Discord User ID or an individual
+    Discord Role ID. An individual role should be assigned only to that
+    character's player; shared roles mention everyone who has the role. In
+    Discord, enable
     <b>Developer Mode</b>, then right-click the user or role and copy its ID.
   </p>
 
@@ -21,9 +22,9 @@
     </label>
     {{#each players}}
       <label>
-        <strong>{{userName}}</strong>
+        <strong>{{actorName}}</strong>
         <select
-          name="kinds.{{userId}}"
+          name="kinds.{{actorId}}"
           aria-label="Discord mention type"
           data-mention-kind
           data-selected="{{mentionKind}}"
@@ -34,14 +35,14 @@
         <input
           type="text"
           inputmode="numeric"
-          name="ids.{{userId}}"
+          name="ids.{{actorId}}"
           value="{{discordId}}"
           placeholder="Discord user or role ID"
           maxlength="22"
         />
       </label>
     {{else}}
-      <p>No player accounts exist in this world.</p>
+      <p>No eligible character Actors exist in this world.</p>
     {{/each}}
   </div>
 

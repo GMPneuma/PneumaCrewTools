@@ -13,43 +13,80 @@
   </nav>
 
   <section data-step-panel="participants">
-    <fieldset class="payout-heading session-info">
-      <legend><i class="fas fa-calendar-day"></i> Session Info</legend>
-      <div class="payout-metadata">
-        <label>
-          <span>Name</span>
+    <div class="payout-session-column">
+      <fieldset class="payout-heading session-info">
+        <legend><i class="fas fa-calendar-day"></i> Session Info</legend>
+        <div class="payout-metadata">
+          <label>
+            <span>Name</span>
+            <input
+              type="text"
+              name="sessionLabel"
+              placeholder="Session name"
+              maxlength="100"
+              required
+            />
+          </label>
+
+          <label>
+            <span>In-Game Date</span>
+            <input
+              type="text"
+              name="inGameDate"
+              value="{{inGameDate}}"
+              placeholder="MM-DD-YYYY"
+              maxlength="100"
+            />
+          </label>
+
+          <label>
+            <span>Notes</span>
+            <textarea
+              name="notes"
+              rows="8"
+              placeholder="Optional payout notes"
+              maxlength="100"
+            ></textarea>
+          </label>
+        </div>
+      </fieldset>
+
+      <fieldset class="payout-heading payout-time-section">
+        <legend><i class="fas fa-clock"></i> GameTime & Downtime</legend>
+        <button type="button" data-expire-downtime><i
+            class="fas fa-hourglass-end"
+          ></i>
+          Expire Unused Downtime</button>
+        <label class="payout-advance-days">Advance GameTime Days
           <input
-            type="text"
-            name="sessionLabel"
-            placeholder="Session name or number"
-            maxlength="100"
-            required
-          />
-        </label>
-
-        <label>
-          <span>In-Game Date</span>
+            type="number"
+            name="advanceDays"
+            value="0"
+            min="0"
+            step="1"
+          /></label>
+        <div class="absent-downtime-control">
+          <label for="crew-grant-absent-downtime">
+            <input
+              id="crew-grant-absent-downtime"
+              type="checkbox"
+              name="grantAbsentDowntime"
+            />
+            Grant downtime to non-participants
+          </label>
           <input
-            type="text"
-            name="inGameDate"
-            value="{{inGameDate}}"
-            placeholder="In-game date"
-            maxlength="100"
+            type="number"
+            name="absentDowntime"
+            value="0"
+            min="0"
+            step="1"
+            disabled
+            aria-label="Downtime days for characters not in this payout"
           />
-        </label>
+        </div>
 
-        <label>
-          <span>Notes</span>
-          <textarea
-            name="notes"
-            rows="8"
-            placeholder="Optional payout notes"
-            maxlength="100"
-          ></textarea>
-        </label>
-      </div>
-    </fieldset>
-
+      </fieldset>
+    </div>
     <fieldset class="participant-selection">
       <legend>Participants</legend>
       <p class="participant-instructions">Select the players and characters who
@@ -278,9 +315,13 @@
             />
           </label>
 
-          <label class="primary-payout-row">
-            <span><i class="fas fa-calendar-days"></i> Downtime</span>
+          <div class="primary-payout-row primary-downtime-row">
+            <label for="crew-payout-downtime"><i
+                class="fas fa-calendar-days"
+              ></i>
+              Downtime</label>
             <input
+              id="crew-payout-downtime"
               type="number"
               name="groupDowntime"
               value="0"
@@ -289,12 +330,14 @@
               aria-label="Downtime days"
             />
             <input
+              class="downtime-description"
               type="text"
               name="groupDowntimeDescription"
               placeholder="Description"
               maxlength="100"
+              aria-label="Downtime description"
             />
-          </label>
+          </div>
 
           <div data-additional-entries></div>
           <button type="button" class="add-entry" data-add-entry>
@@ -402,18 +445,21 @@
               <option value="humanityGain">Gain Humanity</option>
               <option value="humanityLoss">Lose Humanity</option>
               <option value="newReputation">Reputation</option>
-              <option value="specificReputation">Specific Reputation</option>
+              <option value="specificReputation">Faction Reputation</option>
             </select>
-            <input
-              type="text"
-              placeholder="Faction"
+            <select
               aria-label="Faction"
-              maxlength="30"
               data-entry-field="faction"
               data-entry-faction
               hidden
               disabled
-            />
+            >
+              <option value="">Choose faction</option>
+              {{#each factions}}<option
+                  value="{{id}}"
+                >{{name}}</option>{{/each}}
+              <option value="__add__">Add new...</option>
+            </select>
             <input
               type="number"
               value="0"
@@ -482,7 +528,9 @@
       <div>
         <span class="preview-label"><i class="fas fa-clock"></i>
           In-Game Date</span>
-        <span data-preview-in-game-date></span>
+        <span data-preview-in-game-date></span><small
+          data-preview-advance-days
+        ></small>
       </div>
       <div>
         <span class="preview-label"><i class="fas fa-note-sticky"></i>
@@ -499,6 +547,10 @@
         <h3><i class="fas fa-layer-group"></i> Primary payouts</h3>
         <p>Each recipient receives every entry below.</p>
         <ul class="preview-list" data-preview-group></ul>
+        <div data-preview-absent-section hidden><h3>Downtime — not in payout</h3><ul
+            class="preview-list"
+            data-preview-absent
+          ></ul></div>
       </section>
 
       <section class="preview-section">

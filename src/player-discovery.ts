@@ -1,3 +1,4 @@
+import { isActorExcluded } from "./actor-policy";
 export const PLAYER_DISCOVERY_ISSUES = [
   "noAssignedActor",
   "noEligibleActors",
@@ -31,8 +32,8 @@ const PAYOUT_ACTOR_TYPES = new Set(["character"]);
 
 export function discoverPlayerAccounts(): PlayerAccount[] {
   const players = Array.from(game.users).filter((user) => !user.isGM);
-  const actors = Array.from(game.actors).filter((actor) =>
-    PAYOUT_ACTOR_TYPES.has(actor.type),
+  const actors = Array.from(game.actors).filter(
+    (actor) => PAYOUT_ACTOR_TYPES.has(actor.type) && !isActorExcluded(actor.id),
   );
   const actorOwners = indexActorOwners(players, actors);
 
@@ -64,7 +65,10 @@ function toPlayerAccount(
   actors: FoundryActor[],
   actorOwners: Map<string, string[]>,
 ): PlayerAccount {
-  const assignedActor = user.character;
+  const assignedActor =
+    user.character && !isActorExcluded(user.character.id)
+      ? user.character
+      : null;
   const issues: PlayerDiscoveryIssue[] = [];
   const associatedActors = actors
     .filter(

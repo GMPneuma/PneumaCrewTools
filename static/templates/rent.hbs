@@ -1,0 +1,154 @@
+<form class="rent-form">
+  {{#if multipleActors}}<div class="form-group"><label>Character</label><select
+        name="rentActor"
+      >{{#each actors}}{{#if selected}}<option
+              value="{{id}}"
+              selected
+            >{{name}}</option>{{else}}<option
+              value="{{id}}"
+            >{{name}}</option>{{/if}}{{/each}}</select></div>{{/if}}
+  {{#unless ready}}<p class="notes">The GM must add the rent and lifestyle
+      charts in settings.</p>{{/unless}}
+  {{#if review}}<p class="notification error">A rent payment needs GM review
+      before further payments.</p>{{/if}}
+  <fieldset class="payout-heading hub-status"><legend><i
+        class="fas fa-house"
+      ></i>
+      Residence & Lifestyle</legend>
+    <div class="form-group rent-choice-row"><label>Residence</label><select
+        name="residence"
+      ><option value="">Choose residence</option><optgroup
+          label="Personal housing"
+        >{{#each residences}}{{#if selected}}<option
+                value="{{id}}"
+                selected
+              >{{name}}</option>{{else}}<option
+                value="{{id}}"
+              >{{name}}</option>{{/if}}{{/each}}</optgroup>{{#if
+          hqResidences
+        }}<optgroup label="CREW HEADQUARTERS — shared rent">{{#each
+              hqResidences
+            }}{{#if selected}}<option
+                  value="{{id}}"
+                  selected
+                >{{name}}</option>{{else}}<option
+                  value="{{id}}"
+                >{{name}}</option>{{/if}}{{/each}}</optgroup>{{/if}}</select><select
+        name="modifier"
+        aria-label="Rent modifier"
+      >{{#each modifiers}}{{#if selected}}<option
+              value="{{value}}"
+              selected
+            >{{label}}</option>{{else}}<option
+              value="{{value}}"
+            >{{label}}</option>{{/if}}{{/each}}</select></div>
+    {{#if vehicleResidence}}<label>{{#if vehicleHasBed}}<input
+            type="checkbox"
+            name="vehicleHasBed"
+            checked
+          />{{else}}<input type="checkbox" name="vehicleHasBed" />{{/if}}
+        Vehicle has a bed</label>{{/if}}
+    {{#if housingReminder}}<p class="notes">{{housingReminder}}</p>{{/if}}
+    <div class="form-group rent-choice-row"><label>Lifestyle</label><select
+        name="lifestyle"
+      ><option value="">Choose lifestyle</option>{{#each lifestyles}}{{#if
+            selected
+          }}<option value="{{id}}" selected>{{name}}
+              ·
+              {{cost}}
+              eb</option>{{else}}<option value="{{id}}">{{name}}
+              ·
+              {{cost}}
+              eb</option>{{/if}}{{/each}}</select></div>
+    <div class="rent-save-row"><button
+        type="button"
+        data-rent-action="residence"
+      ><i class="fas fa-save"></i>
+        {{#if choiceIncrease}}Save Choices · Pay
+          {{choiceIncrease}}
+          eb{{else}}Save Choices{{/if}}</button>
+      <p class="notes">Before rent is due, changes cost only the increase;
+        downgrades give no refund. HQ residence uses shared rent.</p></div>
+  </fieldset>
+  {{#each bills}}<fieldset class="payout-heading hub-status"><legend>Rent &
+        Lifestyle ·
+        {{date}}</legend>
+      <div class="rent-charge"><div><strong>Rent</strong>{{#if rent}}
+            ·
+            {{rent.name}}<div>{{rent.formula}}</div>{{else if hq}}
+            · HQ residence{{else}} · Choose residence{{/if}}</div>{{#if
+          rent
+        }}{{#if rent.paid}}<span class="rent-paid">Paid</span>{{else}}<button
+              type="button"
+              data-rent-action="rent"
+              data-period="{{period}}"
+            >Pay
+              {{#if
+                rent.paymentAmount
+              }}{{rent.paymentAmount}}{{else}}{{rent.amount}}{{/if}}
+              eb</button>{{/if}}{{else if hq}}<span class="rent-paid">Shared HQ
+            rent</span>{{/if}}</div>
+      <div class="rent-charge"><div><strong>Lifestyle</strong>{{#if lifestyle}}
+            ·
+            {{lifestyle.name}}<div>{{lifestyle.formula}}</div>{{else}}
+            · Choose lifestyle{{/if}}</div>{{#if lifestyle}}{{#if
+            lifestyle.paid
+          }}<span class="rent-paid">Paid</span>{{else}}<button
+              type="button"
+              data-rent-action="lifestyle"
+              data-period="{{period}}"
+            >Pay
+              {{#if
+                lifestyle.paymentAmount
+              }}{{lifestyle.paymentAmount}}{{else}}{{lifestyle.amount}}{{/if}}
+              eb</button>{{/if}}{{/if}}</div>
+    </fieldset>{{/each}}
+  {{#if pending}}<fieldset class="payout-heading hub-status"><legend>Pending
+        Rent Payment</legend>{{#each pending}}<p>{{hqName}}
+          ·
+          {{amount}}
+          eb · awaiting processing</p>{{/each}}</fieldset>{{/if}}
+  {{#each headquarters}}<fieldset
+      class="payout-heading hub-status"
+      data-hq-rent
+    ><legend><i class="fas fa-building"></i> {{name}}</legend>
+      {{#if isGM}}<div class="rent-charge"><select
+            data-hq-type
+            aria-label="HQ rent type"
+          ><option value="">Choose HQ rent</option>{{#each rates}}{{#if
+                selected
+              }}<option value="{{id}}" selected>{{name}}</option>{{else}}<option
+                  value="{{id}}"
+                >{{name}}</option>{{/if}}{{/each}}</select><select
+            data-hq-modifier
+            aria-label="HQ rent modifier"
+          >{{#each modifiers}}{{#if selected}}<option
+                  value="{{value}}"
+                  selected
+                >{{label}}</option>{{else}}<option
+                  value="{{value}}"
+                >{{label}}</option>{{/if}}{{/each}}</select><button
+            type="button"
+            data-rent-action="hqSetup"
+            data-hq="{{id}}"
+          >Save HQ Rent</button></div>{{/if}}
+      {{#each bills}}<div class="rent-charge"><div><strong>Due
+              {{date}}</strong><div>{{formula}}</div><div>{{paid}}
+              eb confirmed ·
+              {{remaining}}
+              eb remaining</div></div><input
+            type="number"
+            min="1"
+            max="{{remaining}}"
+            step="1"
+            placeholder="eb"
+            aria-label="Contribution"
+          /><button
+            type="button"
+            data-rent-action="contribute"
+            data-hq="{{hqId}}"
+            data-period="{{period}}"
+          >Contribute</button></div>{{else}}<p class="notes">No outstanding rent
+          bill.</p>{{/each}}
+    </fieldset>{{/each}}
+</form>

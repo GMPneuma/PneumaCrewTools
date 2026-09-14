@@ -1,0 +1,17 @@
+<form class="payout-inbox-form">
+  <p>Checked Actors are excluded from Crew Tools lists and new actions. Existing
+    historical records remain in Journals. Exclusions use Actor IDs and survive
+    renaming.</p>
+  <div class="actor-exclusions-list">
+    {{#each actors}}<label>
+        {{#if excluded}}<input
+            type="checkbox"
+            name="exclude.{{id}}"
+            checked
+          />{{else}}<input type="checkbox" name="exclude.{{id}}" />{{/if}}
+        <span><strong>{{name}}</strong><small>{{type}}
+            · Actor.{{id}}</small></span>
+      </label>{{else}}<p>No Actors are owned by players.</p>{{/each}}
+  </div>
+  <button type="submit"><i class="fas fa-save"></i> Save Exclusions</button>
+</form>

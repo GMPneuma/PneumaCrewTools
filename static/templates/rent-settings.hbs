@@ -1,0 +1,62 @@
+<form><fieldset class="payout-heading hub-status"><legend>Rent modifiers</legend><label
+    >Percentage choices</label><input
+      type="text"
+      name="modifiers"
+      value="{{modifiers}}"
+    /><p class="notes">Comma-separated percentages, including 0 for standard
+      rent. Applies to personal and HQ rent. Final charges round to the nearest
+      eb.</p></fieldset>
+  <fieldset class="payout-heading hub-status"><legend>Rent types</legend>{{#each
+      housing
+    }}<div
+        class="rent-charge"
+        data-rate-kind="housing"
+        data-rate-id="{{id}}"
+      ><input
+          type="text"
+          data-rate-name
+          value="{{name}}"
+          aria-label="Rent type"
+        /><input
+          type="number"
+          data-rate-cost
+          value="{{cost}}"
+          min="0"
+          step="1"
+          aria-label="Monthly rent"
+        /><button
+          type="button"
+          data-remove-rate
+          aria-label="Remove rent type"
+        ><i class="fas fa-times"></i></button></div>{{/each}}<button
+      type="button"
+      data-add-rate="housing"
+    ><i class="fas fa-plus"></i> Add Rent Type</button></fieldset>
+  <fieldset class="payout-heading hub-status"><legend>Lifestyles</legend>{{#each
+      lifestyles
+    }}<div
+        class="rent-charge"
+        data-rate-kind="lifestyles"
+        data-rate-id="{{id}}"
+      ><input
+          type="text"
+          data-rate-name
+          value="{{name}}"
+          aria-label="Lifestyle"
+        /><input
+          type="number"
+          data-rate-cost
+          value="{{cost}}"
+          min="0"
+          step="1"
+          aria-label="Monthly lifestyle cost"
+        /><button
+          type="button"
+          data-remove-rate
+          aria-label="Remove lifestyle"
+        ><i class="fas fa-times"></i></button></div>{{/each}}<button
+      type="button"
+      data-add-rate="lifestyles"
+    ><i class="fas fa-plus"></i> Add Lifestyle</button></fieldset>
+  <button type="button" data-save-rent-settings><i class="fas fa-save"></i>
+    Save Settings</button></form>

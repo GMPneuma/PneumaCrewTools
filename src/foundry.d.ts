@@ -7,6 +7,31 @@ declare const foundry: {
 
 declare const Hooks: {
   on(
+    event: "createChatMessage",
+    callback: (message: FoundryChatMessage) => void,
+  ): number;
+  on(
+    event: "createJournalEntry" | "updateJournalEntry" | "deleteJournalEntry",
+    callback: (journal: FoundryJournalEntry) => void,
+  ): number;
+  on(event: "createActor", callback: (actor: FoundryActor) => void): number;
+  on(
+    event: "createItem" | "updateItem" | "deleteItem",
+    callback: (item: FoundryItem) => void,
+  ): number;
+  on(
+    event: "updateActor",
+    callback: (actor: FoundryActor, changes: Record<string, unknown>) => void,
+  ): number;
+  on(
+    event: "createJournalEntryPage" | "deleteJournalEntryPage",
+    callback: (page: FoundryJournalPage) => void,
+  ): number;
+  on(
+    event: "renderSettingsConfig",
+    callback: (app: unknown, html: FoundryHtml | HTMLElement) => void,
+  ): number;
+  on(
     event: "updateWorldTime",
     callback: (
       time: number,
@@ -18,9 +43,15 @@ declare const Hooks: {
   on(
     event:
       | "createJournalEntry"
+      | "updateJournalEntry"
       | "deleteJournalEntry"
       | "deleteJournalEntryPage"
       | "updateSetting"
+      | "createItem"
+      | "updateItem"
+      | "deleteItem"
+      | "deleteActor"
+      | "updateActor"
       | "updateUser"
       | "userConnected",
     callback: () => void,
@@ -28,6 +59,19 @@ declare const Hooks: {
   on(
     event: "getSceneControlButtons",
     callback: (controls: SceneControl[]) => void,
+  ): number;
+  on(event: "deleteActor", callback: (actor: FoundryActor) => void): number;
+  on(
+    event: "updateCompendium",
+    callback: (pack: { collection: string }) => void,
+  ): number;
+  on(
+    event: "createJournalEntryPage",
+    callback: (
+      page: FoundryJournalPage,
+      options: Record<string, unknown>,
+      userId: string,
+    ) => void,
   ): number;
   once(event: "init" | "ready", callback: () => void | Promise<void>): number;
   on(
@@ -53,6 +97,7 @@ interface ApplicationOptions {
   width?: number;
   height?: number | "auto";
   resizable?: boolean;
+  scrollY?: string[];
   closeOnSubmit?: boolean;
   submitOnChange?: boolean;
 }
@@ -61,14 +106,31 @@ interface FoundryHtml {
   0?: HTMLElement;
 }
 
+interface ApplicationPosition {
+  left?: number;
+  top?: number;
+  width?: number;
+  height?: number | string;
+  scale?: number;
+}
+
 declare abstract class FormApplication {
   static get defaultOptions(): ApplicationOptions;
   readonly rendered: boolean;
-  render(force?: boolean): this;
+  setPosition(position?: ApplicationPosition): ApplicationPosition | void;
+  render(force?: boolean, options?: { focus?: boolean }): this;
   close(): Promise<void>;
   getData(): object;
   activateListeners(html: FoundryHtml): void;
   close(): Promise<void>;
+  protected _onSubmit(
+    event: Event,
+    options?: Record<string, unknown>,
+  ): Promise<unknown>;
+  protected _render(
+    force: boolean,
+    options?: Record<string, unknown>,
+  ): Promise<void>;
   protected abstract _updateObject(
     event: Event,
     formData: Record<string, unknown>,
@@ -90,12 +152,19 @@ interface SceneControl {
 }
 
 interface FoundrySettingConfig {
+  onChange?: (value: unknown) => void;
   name: string;
   hint?: string;
   scope: "client" | "world";
   config: boolean;
-  type: ObjectConstructor | StringConstructor | BooleanConstructor;
-  default: object | string | boolean;
+  type:
+    | ObjectConstructor
+    | StringConstructor
+    | BooleanConstructor
+    | ArrayConstructor
+    | NumberConstructor;
+  default: object | string | boolean | number;
+  range?: { min: number; max: number; step: number };
 }
 
 interface FoundrySettingsMenuConfig {
@@ -113,12 +182,23 @@ interface FoundryModule {
 }
 
 interface FoundryActor {
+  img?: string;
+  ownership?: Record<string, number>;
+  documentName?: string;
+  folder?: FoundryFolder | null;
+  delete(): Promise<unknown>;
+  items?: Iterable<FoundryItem>;
   uuid: string;
   id: string;
   name: string;
   type: string;
   system: unknown;
-  sheet?: { render(force?: boolean): unknown };
+  sheet?: {
+    render(force?: boolean): unknown;
+    showLedger?(
+      property: "wealth" | "improvementPoints" | "reputation",
+    ): Promise<unknown>;
+  };
   testUserPermission(user: FoundryUser, permission: "OWNER"): boolean;
   update(data: Record<string, unknown>): Promise<unknown>;
   createEmbeddedDocuments(
@@ -126,11 +206,43 @@ interface FoundryActor {
     data: Record<string, unknown>[],
     context?: Record<string, unknown>,
   ): Promise<FoundryItem[]>;
-  deleteEmbeddedDocuments(type: "Item", ids: string[]): Promise<unknown>;
+  deleteEmbeddedDocuments(
+    type: "Item",
+    ids: string[],
+    options?: Record<string, unknown>,
+  ): Promise<unknown>;
   getFlag(namespace: string, key: string): unknown;
 }
 
 interface FoundryItem {
+  snort?(): Promise<unknown>;
+  uuid?: string;
+  pack?: string;
+  parent?: FoundryActor;
+  sheet?: { render(force?: boolean): unknown };
+  update?(data: Record<string, unknown>): Promise<unknown>;
+  testUserPermission?(
+    user: FoundryUser,
+    permission: "OWNER" | "OBSERVER",
+  ): boolean;
+  toCompendium?(pack: unknown): Record<string, unknown>;
+  recursiveGetAllInstalledItems?(): FoundryItem[];
+  uninstall?(options: { skipDialog: boolean }): Promise<unknown>;
+  createRoll?(
+    type: string,
+    actor: FoundryActor,
+    extraData?: Record<string, unknown>,
+  ): {
+    addMod(mods: { value: number; source: string }[]): void;
+    handleRollDialog(
+      event: { type: string; ctrlKey: boolean; metaKey: boolean },
+      actor: FoundryActor,
+      item: FoundryItem,
+    ): Promise<boolean>;
+    roll(): Promise<unknown>;
+    resultTotal: number;
+  };
+  system?: unknown;
   id: string;
   name: string;
   type: string;
@@ -152,6 +264,14 @@ interface FoundryUser {
 }
 
 declare const game: {
+  items?: Iterable<FoundryItem>;
+  packs?: Iterable<{
+    documentName: string;
+    collection: string;
+    getDocuments(): Promise<FoundryItem[]>;
+  }>;
+  tables: Iterable<FoundryRollTable>;
+  folders: Iterable<FoundryFolder>;
   time: {
     worldTime: number;
     calendar?: import("./calendar-date").NativeCalendar;
@@ -188,6 +308,14 @@ declare const game: {
 };
 
 declare const ui: {
+  windows?: Record<
+    string,
+    {
+      rendered: boolean;
+      options?: ApplicationOptions;
+      render(force?: boolean): unknown;
+    }
+  >;
   notifications: {
     warn(message: string): void;
     info(message: string): void;
@@ -202,6 +330,7 @@ declare class Roll {
 }
 
 interface FoundryChatMessage {
+  author?: FoundryUser;
   getFlag(namespace: string, key: string): unknown;
   update(data: Record<string, unknown>): Promise<unknown>;
   delete(): Promise<unknown>;
@@ -223,12 +352,17 @@ declare class Dialog {
     content: string;
     buttons: Record<string, DialogButtonConfig>;
     default?: string;
+    render?: (html: FoundryHtml) => void;
     close?: () => void;
   });
   render(force?: boolean): this;
 }
 
 interface FoundryJournalPage {
+  ownership?: Record<string, number>;
+  testUserPermission?(user: FoundryUser, permission: string): boolean;
+  parent?: FoundryJournalEntry;
+  _stats?: { createdBy?: string; lastModifiedBy?: string };
   getFlag?(namespace: string, key: string): unknown;
   id: string;
   name: string;
@@ -237,6 +371,10 @@ interface FoundryJournalPage {
 }
 
 interface FoundryJournalEntry {
+  folder?: FoundryFolder | null;
+  delete(): Promise<unknown>;
+  ownership?: Record<string, number>;
+  sheet?: { render(force?: boolean, options?: { pageId?: string }): unknown };
   getFlag?(namespace: string, key: string): unknown;
   id: string;
   name: string;
@@ -245,6 +383,7 @@ interface FoundryJournalEntry {
   createEmbeddedDocuments(
     type: "JournalEntryPage",
     data: object[],
+    options?: Record<string, unknown>,
   ): Promise<FoundryJournalPage[]>;
   deleteEmbeddedDocuments(
     type: "JournalEntryPage",
@@ -255,3 +394,34 @@ interface FoundryJournalEntry {
 declare const JournalEntry: {
   create(data: Record<string, unknown>): Promise<FoundryJournalEntry>;
 };
+
+interface FoundryFolder {
+  id: string;
+  name: string;
+  type: string;
+  folder: FoundryFolder | null;
+}
+declare const Folder: {
+  create(data: Record<string, unknown>): Promise<FoundryFolder>;
+};
+
+declare const Actor: {
+  create(data: Record<string, unknown>): Promise<FoundryActor>;
+};
+
+interface FoundryRollTable {
+  img?: string;
+  id: string;
+  description: string;
+  update(data: Record<string, unknown>): Promise<unknown>;
+  roll(options?: { recursive?: boolean }): Promise<{
+    roll: { total: number };
+    results: { id: string; getFlag(namespace: string, key: string): unknown }[];
+  }>;
+  getFlag(namespace: string, key: string): unknown;
+}
+declare const RollTable: {
+  create(data: Record<string, unknown>): Promise<FoundryRollTable>;
+};
+
+declare const Item: { deleteDocuments(ids: string[]): Promise<unknown> };

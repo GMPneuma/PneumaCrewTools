@@ -1,0 +1,34 @@
+<form class="payout-inbox-form hq-catalog">
+  <fieldset class="payout-heading hub-status"><legend>Included Improvements</legend><p
+      class="notes"
+    >40 HQ IP per purchase. Additional benefits are not automated.</p><div
+      class="hq-catalog-defaults"
+    >{{#each defaults}}<span
+          title="{{description}}"
+        >{{name}}</span>{{/each}}</div></fieldset>
+  <fieldset class="payout-heading hub-status"><legend>Custom Improvements</legend>
+    {{#each custom}}<div class="hq-custom-row"><strong>{{name}}</strong><label
+        >HQ IP
+          <input
+            type="number"
+            name="cost.{{id}}"
+            value="{{cost}}"
+            min="0"
+            step="1"
+          /></label><label><input type="checkbox" name="remove.{{id}}" />
+          Remove</label></div>{{else}}<p class="notes">No custom improvements.</p>{{/each}}
+    <div class="form-group"><label>Name</label><input
+        name="name"
+        maxlength="100"
+      /></div><div class="form-group"><label>HQ IP cost</label><input
+        name="cost"
+        type="number"
+        min="0"
+        step="1"
+        value="40"
+      /></div><div class="form-group"><label>Short description</label><input
+        name="description"
+        maxlength="200"
+      /></div>
+    <button type="submit"><i class="fas fa-save"></i>
+      Save Changes</button></fieldset></form>

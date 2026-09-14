@@ -1,3 +1,8 @@
+import { activityRollRecipients } from "./roll-visibility";
+import { recordEscape as escapeHtml } from "./journal-format";
+import { humanityUpdate } from "./actor-resources";
+import { actorPayoutRecords, saveActorPayoutRecords } from "./journal-records";
+import { isActorExcluded } from "./actor-policy";
 import { MODULE_ID } from "./constants";
 import { createUniqueId } from "./id";
 
@@ -14,6 +19,10 @@ export interface PendingHumanityRoll extends HumanityPrompt {
   id: string;
   payoutRecordId: string;
   createdAt: string;
+  resolvedAt?: string;
+  rollTotal?: number;
+  previousHumanity?: number;
+  newHumanity?: number;
 }
 
 export function createPendingHumanityRoll(
@@ -31,23 +40,35 @@ export function createPendingHumanityRoll(
 export function getPendingHumanityRolls(
   actor: FoundryActor,
 ): PendingHumanityRoll[] {
-  const value = actor.getFlag(MODULE_ID, "pendingHumanityRolls");
+  const value = actorPayoutRecords<PendingHumanityRoll>(actor.id, "humanity");
   return Array.isArray(value)
-    ? value.filter(isPromptFlags).map((entry) => structuredClone(entry))
+    ? value
+        .filter(isPromptFlags)
+        .filter((entry) => !entry.resolvedAt)
+        .map((entry) => structuredClone(entry))
     : [];
 }
 
 export async function clearAllPendingHumanityRolls(): Promise<number> {
   if (!game.user?.isGM)
     throw new Error("Only a GM can clear pending Humanity rolls.");
-  const actors = Array.from(game.actors);
+  // Cleanup only touches existing pending records; reading does not provision Journals.
+  const actors = Array.from(game.actors).filter(
+    (actor) => getPendingHumanityRolls(actor).length > 0,
+  );
   const count = actors.reduce(
     (total, actor) => total + getPendingHumanityRolls(actor).length,
     0,
   );
   await Promise.all(
     actors.map((actor) =>
-      actor.update({ [`flags.${MODULE_ID}.pendingHumanityRolls`]: [] }),
+      saveActorPayoutRecords(
+        actor,
+        "humanity",
+        actorPayoutRecords<PendingHumanityRoll>(actor.id, "humanity").filter(
+          (entry) => entry.resolvedAt,
+        ),
+      ),
     ),
   );
   return count;
@@ -60,14 +81,14 @@ export function registerHumanityPromptHandler(): void {
       "[data-pneuma-crewtools-humanity-roll]",
     );
     if (!button) return;
-    const flags = message.getFlag(MODULE_ID, "humanityPrompt");
-    if (
-      !isPromptFlags(flags) ||
-      !getPendingHumanityRollsForId(flags.actorId).some(
-        ({ id }) => id === flags.id,
-      ) ||
-      (!game.user?.isGM && game.user?.id !== flags.userId)
-    ) {
+    const reference = message.getFlag(MODULE_ID, "humanityPrompt") as
+      { actorId?: string; id?: string } | undefined;
+    const flags = reference?.actorId
+      ? getPendingHumanityRollsForId(reference.actorId).find(
+          (p) => p.id === reference.id,
+        )
+      : undefined;
+    if (!flags || (!game.user?.isGM && game.user?.id !== flags.userId)) {
       button.disabled = true;
       return;
     }
@@ -79,6 +100,8 @@ export function registerHumanityPromptHandler(): void {
 }
 
 function getPendingHumanityRollsForId(actorId: string): PendingHumanityRoll[] {
+  if (isActorExcluded(actorId))
+    throw new Error("This Actor is excluded from Crew Tools.");
   const actor = game.actors.get(actorId);
   return actor ? getPendingHumanityRolls(actor) : [];
 }
@@ -90,19 +113,16 @@ export async function createHumanityPrompt(
   const description = escapeHtml(
     prompt.description || "PneumaCrewTools payout",
   );
-  const recipients = new Set([
-    prompt.userId,
-    ...Array.from(game.users)
-      .filter(({ isGM }) => isGM)
-      .map(({ id }) => id),
-  ]);
   return ChatMessage.create({
     user: prompt.userId,
-    whisper: [...recipients],
+    whisper: activityRollRecipients(
+      game.actors.get(prompt.actorId),
+      prompt.userId,
+    ),
     content: `<div class="pneuma-crewtools-humanity-prompt"><p><strong>${escapeHtml(prompt.actorName)}</strong> must roll <strong>${prompt.formula}</strong> to ${action} Humanity.</p><p>${description}</p><button type="button" data-pneuma-crewtools-humanity-roll><i class="fas fa-dice-d6"></i> Roll Humanity</button></div>`,
     flags: {
       [MODULE_ID]: {
-        humanityPrompt: prompt,
+        humanityPrompt: { actorId: prompt.actorId, id: prompt.id },
       },
     },
   });
@@ -118,6 +138,10 @@ async function resolvePrompt(
     const result = await resolvePendingHumanityRoll(prompt.actorId, prompt.id);
     await message.update({
       content: resolvedContent(result),
+      whisper: activityRollRecipients(
+        game.actors.get(prompt.actorId),
+        prompt.userId,
+      ),
       [`flags.${MODULE_ID}.humanityPrompt.resolvedAt`]:
         new Date().toISOString(),
     });
@@ -151,13 +175,23 @@ export async function resolvePendingHumanityRoll(
   const humanity = readHumanity(actor);
   const signed = prompt.reward === "humanityGain" ? roll.total : -roll.total;
   const newValue = Math.min(humanity.max, humanity.value + signed);
-  await actor.update({
-    "system.derivedStats.humanity.value": newValue,
-    "system.stats.emp.value": Math.floor(newValue / 10),
-    [`flags.${MODULE_ID}.pendingHumanityRolls`]: pendingRolls.filter(
-      ({ id }) => id !== rollId,
+  await actor.update(humanityUpdate(newValue));
+  await saveActorPayoutRecords(
+    actor,
+    "humanity",
+    actorPayoutRecords<PendingHumanityRoll>(actor.id, "humanity").map(
+      (entry) =>
+        entry.id === rollId
+          ? {
+              ...entry,
+              resolvedAt: new Date().toISOString(),
+              rollTotal: roll.total,
+              previousHumanity: humanity.value,
+              newHumanity: newValue,
+            }
+          : entry,
     ),
-  });
+  );
   return {
     prompt,
     rollTotal: roll.total,
@@ -194,8 +228,12 @@ function isPromptFlags(value: unknown): value is PendingHumanityRoll {
   );
 }
 
-function escapeHtml(value: string): string {
-  const element = document.createElement("div");
-  element.textContent = value;
-  return element.innerHTML;
+// New pending actions and completed results share the character Journal; Actors hold only native resources.
+export async function appendPendingHumanityRolls(
+  actor: FoundryActor,
+  rolls: PendingHumanityRoll[],
+): Promise<() => Promise<void>> {
+  const before = actorPayoutRecords<PendingHumanityRoll>(actor.id, "humanity");
+  await saveActorPayoutRecords(actor, "humanity", [...before, ...rolls]);
+  return async () => saveActorPayoutRecords(actor, "humanity", before);
 }

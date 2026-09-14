@@ -1,3 +1,21 @@
+import { activityRollRecipients } from "./roll-visibility";
+import { openRent } from "./rent-form";
+import { rentStatus } from "./rent";
+import { PharmaTransferPanel } from "./pharma-transfer";
+import { isCrewPage } from "./ui-refresh";
+import { CrewToolsForm } from "./foundry-form";
+import { displayDate } from "./date-format";
+import {
+  actorPayoutJournal,
+  allActorRecords,
+  recordPage,
+  actorPayoutRecords,
+  saveActorPayoutRecords,
+} from "./journal-records";
+import { isActorExcluded } from "./actor-policy";
+import { openHeadquarters } from "./headquarters";
+import { getHubStatus } from "./player-hub-status";
+import { openDowntime } from "./downtime";
 import { MODULE_ID, PAYOUT_ACKNOWLEDGMENTS_ENABLED_SETTING } from "./constants";
 import { createUniqueId } from "./id";
 import {
@@ -51,6 +69,9 @@ interface InboxCard {
 }
 
 interface InboxData {
+  status: ReturnType<typeof getHubStatus>;
+  rent: ReturnType<typeof rentStatus>;
+  pharma: ReturnType<PharmaTransferPanel["getData"]>;
   cards: InboxCard[];
   hasItems: boolean;
   isGM: boolean;
@@ -59,12 +80,35 @@ interface InboxData {
   hasAcknowledgments: boolean;
 }
 
-let payoutInbox: PayoutInbox | null = null;
+let payoutInbox: PlayerHub | null = null;
 
 export function registerPayoutInboxSettings(): void {
+  let refreshTimer: ReturnType<typeof setTimeout> | undefined;
+  const refresh = () => {
+    if (!payoutInbox?.rendered) return;
+    clearTimeout(refreshTimer);
+    refreshTimer = setTimeout(() => {
+      // Document updates refresh data without raising the Hub over the active window.
+      if (payoutInbox?.rendered) payoutInbox.render(false, { focus: false });
+    }, 50);
+  };
+  Hooks.on("updateActor", (actor, changes) => {
+    const membership = Object.keys(changes).some((key) =>
+      /^(name|ownership|type)(\.|$)/.test(key),
+    );
+    if (membership || actor.id === payoutInbox?.getSelectedActorId()) refresh();
+  });
+  Hooks.on("updateUser", refresh);
+  const refreshPage = (page: FoundryJournalPage) => {
+    if (isCrewPage(page)) refresh();
+  };
+  Hooks.on("createJournalEntryPage", refreshPage);
+  Hooks.on("updateJournalEntryPage", refreshPage);
+  Hooks.on("deleteJournalEntryPage", refreshPage);
+  Hooks.on("deleteJournalEntry", refresh);
   game.settings.register(MODULE_ID, PAYOUT_ACKNOWLEDGMENTS_ENABLED_SETTING, {
     name: "Require payout acknowledgment",
-    hint: "Add completed payouts to each recipient's Payout Inbox until they confirm receipt. Acknowledgment does not approve or alter the payout.",
+    hint: "Add completed payouts to each recipient's Crew Tools Player Hub until they confirm receipt. Acknowledgment does not approve or alter the payout.",
     scope: "world",
     config: true,
     type: Boolean,
@@ -72,17 +116,15 @@ export function registerPayoutInboxSettings(): void {
   });
 }
 
-export function openPayoutInbox(): void {
-  void pruneResolvedAcknowledgments()
-    .catch(() =>
-      ui.notifications.warn("Older Inbox entries could not be cleaned up."),
-    )
-    .finally(() => {
-      if (!payoutInbox?.rendered) payoutInbox = new PayoutInbox();
-      payoutInbox.render(true);
-    });
+export function openPlayerHub(): void {
+  if (!payoutInbox?.rendered) payoutInbox = new PlayerHub();
+  payoutInbox.render(true);
 }
 
+// HUD attention is specifically for payouts awaiting acknowledgment.
+export function waitingPayoutCount(): number {
+  return pendingAcknowledgments().length;
+}
 export function hasInboxItemsForCurrentUser(): boolean {
   return (
     collectPendingRolls().length > 0 || collectAcknowledgments().length > 0
@@ -94,14 +136,10 @@ export async function clearAllPayoutAcknowledgments(): Promise<number> {
     throw new Error("Only a GM can clear payout acknowledgments.");
   const users = Array.from(game.users);
   const count = users.reduce((total, user) => {
-    const value = user.getFlag(MODULE_ID, "payoutAcknowledgments");
+    const value = getAcknowledgments(user);
     return total + (Array.isArray(value) ? value.length : 0);
   }, 0);
-  await Promise.all(
-    users.map((user) =>
-      user.update({ [`flags.${MODULE_ID}.payoutAcknowledgments`]: [] }),
-    ),
-  );
+  await Promise.all(users.map((user) => saveAcknowledgments(user, [])));
   return count;
 }
 
@@ -119,36 +157,35 @@ export async function createPayoutAcknowledgments(
     entries: PayoutAcknowledgment[];
   }> = [];
   try {
-    for (const { actor, participant } of plan.actors) {
+    for (const { actor, participant } of [
+      ...plan.actors,
+      ...(plan.absentDowntime ?? []),
+    ]) {
       const user = Array.from(game.users).find(
         ({ id }) => id === participant.userId,
       );
       if (!user) continue;
       const entries = getAcknowledgments(user);
       snapshots.push({ user, entries });
-      const retainedEntries = entries.filter(
-        ({ acknowledgedAt }) => !acknowledgedAt,
-      );
-      await user.update({
-        [`flags.${MODULE_ID}.payoutAcknowledgments`]: [
-          ...retainedEntries,
-          {
-            id: createUniqueId(),
-            payoutRecordId,
-            sessionLabel: plan.sessionLabel,
-            inGameDate: plan.inGameDate,
-            userId: user.id,
-            userName: user.name,
-            actorId: actor.id,
-            actorName: actor.name,
-            createdAt: new Date().toISOString(),
-            acknowledgedAt: null,
-            awards: plan.changes
-              .filter(({ targetId }) => targetId === actor.id)
-              .map(formatPayoutChange),
-          } satisfies PayoutAcknowledgment,
-        ],
-      });
+      const retainedEntries = entries;
+      await saveAcknowledgments(user, [
+        ...retainedEntries,
+        {
+          id: createUniqueId(),
+          payoutRecordId,
+          sessionLabel: plan.sessionLabel,
+          inGameDate: plan.inGameDate,
+          userId: user.id,
+          userName: user.name,
+          actorId: actor.id,
+          actorName: actor.name,
+          createdAt: new Date().toISOString(),
+          acknowledgedAt: null,
+          awards: plan.changes
+            .filter(({ targetId }) => targetId === actor.id)
+            .map(formatPayoutChange),
+        } satisfies PayoutAcknowledgment,
+      ]);
     }
   } catch (error) {
     await rollbackAcknowledgments(snapshots);
@@ -157,7 +194,13 @@ export async function createPayoutAcknowledgments(
   return async () => rollbackAcknowledgments(snapshots);
 }
 
-class PayoutInbox extends FormApplication {
+export class PlayerHub extends CrewToolsForm {
+  getSelectedActorId(): string | undefined {
+    return this.#displayedActorId;
+  }
+  #displayedActorId: string | undefined;
+  #selectedActorId: string | undefined;
+  #pharma = new PharmaTransferPanel();
   #gmActionsEnabled = false;
 
   static override get defaultOptions(): ApplicationOptions {
@@ -165,11 +208,13 @@ class PayoutInbox extends FormApplication {
       ...super.defaultOptions,
       id: `${MODULE_ID}-inbox`,
       classes: [...(super.defaultOptions.classes ?? []), MODULE_ID],
-      title: "Payout Inbox",
+      title: "Crew Tools Player Hub",
       template: `modules/${MODULE_ID}/templates/payout-inbox.hbs`,
       width: 650,
       height: "auto",
       resizable: true,
+      closeOnSubmit: false,
+      scrollY: [".window-content"],
     };
   }
 
@@ -185,7 +230,12 @@ class PayoutInbox extends FormApplication {
       pendingRolls,
       isGM,
     ).slice(0, 100);
+    const status = getHubStatus(this.#selectedActorId);
+    this.#displayedActorId = status.actorId;
     return {
+      status,
+      rent: rentStatus(status.actorId),
+      pharma: this.#pharma.getData(status.actorId),
       cards,
       hasItems: cards.length > 0,
       isGM,
@@ -202,9 +252,71 @@ class PayoutInbox extends FormApplication {
     const root = html[0];
     if (!root) return;
     root
+      .querySelector<HTMLSelectElement>("[data-hub-actor]")
+      ?.addEventListener("change", (event) => {
+        this.#selectedActorId = (
+          event.currentTarget as HTMLSelectElement
+        ).value;
+        this.render(true);
+      });
+    // Use the system sheet's ledger entry point without opening the character sheet.
+    root
+      .querySelectorAll<HTMLButtonElement>("[data-hub-ledger]")
+      .forEach((button) => {
+        button.addEventListener("click", () => {
+          const property = button.dataset.hubLedger;
+          if (
+            property !== "wealth" &&
+            property !== "improvementPoints" &&
+            property !== "reputation"
+          )
+            return;
+          const actorId = getHubStatus(this.#selectedActorId).actorId;
+          const sheet = Array.from(game.actors).find(
+            (actor) => actor.id === actorId,
+          )?.sheet;
+          if (!sheet?.showLedger) {
+            ui.notifications.warn(
+              "This character sheet does not provide a native ledger.",
+            );
+            return;
+          }
+          void sheet
+            .showLedger(property)
+            .catch((error) => ui.notifications.error(String(error)));
+        });
+      });
+    const pharmaPanel = root.querySelector<HTMLElement>(
+      "[data-hub-pharma-panel]",
+    );
+    if (pharmaPanel) this.#pharma.bind(pharmaPanel, () => this.render(false));
+    root
+      .querySelector("[data-hub-rent]")
+      ?.addEventListener("click", () =>
+        openRent(getHubStatus(this.#selectedActorId).actorId),
+      );
+    root.querySelector("[data-hub-downtime]")?.addEventListener("click", () => {
+      openDowntime(getHubStatus(this.#selectedActorId).actorId);
+    });
+    root
       .querySelectorAll<HTMLDetailsElement>("[data-inbox-expanded]")
       .forEach((card) => {
         card.open = card.dataset.inboxExpanded === "true";
+      });
+    root
+      .querySelector("[data-hub-headquarters]")
+      ?.addEventListener("click", openHeadquarters);
+    root
+      .querySelector("[data-hub-reputation]")
+      ?.addEventListener("click", () => {
+        const actorId = getHubStatus(this.#selectedActorId).actorId;
+        const journal = actorPayoutJournal(actorId);
+        const page = recordPage(journal, "factionReputation");
+        if (page) journal?.sheet?.render(true, { pageId: page.id });
+        else
+          ui.notifications.info(
+            "No faction reputation recorded for this character.",
+          );
       });
     const gmActionsToggle = root.querySelector<HTMLInputElement>(
       "[data-enable-gm-actions]",
@@ -296,12 +408,7 @@ class PayoutInbox extends FormApplication {
       ui.notifications.error("This acknowledgment belongs to another player.");
       return;
     }
-    const entries = getAcknowledgments(user);
-    await user.update({
-      [`flags.${MODULE_ID}.payoutAcknowledgments`]: entries.filter(
-        ({ id, acknowledgedAt }) => id !== acknowledgmentId && !acknowledgedAt,
-      ),
-    });
+    await acknowledgePayout(user, acknowledgmentId);
     ui.notifications.info("Payout acknowledged.");
     this.render(true);
   }
@@ -309,10 +416,17 @@ class PayoutInbox extends FormApplication {
   async #acknowledgeAll(): Promise<void> {
     if (!this.#gmBulkActionAllowed()) return;
     try {
-      const count = await clearAllPayoutAcknowledgments();
+      const pending = collectAcknowledgments();
+      for (const receipt of pending) {
+        const recipient = Array.from(game.users).find(
+          (u) => u.id === receipt.userId,
+        );
+        if (recipient) await acknowledgePayout(recipient, receipt.id);
+      }
+      const count = pending.length;
       ui.notifications.info(
         count
-          ? `${count} payout acknowledgment${count === 1 ? "" : "s"} cleared.`
+          ? `${count} payout acknowledgment${count === 1 ? "" : "s"} recorded.`
           : "There are no payouts awaiting acknowledgment.",
       );
       this.render(true);
@@ -385,7 +499,7 @@ class PayoutInbox extends FormApplication {
   #gmBulkActionAllowed(): boolean {
     if (game.user?.isGM && this.#gmActionsEnabled) return true;
     ui.notifications.warn(
-      "Enable GM controls at the top of the Inbox to use bulk actions.",
+      "Enable GM controls at the top of the hub to use bulk actions.",
     );
     return false;
   }
@@ -393,7 +507,7 @@ class PayoutInbox extends FormApplication {
   #playerActionAllowed(): boolean {
     if (!game.user?.isGM || this.#gmActionsEnabled) return true;
     ui.notifications.warn(
-      "Enable GM controls at the top of the Inbox to act for a player.",
+      "Enable GM controls at the top of the hub to act for a player.",
     );
     return false;
   }
@@ -428,18 +542,25 @@ function confirmCancelAllRolls(): Promise<boolean> {
 function collectPendingRolls(): PendingHumanityRoll[] {
   return Array.from(game.actors).flatMap((actor) =>
     getPendingHumanityRolls(actor).filter(
-      ({ userId }) => game.user?.isGM || game.user?.id === userId,
+      ({ userId, actorId }) =>
+        !isActorExcluded(actorId) &&
+        (game.user?.isGM || game.user?.id === userId),
     ),
   );
 }
 
+function pendingAcknowledgments(): PayoutAcknowledgment[] {
+  const recipients = new Set(Array.from(game.users, (user) => user.id));
+  return allActorRecords("acknowledgments").filter(
+    (entry): entry is PayoutAcknowledgment =>
+      isAcknowledgment(entry) &&
+      !entry.acknowledgedAt &&
+      recipients.has(entry.userId) &&
+      (game.user?.isGM === true || entry.userId === game.user?.id),
+  );
+}
 function collectAcknowledgments(): PayoutAcknowledgment[] {
-  return Array.from(game.users).flatMap((user) => {
-    if (!game.user?.isGM && game.user?.id !== user.id) return [];
-    return getAcknowledgments(user).filter(
-      ({ acknowledgedAt }) => !acknowledgedAt,
-    );
-  });
+  return normalizeAcknowledgments(pendingAcknowledgments());
 }
 
 function buildInboxCards(
@@ -448,8 +569,8 @@ function buildInboxCards(
   showUserName: boolean,
 ): InboxCard[] {
   const cards = new Map<string, InboxCard>();
-  const keyFor = (payoutRecordId: string, userId: string, actorId: string) =>
-    `${payoutRecordId}:${userId}:${actorId}`;
+  const keyFor = (payoutRecordId: string, _userId: string, actorId: string) =>
+    `${payoutRecordId}:${actorId}`;
 
   for (const acknowledgment of acknowledgments) {
     const key = keyFor(
@@ -460,7 +581,8 @@ function buildInboxCards(
     cards.set(key, {
       id: acknowledgment.id,
       sessionLabel: acknowledgment.sessionLabel || "Payout",
-      inGameDate: acknowledgment.inGameDate?.trim() || "Date not recorded",
+      inGameDate:
+        displayDate(acknowledgment.inGameDate?.trim()) || "Date not recorded",
       userName: acknowledgment.userName,
       actorName: acknowledgment.actorName,
       createdAt: acknowledgment.createdAt,
@@ -510,26 +632,14 @@ function buildInboxCards(
   return sorted;
 }
 
-async function pruneResolvedAcknowledgments(): Promise<void> {
-  const users = game.user?.isGM
-    ? Array.from(game.users)
-    : game.user
-      ? [game.user]
-      : [];
-  await Promise.all(
-    users.map(async (user) => {
-      const entries = getAcknowledgments(user);
-      const pending = entries.filter(({ acknowledgedAt }) => !acknowledgedAt);
-      if (pending.length === entries.length) return;
-      await user.update({
-        [`flags.${MODULE_ID}.payoutAcknowledgments`]: pending,
-      });
-    }),
+export function getAcknowledgments(user: FoundryUser): PayoutAcknowledgment[] {
+  return normalizeAcknowledgments(
+    allActorRecords("acknowledgments").filter(
+      (entry) => isAcknowledgment(entry) && entry.userId === user.id,
+    ),
   );
 }
-
-function getAcknowledgments(user: FoundryUser): PayoutAcknowledgment[] {
-  const value = user.getFlag(MODULE_ID, "payoutAcknowledgments");
+function normalizeAcknowledgments(value: unknown[]): PayoutAcknowledgment[] {
   return Array.isArray(value)
     ? value.filter(isAcknowledgment).map((entry) => ({
         ...structuredClone(entry),
@@ -558,11 +668,16 @@ function getAcknowledgments(user: FoundryUser): PayoutAcknowledgment[] {
 async function rollbackAcknowledgments(
   snapshots: Array<{ user: FoundryUser; entries: PayoutAcknowledgment[] }>,
 ): Promise<void> {
-  await Promise.allSettled(
-    snapshots.map(({ user, entries }) =>
-      user.update({ [`flags.${MODULE_ID}.payoutAcknowledgments`]: entries }),
-    ),
+  const results = await Promise.allSettled(
+    snapshots.map(({ user, entries }) => saveAcknowledgments(user, entries)),
   );
+  const failed = results.filter((r) => r.status === "rejected");
+  if (failed.length)
+    throw new Error(
+      "Acknowledgment rollback incomplete for " +
+        failed.length +
+        " recipient(s).",
+    );
 }
 
 async function updateRelatedChatMessages(
@@ -578,7 +693,15 @@ async function updateRelatedChatMessages(
     );
   });
   await Promise.allSettled(
-    messages.map((message) => message.update({ content })),
+    messages.map((message) => {
+      const reference = message.getFlag(MODULE_ID, "humanityPrompt") as {
+        actorId: string;
+      };
+      return message.update({
+        content,
+        whisper: activityRollRecipients(game.actors.get(reference.actorId)),
+      });
+    }),
   );
 }
 
@@ -615,7 +738,7 @@ function formatPayoutChange(
     humanityGain: "Humanity Gain",
     humanityLoss: "Humanity Loss",
     reputation: "Reputation",
-    factionReputation: "Specific Reputation",
+    factionReputation: "Faction Reputation",
     item: "Item",
     downtime: "Downtime",
   };
@@ -667,10 +790,50 @@ function iconForAwardText(text: string): string {
   if (label === "ip") return iconForReward("ip");
   if (label.startsWith("humanity gain")) return iconForReward("humanityGain");
   if (label.startsWith("humanity loss")) return iconForReward("humanityLoss");
-  if (label.startsWith("specific reputation"))
+  if (label.startsWith("faction reputation"))
     return iconForReward("factionReputation");
   if (label.startsWith("reputation")) return iconForReward("reputation");
   if (label.startsWith("downtime")) return iconForReward("downtime");
   if (label.startsWith("item")) return iconForReward("item");
   return "fas fa-circle";
+}
+
+// Receipts are owned by the character; User IDs only identify which recipient saw them.
+async function saveAcknowledgments(
+  user: FoundryUser,
+  entries: PayoutAcknowledgment[],
+): Promise<void> {
+  for (const actor of game.actors) {
+    const previous = actorPayoutRecords<PayoutAcknowledgment>(
+      actor.id,
+      "acknowledgments",
+    );
+    const incoming = entries.filter((e) => e.actorId === actor.id);
+    if (!incoming.length && !previous.some((e) => e.userId === user.id))
+      continue;
+    await saveActorPayoutRecords(actor, "acknowledgments", [
+      ...previous.filter((e) => e.userId !== user.id),
+      ...incoming,
+    ]);
+  }
+}
+
+export async function acknowledgePayout(
+  user: FoundryUser,
+  id: string,
+): Promise<void> {
+  if (!game.user?.isGM && game.user?.id !== user.id)
+    throw new Error("This receipt belongs to another recipient.");
+  const entries = getAcknowledgments(user);
+  await saveAcknowledgments(
+    user,
+    entries.map((entry) =>
+      entry.id === id
+        ? {
+            ...entry,
+            acknowledgedAt: entry.acknowledgedAt ?? new Date().toISOString(),
+          }
+        : entry,
+    ),
+  );
 }
