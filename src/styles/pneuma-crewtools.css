@@ -3488,3 +3488,8 @@ html[data-cpr-theme="darkmode"] .pneuma-crewtools .netrunner-role {
   border-color: var(--pneuma-purple);
   background: rgba(225, 123, 32, 0.16);
 }
+
+/* Keep the locked Netrunner requirement beneath its slot number. */
+.pneuma-crewtools .netrunner-role .tech-slot > .notes {
+  flex-basis: 100%;
+}

@@ -737,3 +737,69 @@ test("failed HQ page creation preserves Actor metadata for retry", async () => {
   assert.equal(actor.getFlag("pneuma-crewtools", "hq"), undefined);
   assert.equal(actor.getFlag("pneuma-crewtools", "rent"), undefined);
 });
+
+test("HQ deletion marks inactive, hides native documents and preserves contents and records", async () => {
+  const f = fixture();
+  const id = await f.api.saveHeadquarters({ name: "Retired HQ" });
+  const other = await f.api.saveHeadquarters({ name: "Active HQ" });
+  const actor = f.game.actors.get(id);
+  actor.items = [{ name: "Stored gear" }];
+  actor.ownership.specificPlayer = 3;
+  const page = f.records.hqPage(id);
+  page.ownership.specificPlayer = 3;
+  const properties = structuredClone(page.flags["pneuma-crewtools"].properties);
+  const rental = structuredClone(page.flags["pneuma-crewtools"].rent);
+  const ip = f.api.headquartersIp();
+  f.game.user.isGM = false;
+  await assert.rejects(f.api.deactivateHeadquarters(id), /GM/);
+  f.game.user.isGM = true;
+  await f.api.deactivateHeadquarters(id);
+  await f.api.deactivateHeadquarters(id);
+  assert.equal(page.getFlag("pneuma-crewtools", "inactive"), true);
+  assert.equal(actor.ownership.default, 0);
+  assert.equal(actor.ownership.specificPlayer, 0);
+  assert.equal(page.ownership.default, 0);
+  assert.equal(page.ownership.specificPlayer, 0);
+  assert.deepEqual(actor.items, [{ name: "Stored gear" }]);
+  assert.deepEqual(page.flags["pneuma-crewtools"].properties, properties);
+  assert.deepEqual(page.flags["pneuma-crewtools"].rent, rental);
+  assert.equal(f.api.headquartersIp(), ip);
+  assert.deepEqual(
+    Array.from(f.api.getHeadquarters().headquarters, (h) => h.id),
+    [other],
+  );
+  assert.equal(f.records.canPayHq(id), false);
+  const form = new f.api.HeadquartersForm();
+  form.selectedId = id;
+  const gm = form.getData();
+  assert.equal(gm.hq.id, other);
+  assert.equal(gm.inactiveHqs[0].name, "Retired HQ");
+  assert.equal(
+    gm.containers.some((c) => c.id === id),
+    false,
+  );
+  await assert.rejects(
+    f.api.saveHeadquarters({ id, name: "Reused HQ" }),
+    /inactive/,
+  );
+  f.game.user.isGM = false;
+  assert.equal(form.getData().inactiveHqs.length, 0);
+  const template = Handlebars.compile(
+    fs.readFileSync("static/templates/headquarters.hbs", "utf8"),
+  );
+  assert.match(template(gm), /data-delete-hq/);
+  assert.doesNotMatch(template(form.getData()), /data-delete-hq|Retired HQ/);
+});
+test("failed HQ deactivation restores container permissions", async () => {
+  const f = fixture();
+  const id = await f.api.saveHeadquarters({ name: "HQ" });
+  const actor = f.game.actors.get(id);
+  actor.ownership.player = 3;
+  const before = structuredClone(actor.ownership);
+  f.records.hqPage(id).update = async () => {
+    throw Error("page failed");
+  };
+  await assert.rejects(f.api.deactivateHeadquarters(id), /page failed/);
+  assert.deepEqual(actor.ownership, before);
+  assert.equal(f.api.getHeadquarters().headquarters.length, 1);
+});

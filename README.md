@@ -61,7 +61,7 @@ See [Actor identity and exclusions](docs/actor-tracking.md) for the module-wide 
 
 Native role tables are created under Rollable Tables → CrewTools. See [Hustle table format and planned integration](docs/hustle-tables.md).
 
-Netrunners see their inventory cyberdecks in the Player Hub, with native Owned/Carried/Equipped, Manage Programs and Manage Upgrades controls. Their **Craft Cyberdecks, Programs and Hardware** downtime section has one project slot, requires an HQ **Server Room II**, and always uses **Electronics/Security Tech**. It supports Fabricate, Upgrade, Invention and Repair.
+Netrunners see their inventory cyberdecks in the Player Hub, with native Owned/Carried/Equipped, Manage Programs and Manage Upgrades controls. Their **Netrunner - Projects** downtime section has one project slot, requires an HQ **Server Room II**, and always uses **Electronics/Security Tech**. It supports Fabricate, Upgrade, Invention and Repair.
 
 See [TECH project workflow and Journal format](docs/tech-projects.md) for crafting, upgrades, inventions and configurable crafting months.
 
@@ -75,7 +75,7 @@ Character bookkeeping is organized in one **Crew Tools — Character** Journal, 
 
 HQ management includes editable improvements, explicit Medbay/Workshop effects, shared IP corrections, and rent setup/payment progress. See [Headquarters](docs/headquarters.md).
 
-Players can choose **HUD only**, **Token Controls only**, or **Both** under **Module Settings → HUD → Crew Tools shortcut location**. This personal, client-scoped setting updates the shortcuts immediately; the calendar remains visible. Both is the default.
+Players can choose **HUD only**, **Token Controls only**, or **Both** under **Module Settings → HUD → Crew Tools shortcut location**. This personal, client-scoped setting updates the shortcuts immediately; the calendar remains visible. Both is the default. **Hide Crew Tools HUD** hides the entire HUD and restores the original Foundry logo; token controls follow the shortcut setting.
 
 GMs can use **GM Dashboard → Export Payout to Discord** to select any saved payout and copy its recorded rewards. Historical names, amounts, and pending-roll status come from the ledger; mentions use current Discord links. Exporting never applies rewards again.
 

@@ -410,7 +410,7 @@ export class DowntimeForm extends CrewToolsForm {
           number: 1,
           canCraft: true,
           enabled: netEnabled,
-          requiredWorkshop: "Server Room II and Electronics/Security Tech",
+          requiredWorkshop: "Sever Room - Level 2",
           project: netProject,
           canAdd:
             netEnabled &&

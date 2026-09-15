@@ -1,5 +1,6 @@
 import {
   ensureHeadquartersJournal,
+  headquartersJournal,
   hqPage,
   canPayHq,
   hqProperties,
@@ -122,7 +123,12 @@ export function getHeadquarters(includeLedger = true): HeadquartersState {
     version: 1,
     transactions: structuredClone(stored?.transactions ?? []),
     headquarters: Array.from(game.actors)
-      .filter((actor) => actor.type === "container" && hqPage(actor.id))
+      .filter(
+        (actor) =>
+          actor.type === "container" &&
+          hqPage(actor.id) &&
+          hqPage(actor.id)?.getFlag?.(MODULE_ID, "inactive") !== true,
+      )
       .map((actor) => {
         const data = hqProperties(actor.id)!;
         return {
@@ -380,6 +386,10 @@ export async function saveHeadquarters(input: {
     const actor = actorId ? game.actors.get(actorId) : undefined;
     if (actorId && actor?.type !== "container")
       throw new Error("Choose a Cyberpunk RED container Actor.");
+    if (actorId && hqPage(actorId)?.getFlag?.(MODULE_ID, "inactive") === true)
+      throw new Error(
+        "This HQ is inactive. Remove its HQ Journal page and container to finish deleting it.",
+      );
     if (input.id && !hqPage(input.id))
       throw new Error("Headquarters no longer exists.");
     if (!input.id && actor && hqPage(actor.id))
@@ -563,6 +573,46 @@ export async function editHqImprovement(
     await save(state);
   });
 }
+// Soft deletion retains the HQ's records and contents for deliberate GM cleanup.
+// Revoke native visibility as well as excluding it from module discovery.
+export function deactivateHeadquarters(actorId: string): Promise<void> {
+  return withDowntimeLock(async () => {
+    const actor = game.actors.get(actorId);
+    const document = hqPage(actorId);
+    if (!actor || !document) throw new Error("Headquarters no longer exists.");
+    if (document.getFlag?.(MODULE_ID, "inactive") === true) return;
+    const ownership = structuredClone(actor.ownership ?? {});
+    const hidden = (current: Record<string, number> = {}) =>
+      Object.fromEntries(
+        ["default", ...Object.keys(current)].map((id) => [
+          "ownership." + id,
+          0,
+        ]),
+      );
+    await actor.update(hidden(ownership));
+    try {
+      await document.update({
+        ...hidden(document.ownership),
+        ["flags." + MODULE_ID + ".inactive"]: true,
+        "text.content":
+          "<p><strong>Inactive HQ.</strong> The GM may delete this HQ page and its container to finish removal. Keep the shared Headquarters Journal and Shared HQ IP page.</p>" +
+          (document.text?.content ?? ""),
+      });
+    } catch (error) {
+      // A failed page write must not leave an active HQ's container hidden.
+      await actor.update({
+        "ownership.default": ownership.default ?? 0,
+        ...Object.fromEntries(
+          Object.entries(ownership).map(([id, level]) => [
+            "ownership." + id,
+            level,
+          ]),
+        ),
+      });
+      throw error;
+    }
+  });
+}
 export async function removeHqImprovement(
   hqId: string,
   improvementId: string,
@@ -637,7 +687,11 @@ export class HeadquartersForm extends CrewToolsForm {
   }
   override getData(): object {
     const state = getHeadquarters(false);
-    if (this.selectedId === undefined)
+    if (
+      this.selectedId === undefined ||
+      (this.selectedId &&
+        !state.headquarters.some((h) => h.id === this.selectedId))
+    )
       this.selectedId = state.headquarters[0]?.id ?? "";
     const hq = state.headquarters.find((h) => h.id === this.selectedId);
     const actor = hq && game.actors.get(hq.actorId);
@@ -715,6 +769,15 @@ export class HeadquartersForm extends CrewToolsForm {
           (canPayHq(hq.actorId) &&
             !!game.user &&
             page()?.testUserPermission?.(game.user, "OWNER"))),
+      inactiveHqs: isDowntimeGM()
+        ? Array.from(headquartersJournal()?.pages ?? [])
+            .filter(
+              (p) =>
+                p.getFlag?.(MODULE_ID, "recordKey") === "hq" &&
+                p.getFlag?.(MODULE_ID, "inactive") === true,
+            )
+            .map((p) => ({ name: p.name }))
+        : [],
       hasHq: state.headquarters.length > 0,
       headquarters: state.headquarters.map((h) => ({
         ...h,
@@ -727,6 +790,7 @@ export class HeadquartersForm extends CrewToolsForm {
           (a) =>
             a.type === "container" &&
             !isActorExcluded(a.id) &&
+            hqPage(a.id)?.getFlag?.(MODULE_ID, "inactive") !== true &&
             !state.headquarters.some(
               (h) => h.actorId === a.id && h.id !== hq?.id,
             ),
@@ -777,6 +841,32 @@ export class HeadquartersForm extends CrewToolsForm {
     root?.querySelector("[data-new-hq]")?.addEventListener("click", () => {
       this.selectedId = "";
       this.render(true);
+    });
+    root?.querySelector("[data-delete-hq]")?.addEventListener("click", () => {
+      const actorId = this.selectedId;
+      if (!actorId) return;
+      void this.#perform(async () => {
+        const confirmed = await new Promise<boolean>((resolve) => {
+          new Dialog({
+            title: "Delete HQ",
+            content:
+              "<p>Mark this HQ inactive and hide its container and HQ Journal page from players? Its contents and records will be preserved. The GM can then delete that HQ page and container to finish removal. Keep the shared Headquarters Journal.</p>",
+            buttons: {
+              confirm: {
+                label: "Mark Inactive",
+                callback: () => resolve(true),
+              },
+              cancel: { label: "Cancel", callback: () => resolve(false) },
+            },
+            default: "cancel",
+            close: () => resolve(false),
+          }).render(true);
+        });
+        if (confirmed) {
+          await deactivateHeadquarters(actorId);
+          this.selectedId = undefined;
+        }
+      });
     });
     root
       ?.querySelector("[data-open-container]")

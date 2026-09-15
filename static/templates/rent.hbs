@@ -9,8 +9,12 @@
             >{{name}}</option>{{/if}}{{/each}}</select></div>{{/if}}
   {{#unless ready}}<p class="notes">The GM must add the rent and lifestyle
       charts in settings.</p>{{/unless}}
-  {{#if review}}<p class="notification error">A rent payment needs GM review
-      before further payments.</p>{{/if}}
+  {{#if interrupted}}<p class="notes">A previous payment needs attention before
+      you can pay again.</p>
+    <button type="button" data-rent-action="clearMarker"><i
+        class="fas fa-unlock"
+      ></i>
+      Resolve Payment Issue</button>{{/if}}
   <fieldset class="payout-heading hub-status"><legend><i
         class="fas fa-house"
       ></i>

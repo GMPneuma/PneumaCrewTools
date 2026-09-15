@@ -14,7 +14,10 @@ test("calendar ignores unrelated hooks and leaves unchanged dates untouched", ()
   };
   const label = { querySelector: () => line, setAttribute() {} };
   const root = { dataset: {}, querySelector: () => label };
-  const game = { time: { worldTime: 0 } };
+  const game = {
+    time: { worldTime: 0 },
+    settings: { get: () => false, register() {} },
+  };
   const deps = {
     "./action-coordinator": { isPrimaryGM: () => true },
     "./foundry-form": { CrewToolsForm: class {} },

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.7.5 - 2026-09-15
+
+- Added a personal Hide Crew Tools HUD setting that restores the original Foundry logo.
+- Added role heading icons and simplified the Tech and Netrunner project headings and locked-slot requirement.
+- Fixed rent payment markers persisting after successful payments or rollbacks. Added Resolve Payment Issue for existing interrupted records, with confirmation and no changes to money or receipts.
+- Added GM-only Delete HQ: marks the HQ inactive, hides its container and Journal page from players, and removes its facility benefits and active rent choices. Records and contents remain for manual GM cleanup.
+
 ## 0.7.0 - 2026-09-15
 
 - Added Netrunner cyberdecks to the Player Hub with native equipment, program and upgrade controls. Cyberdecks appear three across with additional rows, black action icons, and orange Netrunner accents in Hub and Downtime.

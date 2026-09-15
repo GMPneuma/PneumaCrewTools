@@ -47,7 +47,8 @@ export interface CharacterRent {
     amount: number;
     description: string;
   }[];
-  attempt?: { reason: string; before: number; after: number };
+  // Explicit null clears the temporary marker when Foundry merges flag objects.
+  attempt?: { reason: string; before: number; after: number } | null;
 }
 export interface HqRentBill {
   period: string;

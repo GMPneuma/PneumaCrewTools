@@ -270,7 +270,8 @@
           class="payout-heading hub-status"
           data-downtime-section="other"
         >
-          <summary>Other Activity</summary>
+          <summary><i class="fas fa-clipboard-list" aria-hidden="true"></i>
+            Other Activity</summary>
           <div class="downtime-other-row">
             <label class="downtime-days-label"># of days
               <input
@@ -349,7 +350,8 @@
               class="payout-heading hub-status downtime-tech"
               data-downtime-section="tech"
             >
-              <summary>{{#if canCraft}}TECH Projects{{else}}Repair Gear{{/if}}</summary>
+              <summary><i class="fas fa-wrench" aria-hidden="true"></i>
+                {{#if canCraft}}Tech - Projects{{else}}Repair Gear{{/if}}</summary>
               {{#if workshop}}<p class="notes">Workshop
                   {{workshop}}
                   · one downtime day advances
@@ -440,9 +442,8 @@
               class="payout-heading hub-status downtime-tech netrunner-role"
               data-downtime-section="netrunner"
             >
-              <summary>Craft Cyberdecks, Programs and Hardware</summary>
-              <p class="notes">Netrunner · 1 project · Electronics/Security Tech
-                · Requires HQ Server Room II.</p>
+              <summary><i class="fas fa-microchip" aria-hidden="true"></i>
+                Netrunner - Projects</summary>
               {{#each netrunnerSlots}}
                 <div
                   class="tech-slot"

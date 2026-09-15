@@ -191,7 +191,7 @@ export function characterRentHtml(data: CharacterRent): string {
         )
       : "") +
     (data.attempt
-      ? "<p><strong>Payment needs review:</strong> " +
+      ? "<p><strong>Interrupted payment:</strong> " +
         esc(data.attempt.reason) +
         "; money " +
         data.attempt.before +
@@ -226,7 +226,7 @@ async function saveCharacterRent(actor: FoundryActor, data: CharacterRent) {
     journal,
     RENT_KEY,
     "Rent & Lifestyle",
-    data,
+    { ...data, attempt: data.attempt ?? null },
     "",
     characterRentHtml(data),
   );
@@ -383,7 +383,9 @@ export function saveResidence(
       before = characterRent(actorId),
       data = structuredClone(before);
     if (data.attempt)
-      throw new Error("An interrupted payment needs GM review first.");
+      throw new Error(
+        "Open Rent & Lifestyle and select Resolve Payment Issue to continue.",
+      );
     validateChoice(choice);
     data.choice = {
       ...choice,
@@ -402,6 +404,54 @@ export function saveResidence(
     else await saveCharacterRent(actor, data);
   });
 }
+// Older versions could leave a marker after a successful payment. Owners can
+// clear it explicitly; this operation never changes money, bills or receipts.
+export function clearRentPaymentMarker(actorId: string): Promise<void> {
+  return queueAction(async () => {
+    owner(actorId);
+    const data = characterRent(actorId);
+    if (!data.attempt) return;
+    const confirmed = await new Promise<boolean>((resolve) => {
+      new Dialog({
+        title: "Resolve Payment Issue",
+        content:
+          "<p>Payment: " +
+          esc(data.attempt!.reason) +
+          "</p><p>Recorded money change: " +
+          data.attempt!.before +
+          " to " +
+          data.attempt!.after +
+          " eb.</p><p>A previous payment was interrupted or did not finish saving correctly. This will allow payments again without changing your money, bills or receipts. Before continuing, check your character money ledger and paid bills to avoid paying twice.</p>",
+        buttons: {
+          confirm: {
+            label: "Allow Payments Again",
+            callback: () => resolve(true),
+          },
+          cancel: { label: "Cancel", callback: () => resolve(false) },
+        },
+        default: "cancel",
+        close: () => resolve(false),
+      }).render(true);
+    });
+    if (!confirmed) return;
+    // Re-read after the dialog to preserve unrelated changes and reject a
+    // different payment that began while the confirmation was open.
+    const current = characterRent(actorId);
+    if (JSON.stringify(current.attempt) !== JSON.stringify(data.attempt))
+      throw new Error(
+        "Payment changed. Reopen Rent & Lifestyle and try again.",
+      );
+    current.attempt = null;
+    await writeRecord(
+      actorPayoutJournal(actorId)!,
+      RENT_KEY,
+      "Rent & Lifestyle",
+      current,
+      "",
+      characterRentHtml(current),
+    );
+  });
+}
 // Money and its Journal receipt are separate Foundry writes; restore both on ordinary failure.
 async function payAndSave(
   actor: FoundryActor,
@@ -411,7 +461,9 @@ async function payAndSave(
   reason: string,
 ) {
   if (before.attempt)
-    throw new Error("An interrupted rent payment needs GM review.");
+    throw new Error(
+      "Open Rent & Lifestyle and select Resolve Payment Issue to continue.",
+    );
   const change = moneyChange(actor, -amount, reason);
   await saveCharacterRent(actor, {
     ...before,
@@ -726,7 +778,7 @@ export function rentStatus(actorId: string) {
   return {
     due: (data.due?.length ?? 0) > 0 || sharedRentDue(),
     pending,
-    needsReview: !!data.attempt,
+    interrupted: !!data.attempt,
     residence: data.choice.residence.startsWith("hq:")
       ? (getHeadquarters(false).headquarters.find(
           (hq) => hq.actorId === data.choice.residence.slice(3),

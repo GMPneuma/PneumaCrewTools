@@ -19,7 +19,7 @@ export function showTokenShortcuts(): boolean {
 export function registerShortcutDisplay(refreshHud: () => void): void {
   game.settings.register(MODULE_ID, SHORTCUT_DISPLAY_SETTING, {
     name: "Crew Tools shortcut location",
-    hint: "Choose where Crew Tools shortcut buttons appear on this device. The calendar remains visible.",
+    hint: "Choose where Crew Tools shortcut buttons appear on this device. The calendar remains visible unless Hide Crew Tools HUD is enabled.",
     scope: "client",
     config: true,
     type: String,

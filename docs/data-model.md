@@ -98,7 +98,7 @@ Administer Pharma keeps Item snapshots while withdrawals, deliveries, or refunds
 
 The calendar listens to world-time changes and only rewrites its date when the displayed day changes. HQ Actor refreshes are restricted to relevant HQ metadata, rent, appearance, and ownership changes.
 
-HQ rent contributions settle immediately when the current player owns the paying character and the HQ Journal page. One Headquarters Journal holds one editable page per HQ (Stats & Improvements and Rent & Payments headings) plus an editable shared IP ledger. Container ownership remains unchanged. Receipt IDs prevent duplicate confirmation/refunds on retry. The queue serializes actions on one client only; cross-client simultaneous-payment coordination is intentionally not implemented.
+HQ rent contributions settle immediately when the current player owns the paying character and the HQ Journal page. One Headquarters Journal holds one editable page per HQ (Stats & Improvements and Rent & Payments headings) plus an editable shared IP ledger. Container ownership remains unchanged during normal use. GM deletion sets `flags.pneuma-crewtools.inactive` on the HQ page and removes player visibility from that page and container. Inactive HQs are excluded from active discovery; records, contents and shared IP remain intact for manual cleanup. Receipt IDs prevent duplicate confirmation/refunds on retry. The queue serializes actions on one client only; cross-client simultaneous-payment coordination is intentionally not implemented.
 
 ## Module data maintenance
 

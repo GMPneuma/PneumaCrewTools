@@ -169,9 +169,28 @@ export function openCampaignCalendar(): void {
     report(error);
   }
 }
+// Retain the native node, including handlers and attributes, for exact restoration.
+let displacedLogo: HTMLElement | null = null;
+export const HIDE_HUD_SETTING = "hideCrewHud";
+function hudHidden(): boolean {
+  try {
+    return game.settings.get(MODULE_ID, HIDE_HUD_SETTING) === true;
+  } catch {
+    return false;
+  }
+}
 function renderCalendar(): void {
   if (!ready) return;
   let root = document.getElementById("pneuma-crewtools-calendar");
+  if (hudHidden()) {
+    if (root) {
+      if (displacedLogo && !document.getElementById("logo"))
+        root.replaceWith(displacedLogo);
+      else root.remove();
+    }
+    displacedLogo = null;
+    return;
+  }
   if (!root) {
     root = document.createElement("div");
     root.id = "pneuma-crewtools-calendar";
@@ -180,6 +199,7 @@ function renderCalendar(): void {
     const logo = document.getElementById("logo");
     if (logo) {
       root.classList.add("pneuma-calendar--logo-slot");
+      displacedLogo = logo;
       logo.replaceWith(root);
     } else {
       document.body.append(root);
@@ -220,7 +240,22 @@ function renderCalendar(): void {
   label.querySelector(".pneuma-calendar-year")!.textContent = year;
   label.setAttribute("aria-label", monthDay + ", " + year);
 }
-export function registerCampaignCalendar(): void {
+export function registerCampaignCalendar(
+  refreshHud: () => void = () => {},
+): void {
+  // Client preference applies immediately and never changes the campaign clock.
+  game.settings.register(MODULE_ID, HIDE_HUD_SETTING, {
+    name: "Hide Crew Tools HUD",
+    hint: "Hide the entire calendar and Hub HUD on this device and restore the original Foundry logo. Token Controls shortcuts remain available according to your shortcut setting.",
+    scope: "client",
+    config: true,
+    type: Boolean,
+    default: false,
+    onChange: () => {
+      renderCalendar();
+      refreshHud();
+    },
+  });
   Hooks.on("updateWorldTime", () => renderCalendar());
 }
 export function readyCampaignCalendar(): void {

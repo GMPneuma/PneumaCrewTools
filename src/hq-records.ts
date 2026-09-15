@@ -39,7 +39,8 @@ export function readHqRent(actorId: string): HqRent {
 }
 export function canPayHq(actorId: string): boolean {
   const page = hqPage(actorId);
-  if (!page || !game.user) return false;
+  if (!page || !game.user || page.getFlag?.(MODULE_ID, "inactive") === true)
+    return false;
   return (
     game.user.isGM || page.testUserPermission?.(game.user, "OWNER") === true
   );

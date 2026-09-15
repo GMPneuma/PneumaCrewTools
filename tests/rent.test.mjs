@@ -54,6 +54,7 @@ function fixture() {
     hq = actor("HQ", null, "container");
   const hooks = new Map();
   const forms = [];
+  const dialogs = [];
   const docs = journalWorld(game),
     cache = new Map();
   const hqs = [{ id: "hq", actorId: hq.id, name: "Home", improvements: [] }];
@@ -86,6 +87,12 @@ function fixture() {
       Hooks: {
         on: (name, fn) => hooks.set(name, fn),
         once: (name, fn) => hooks.set(name, fn),
+      },
+      Dialog: class {
+        constructor(data) {
+          dialogs.push(data);
+        }
+        render() {}
       },
       FormApplication: class {
         render() {
@@ -129,6 +136,7 @@ function fixture() {
     prepare,
     hooks,
     forms,
+    dialogs,
     date: (v) => (date = v),
   };
 }
@@ -246,7 +254,7 @@ test("payment failures restore money and bills; another player cannot pay or cha
   assert.equal(f.a.system.wealth.value, 5000);
   assert.equal(f.api.characterRent("A").bills.length, 0);
   assert.equal(f.api.characterRent("A").due.length, 1);
-  assert.equal(f.api.characterRent("A").attempt, undefined);
+  assert.equal(f.api.characterRent("A").attempt, null);
 });
 test("supplied charts are defaults, rates are GM-managed, and maintenance preserves rent pages", async () => {
   const f = fixture();
@@ -613,4 +621,102 @@ test("HQ page owners reconcile prior pending overpayments and receive refunds wi
   assert.equal(f.api.hqRent(f.hq).bills[0].paid, 1000);
   assert.equal(f.b.system.wealth.value, 4700);
   assert.equal(f.api.characterRent("B").contributions[0].refunded, 400);
+});
+
+// Foundry recursively merges object flags; omitted keys survive an update.
+function mergeRentFlags(page) {
+  const update = page.update;
+  const merge = (target, source) => {
+    for (const [key, value] of Object.entries(source)) {
+      if (value && typeof value === "object" && !Array.isArray(value)) {
+        target[key] = merge(
+          target[key] && typeof target[key] === "object" ? target[key] : {},
+          value,
+        );
+      } else target[key] = structuredClone(value);
+    }
+    return target;
+  };
+  page.update = function (data) {
+    const key = "flags.pneuma-crewtools.data";
+    if (data[key])
+      data = {
+        ...data,
+        [key]: merge(
+          structuredClone(this.getFlag("pneuma-crewtools", "data")),
+          data[key],
+        ),
+      };
+    return update.call(this, data);
+  };
+}
+test("Foundry flag merging clears successful and rolled-back rent payment markers", async () => {
+  const f = fixture();
+  await f.prepare();
+  await f.api.saveResidence("A", {
+    residence: "apt",
+    modifier: 0,
+    lifestyle: "food",
+  });
+  await f.api.issueRent();
+  f.game.user = f.one;
+  const page = f.store.recordPage(f.store.actorPayoutJournal("A"), "rent");
+  mergeRentFlags(page);
+  await f.api.payPersonalRent("A", "2078-02", "rent");
+  assert.equal(f.api.characterRent("A").attempt, null);
+  assert.equal(f.a.system.wealth.value, 4000);
+  const update = page.update;
+  let writes = 0;
+  page.update = function (data) {
+    if (++writes === 2) throw Error("receipt failed");
+    return update.call(this, data);
+  };
+  await assert.rejects(
+    f.api.payPersonalRent("A", "2078-02", "lifestyle"),
+    /receipt failed/,
+  );
+  assert.equal(f.api.characterRent("A").attempt, null);
+  assert.equal(f.a.system.wealth.value, 4000);
+  await f.api.payPersonalRent("A", "2078-02", "lifestyle");
+  assert.equal(f.a.system.wealth.value, 3900);
+  assert.equal(f.api.characterRent("A").attempt, null);
+});
+test("owners can clear legacy markers with confirmation without changing money or receipts", async () => {
+  const f = fixture();
+  await f.prepare();
+  await f.api.saveResidence("A", {
+    residence: "apt",
+    modifier: 0,
+    lifestyle: "food",
+  });
+  await f.api.issueRent();
+  await f.api.payPersonalRent("A", "2078-02", "rent");
+  const page = f.store.recordPage(f.store.actorPayoutJournal("A"), "rent");
+  page.flags["pneuma-crewtools"].data.attempt = {
+    reason: "Rent",
+    before: 5000,
+    after: 4000,
+  };
+  mergeRentFlags(page);
+  const money = structuredClone(f.a.system.wealth);
+  const before = structuredClone(f.api.characterRent("A"));
+  f.game.user = f.two;
+  await assert.rejects(f.api.clearRentPaymentMarker("A"), /owned/);
+  f.game.user = f.one;
+  for (const action of ["cancel", "close", "confirm"]) {
+    const pending = f.api.clearRentPaymentMarker("A");
+    await new Promise((resolve) => setImmediate(resolve));
+    const dialog = f.dialogs.at(-1);
+    assert.equal(dialog.default, "cancel");
+    if (action === "close") dialog.close();
+    else dialog.buttons[action].callback();
+    await pending;
+    assert.deepEqual(f.a.system.wealth, money);
+    assert.deepEqual(structuredClone(f.api.characterRent("A")), {
+      ...before,
+      attempt: action === "confirm" ? null : before.attempt,
+    });
+  }
+  await f.api.payPersonalRent("A", "2078-02", "lifestyle");
+  assert.equal(f.a.system.wealth.value, 3900);
 });

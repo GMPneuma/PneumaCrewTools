@@ -12,7 +12,7 @@ import {
 import { registerHustleTables, readyHustleTables } from "./hustle-tables";
 import { registerActorExclusions } from "./actor-exclusions";
 import { registerSettingsLayout } from "./settings-layout";
-import { registerCrewHud, readyCrewHud } from "./crew-hud";
+import { registerCrewHud, readyCrewHud, refreshCrewHud } from "./crew-hud";
 import { registerHeadquarters, readyHeadquarters } from "./headquarters";
 import {
   registerDowntime,
@@ -60,7 +60,7 @@ Hooks.once("init", () => {
   registerSettingsLayout();
   // Make attribution available to players as well as GMs.
   registerIconCredits();
-  registerCampaignCalendar();
+  registerCampaignCalendar(refreshCrewHud);
   registerCrewHud();
   registerDowntime();
   registerHeadquarters();

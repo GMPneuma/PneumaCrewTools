@@ -110,3 +110,10 @@ Residence status is informational; automatic checks and penalties remain outside
 - [ ] Align remaining documentation, changelog, manifest and package contents before the next requested release.
 
 Live verification is a separate gate from implemented features. Deferred mechanics are not required to complete the currently agreed Pharma scope.
+
+## 0.7.5 maintenance
+
+- [x] Personal option to hide the full HUD and restore native Foundry elements.
+- [x] Clearer role headings and icons.
+- [x] Explicit rent payment-marker clearing and owner-accessible issue resolution.
+- [x] HQ soft deletion with retained records and contents for GM cleanup.

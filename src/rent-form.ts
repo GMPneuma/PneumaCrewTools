@@ -28,6 +28,7 @@ import {
   setHqRent,
   saveRentRates,
   reconcileRent,
+  clearRentPaymentMarker,
 } from "./rent";
 let rentWindow: RentForm | undefined;
 const report = (error: unknown) =>
@@ -132,7 +133,7 @@ class RentForm extends CrewToolsForm {
           },
         })),
       pending: data.contributions.filter((c) => c.status === "pending"),
-      review: data.attempt,
+      interrupted: !!data.attempt,
       headquarters: hqs.map((hq) => {
         const actor = game.actors.get(hq.actorId),
           state = actor && hqRent(actor);
@@ -210,6 +211,8 @@ class RentForm extends CrewToolsForm {
             .forEach((b) => (b.disabled = true));
           void (async () => {
             const action = button.dataset.rentAction;
+            if (action === "clearMarker")
+              await clearRentPaymentMarker(this.actorId!);
             if (action === "residence")
               await saveResidence(this.actorId!, selectedChoice());
             if (action === "rent" || action === "lifestyle")

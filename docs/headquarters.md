@@ -54,3 +54,9 @@ Properties are edited alongside the clickable Container image. Bedrooms and an o
 The built-in catalog uses the twelve No Place Like Home improvements (pages 3–6), with short summaries and 40 HQ IP costs. Buying the same catalog entry increases its recorded level. Capacity counts distinct improvements. No new benefit mechanics or upgrade eligibility rules are automated; existing Medbay and Workshop presence checks remain.
 
 Settings → Headquarters → Manage Custom Improvements adds short named entries with any non-negative whole HQ IP cost, and permits editing custom costs or removing catalog options. Existing purchased entries remain intact. Custom definitions live in the HQ Improvements Journal, not on character Actors.
+
+## Removing an HQ
+
+The primary GM can select **Delete HQ** and confirm **Mark Inactive**. This hides the HQ's container and Journal page from players and removes it from HQ choices, new rent billing and facility benefits. Contents, payment history and shared HQ IP are preserved; no IP is refunded.
+
+Inactive HQs remain listed for the GM. To finish removal, manually delete that HQ's page from the shared Headquarters Journal and its container Actor. Keep the Headquarters Journal itself and its Shared HQ IP page. Residents should choose a new active residence. Existing payment records are retained.

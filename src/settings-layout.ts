@@ -9,6 +9,7 @@ const GROUP_KEYS: Record<string, string[]> = {
   Headquarters: ["hqImprovements"],
   Teammates: ["loyaltyCheckDie"],
   HUD: [
+    "hideCrewHud",
     "shortcutDisplay",
     "calendarFontColor",
     "hudIconColor",
