@@ -190,6 +190,43 @@
         </div>
       </fieldset>
     {{/if}}
+    {{#if netrunner.visible}}
+      <section class="payout-heading hub-status netrunner-decks">
+        <h3>Netrunner · Cyberdecks</h3>
+        {{#each netrunner.decks}}
+          <div
+            class="netrunner-deck item"
+            data-item-id="{{id}}"
+            data-item-category="cyberdeck"
+          >
+            <a
+              class="netrunner-deck-name"
+              data-deck-action="open"
+              data-item-id="{{id}}"
+            ><img src="{{img}}" alt="" />{{name}}</a>
+            <div class="netrunner-deck-actions">
+              <button
+                type="button"
+                data-deck-action="equip"
+                data-item-id="{{id}}"
+                data-item-prop="system.equipped"
+                title="Cycle Owned / Carried / Equipped"
+              ><i class="{{icon}}"></i> {{state}}</button>
+              <button
+                type="button"
+                data-deck-action="programs"
+                data-item-id="{{id}}"
+              ><i class="fa-solid fa-folder-plus"></i> Manage Programs</button>
+              <button
+                type="button"
+                data-deck-action="upgrades"
+                data-item-id="{{id}}"
+              ><i class="fab fa-superpowers"></i> Manage Upgrades</button>
+            </div>
+          </div>
+        {{else}}<p class="notes">No cyberdecks in inventory.</p>{{/each}}
+      </section>
+    {{/if}}
     {{#if teammates.visible}}
       <fieldset class="payout-heading hub-status hub-teammates">
         <legend><i class="fas fa-user-tie"></i> Teammates</legend>

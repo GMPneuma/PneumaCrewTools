@@ -18,6 +18,8 @@ export const TECH_CATEGORIES = [
 ] as const;
 export type TechMode = "fabricate" | "upgrade" | "invention" | "repair";
 export interface TechInput {
+  // Absent on existing TECH projects; Netrunners have an independent single slot.
+  track?: "netrunner";
   mode: TechMode;
   slot: number;
   sourceUuid?: string;
@@ -117,6 +119,8 @@ export function validateTechEvent(event: DowntimeEvent) {
       !Number.isInteger(t.slot) ||
       t.slot < 0 ||
       t.slot > 2 ||
+      (t.track !== undefined && t.track !== "netrunner") ||
+      (t.track === "netrunner" && t.slot !== 0) ||
       !t.name?.trim() ||
       typeof t.description !== "string" ||
       !t.skillId ||

@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- Added Netrunner cyberdecks to the Player Hub with native equipment, program and upgrade controls.
+- Added one independent Netrunner crafting slot for Fabricate, Upgrade, Invention and Repair, requiring HQ Server Room II and Electronics/Security Tech.
+
+- Replaced the payout-only data manager with grouped record inspection, Journal links, targeted cleanup and downloadable reports.
+- Separated pending and completed receipt/Humanity cleanup and prevented shared-page receipt writes from overwriting each other.
+- Added versioned CrewTools backup exports and missing-reference checks. Import and restore are not included; use Foundry world backups for full recovery.
+
 ## 0.6.1 - 2026-09-15
 
 - Added Icon credits in module settings, available to players and GMs.

@@ -18,6 +18,8 @@ function load(name, globals, deps) {
   vm.runInNewContext(code, {
     exports,
     require: (k) => {
+      if (k === "./netrunner-panel" || k === "./netrunner-system")
+        return load(k.slice(2), globals, {});
       if (k === "./nomad-vehicles")
         return {
           nomadVehiclePanel: () => ({ visible: false, slots: [] }),

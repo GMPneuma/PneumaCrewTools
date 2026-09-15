@@ -45,7 +45,13 @@ export async function checkProject(
   actor: FoundryActor,
   project: ReturnType<typeof techProjects>[number],
 ) {
-  const skill = techSkills(actor).find((i) => i.id === project.skillId),
+  const netrunner = project.track === "netrunner";
+  const skill = techSkills(actor).find(
+      (i) =>
+        i.id === project.skillId &&
+        (!netrunner ||
+          normalizeSkillName(i.name) === "electronicssecuritytech"),
+    ),
     role = techRole(actor);
   const name = {
     fabricate: "Fabrication Expertise",
@@ -58,7 +64,8 @@ export async function checkProject(
   )?.abilities?.find((a) => a.name.toLowerCase() === name.toLowerCase());
   const repair = project.mode === "repair";
   // Native skill creation already includes role modifiers such as Field Expertise.
-  const rank = repair ? 0 : specialty?.rank;
+  // This role uses the native Electronics/Security Tech roll without a Maker bonus.
+  const rank = netrunner || repair ? 0 : specialty?.rank;
   if (!skill?.createRoll || !Number.isFinite(rank))
     throw new Error(
       "The native TECH skill or " + name + " specialty is unavailable.",
@@ -66,7 +73,7 @@ export async function checkProject(
   const roll = skill.createRoll("skill", actor);
   // Field Expertise belongs only to repairs, including when a native dialog reintroduces it.
   const excludeFieldExpertise = () => {
-    if (!repair && roll.mods) {
+    if ((netrunner || !repair) && roll.mods) {
       roll.mods = roll.mods.filter(
         (mod) => normalizeSkillName(mod.source) !== "fieldexpertise",
       );
@@ -94,7 +101,7 @@ export async function checkProject(
     burned: roll.resultTotal > project.dv ? 0 : project.half,
     skillId: skill.id,
     skillName: skill.name,
-    specialty: repair ? "Native skill modifiers" : name,
+    specialty: netrunner || repair ? "Native skill modifiers" : name,
     rank: rank!,
   };
 }

@@ -77,3 +77,15 @@ Settings → Crafting → Configure Armor Repair Times provides optional whole-d
 Workshop I supports two slots; Workshop II or above supports three. Without a Workshop the existing multiple-project setting still permits three independently funded slots. With a Workshop, Apply 1 day to all projects replaces individual day buttons and advances each enabled active project that still needs time for a single downtime-day charge. This Journal update is atomic at the character-state service boundary. A passed project reaching full progress this way exposes Complete Project for its Item update; completion costs no additional day.
 
 The shared techWorkshop transaction carries the single day charge; per-project techDay activity entries carry the credited progress. techFinish records completion without another charge.
+
+## Netrunner projects
+
+A ranked Netrunner / Interface role adds **Craft Cyberdecks, Programs and Hardware**, with one independent project slot. An HQ Server Room at level II or above enables it. All four actions use the TECH schedules, progress, retry and delivery workflow, but always roll the character’s native Electronics/Security Tech skill without adding Maker expertise or Interface. Workshop batching and the multiple-project setting do not affect this slot.
+
+Fabricate, Upgrade and Repair accept native Cyberdeck, Program and cyberdeck Item Upgrade documents (hardware). Invention creates the same descriptive blueprint Item as TECH invention; the GM defines the resulting cyberdeck, program or hardware. Repair keeps the original Item and records completion; system-specific repairs remain manual. Premium minimum prices and the existing crafting month setting still apply.
+
+The Server Room and skill are checked when starting or advancing work. Cancellation remains available after losing the room or role, returning held upgrades without refunding days. GM setup also prepares Upgrade Projects containers for Netrunners.
+
+Active Projects retains the existing tech lifecycle with optional **track: netrunner** on its starting specification. Older projects with no track remain ordinary TECH/repair projects. The track separates slot occupancy and Workshop progress without duplicating Journal records.
+
+The Player Hub reads all embedded Cyberdeck Items and opens their native sheets. Equipment clicks call the native character sheet equipment handler, preserving the one-equipped-deck restriction and installed-item propagation. Program and upgrade buttons call the native Item sheet managers with their stock icons.

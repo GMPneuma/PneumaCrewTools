@@ -1,3 +1,4 @@
+import { isNetrunner, netrunnerSkill, netrunnerItem } from "./netrunner-system";
 import { nomadRespecPanel, bindNomadVehicles } from "./nomad-vehicles";
 import { armorRepairDays } from "./repair-settings";
 import { accessibleCrewActors } from "./actor-policy";
@@ -56,6 +57,7 @@ import {
   requestHustleRoll,
   currentTechSlots,
   workshopLevel,
+  hasServerRoom,
   healingFormula,
   report,
 } from "./downtime-service";
@@ -65,6 +67,7 @@ export async function projectDialog(
   slot: number,
   mode: TechMode,
   sourceUuid?: string,
+  track?: "netrunner",
 ): Promise<void> {
   const actor = ownedCharacter(actorId);
   const source = sourceUuid
@@ -72,6 +75,10 @@ export async function projectDialog(
     : undefined;
   if (mode !== "invention" && source?.documentName !== "Item")
     throw new Error("Drop an Item onto the project first.");
+  if (track && (!isNetrunner(actor) || !hasServerRoom()))
+    throw new Error("Requires a ranked Netrunner and HQ Server Room II.");
+  if (track && source && !netrunnerItem(source))
+    throw new Error("Choose a Cyberdeck, Program, or cyberdeck Hardware Item.");
   const price = source ? itemPrice(source) : 100;
   const category = categoryForPrice(price);
   const schedule =
@@ -87,7 +94,10 @@ export async function projectDialog(
         ? armorRepairDays(category, !!techRole(actor))
         : undefined) ?? schedule.required)
     : undefined;
-  const skills = techSkills(actor);
+  const fixedSkill = track ? netrunnerSkill(actor) : undefined;
+  if (track && !fixedSkill)
+    throw new Error("Electronics/Security Tech is required.");
+  const skills = fixedSkill ? [fixedSkill] : techSkills(actor);
   if (!skills.length) throw new Error("This character has no TECH skills.");
   const input = await new Promise<TechInput | null>((resolve) => {
     new Dialog({
@@ -119,7 +129,9 @@ export async function projectDialog(
             schedule.dv +
             "</p>"
           : "") +
-        '<div class="form-group"><label>Item Skill</label><select name="skillId" required><option value="" selected disabled>Choose Item Skill…</option>' +
+        (fixedSkill
+          ? '<p>Skill: Electronics/Security Tech</p><select name="skillId" hidden>'
+          : '<div class="form-group"><label>Item Skill</label><select name="skillId" required><option value="" selected disabled>Choose Item Skill…</option>') +
         skills
           .map(
             (i) =>
@@ -130,7 +142,7 @@ export async function projectDialog(
               "</option>",
           )
           .join("") +
-        "</select></div></form>",
+        (fixedSkill ? "</select></form>" : "</select></div></form>"),
       buttons: {
         start: {
           label: "Start Project",
@@ -141,6 +153,7 @@ export async function projectDialog(
             const chosen = source ? category : val("category");
             resolve({
               mode,
+              track,
               slot,
               sourceUuid,
               name: source?.name ?? val("projectName"),
@@ -151,7 +164,7 @@ export async function projectDialog(
                 : chosen === "superLuxury"
                   ? Number(val("price"))
                   : TECH_CATEGORIES.find((c) => c.id === chosen)!.price,
-              skillId: val("skillId"),
+              skillId: fixedSkill?.id ?? val("skillId"),
             });
           },
         },
@@ -350,7 +363,16 @@ export class DowntimeForm extends CrewToolsForm {
     const available = balance - reservedMedicalDay(medicalPage);
     const fullWeek = requiresFullDowntimeWeek();
     const hustle = actor ? hustleDays(state, actor.id) : 0;
-    const projects = actor ? techProjects(state, actor.id) : [];
+    const allProjects = actor ? techProjects(state, actor.id) : [];
+    const projects = allProjects.filter((p) => p.track !== "netrunner");
+    const netProject = allProjects.find(
+      (p) => p.track === "netrunner" && p.active,
+    );
+    const netEnabled =
+      !!actor &&
+      isNetrunner(actor) &&
+      hasServerRoom() &&
+      !!netrunnerSkill(actor);
     const slotLimit = currentTechSlots();
     let healing: HealingResult | undefined;
     let healingError = "";
@@ -379,6 +401,32 @@ export class DowntimeForm extends CrewToolsForm {
     return {
       // The vehicle roster lives in the Hub; downtime exposes only its shared respec task.
       nomad: nomadRespecPanel(actor, state, available),
+      // A separate track keeps the role's one slot independent of Workshop batching.
+      netrunnerVisible: isNetrunner(actor) || !!netProject,
+      netrunnerSlots: [
+        {
+          slot: 0,
+          track: "netrunner",
+          number: 1,
+          canCraft: true,
+          enabled: netEnabled,
+          requiredWorkshop: "Server Room II and Electronics/Security Tech",
+          project: netProject,
+          canAdd:
+            netEnabled &&
+            available > 0 &&
+            !!netProject &&
+            netProject.progress < netProject.required,
+          canRoll: netEnabled && netProject?.canRoll,
+          canComplete:
+            netEnabled &&
+            netProject?.success &&
+            netProject.progress >= netProject.required,
+          progressPercent: netProject
+            ? Math.min(100, (100 * netProject.progress) / netProject.required)
+            : 0,
+        },
+      ],
       patientChoices: THERAPIES.map((t) => ({
         id: t.id,
         label: t.name + " · " + (this.patientPC ? 0 : t.cost) + " eb",
@@ -534,7 +582,13 @@ export class DowntimeForm extends CrewToolsForm {
               throw new Error(
                 "Drop an Item onto this slot to fabricate or upgrade it.",
               );
-            return projectDialog(field("actorId"), slot, "invention");
+            return projectDialog(
+              field("actorId"),
+              slot,
+              "invention",
+              undefined,
+              row.dataset.techTrack as "netrunner" | undefined,
+            );
           }),
       );
       const drop = row.querySelector<HTMLElement>("[data-tech-drop]");
@@ -558,7 +612,13 @@ export class DowntimeForm extends CrewToolsForm {
           );
           if (data.type !== "Item" || typeof data.uuid !== "string")
             throw new Error("Drop a native Item.");
-          await projectDialog(field("actorId"), slot, mode(), data.uuid);
+          await projectDialog(
+            field("actorId"),
+            slot,
+            mode(),
+            data.uuid,
+            row.dataset.techTrack as "netrunner" | undefined,
+          );
         });
       });
     });

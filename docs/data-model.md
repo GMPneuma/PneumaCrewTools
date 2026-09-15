@@ -99,3 +99,7 @@ Administer Pharma keeps Item snapshots while withdrawals, deliveries, or refunds
 The calendar listens to world-time changes and only rewrites its date when the displayed day changes. HQ Actor refreshes are restricted to relevant HQ metadata, rent, appearance, and ownership changes.
 
 HQ rent contributions settle immediately when the current player owns the paying character and the HQ Journal page. One Headquarters Journal holds one editable page per HQ (Stats & Improvements and Rent & Payments headings) plus an editable shared IP ledger. Container ownership remains unchanged. Receipt IDs prevent duplicate confirmation/refunds on retry. The queue serializes actions on one client only; cross-client simultaneous-payment coordination is intentionally not implemented.
+
+## Module data maintenance
+
+The Module Data manager reads native module documents directly. Versioned JSON backups contain CrewTools Journals, module Actor/Item flags, hustle tables, world settings and required folders. Exports support inspection and manual recovery; no import or restore operation is provided. Destructive operations use the primary GM queue, reject changed previews and report partial failures. See [Module Data maintenance](module-data.md).

@@ -61,6 +61,8 @@ See [Actor identity and exclusions](docs/actor-tracking.md) for the module-wide 
 
 Native role tables are created under Rollable Tables → CrewTools. See [Hustle table format and planned integration](docs/hustle-tables.md).
 
+Netrunners see their inventory cyberdecks in the Player Hub, with native Owned/Carried/Equipped, Manage Programs and Manage Upgrades controls. Their **Craft Cyberdecks, Programs and Hardware** downtime section has one project slot, requires an HQ **Server Room II**, and always uses **Electronics/Security Tech**. It supports Fabricate, Upgrade, Invention and Repair.
+
 See [TECH project workflow and Journal format](docs/tech-projects.md) for crafting, upgrades, inventions and configurable crafting months.
 
 Medtech workdays and therapy: see [the medical feature and Journal specification](docs/medtech.md).
@@ -100,3 +102,7 @@ Hustle role icons use glyphs from [Game-icons.net](https://game-icons.net), lice
 The Solo icon uses [Dog Tag from SVG Repo](https://www.svgrepo.com/svg/183279/dog-tag), provided under [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/). SVG Repo is the listed uploader; no individual artist is identified.
 
 These icons have been modified in color, styling, and/or geometry from their original versions.
+
+## Manage Module Data
+
+GMs can inspect records, clear selected payout records, and download CrewTools bookkeeping exports from **Module Settings → Module → View or Manage Module Data**. See [export scope and cleanup instructions](docs/module-data.md). Native character resources require a Foundry world backup.

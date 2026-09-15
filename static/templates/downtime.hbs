@@ -435,6 +435,90 @@
               {{/each}}
             </details>
           {{/if}}
+          {{#if netrunnerVisible}}
+            <details
+              class="payout-heading hub-status downtime-tech"
+              data-downtime-section="netrunner"
+            >
+              <summary>Craft Cyberdecks, Programs and Hardware</summary>
+              <p class="notes">Netrunner · 1 project · Electronics/Security Tech
+                · Requires HQ Server Room II.</p>
+              {{#each netrunnerSlots}}
+                <div
+                  class="tech-slot"
+                  data-tech-slot="{{slot}}"
+                  data-tech-track="netrunner"
+                >
+                  {{#if project}}
+                    <div class="tech-slot-title downtime-progress"><progress
+                        value="{{progressPercent}}"
+                        max="100"
+                        aria-label="Netrunner project progress"
+                        aria-valuetext="{{project.progress}} of {{project.required}} days"
+                      ></progress><strong>{{number}}.
+                        {{project.name}}</strong><small>{{project.mode}}
+                        ·
+                        {{project.progress}}
+                        /
+                        {{project.required}}
+                        days · DV
+                        {{project.dv}}{{#if project.success}}
+                          · Check passed{{/if}}</small></div>
+                    <div class="tech-slot-actions">
+                      {{#unless workshop}}{{#if canAdd}}<button
+                            class="downtime-use-day"
+                            type="button"
+                            data-tech-action="techDay"
+                            data-tech-project="{{project.id}}"
+                            title="Allocate one downtime day"
+                          >Use 1 Day</button>{{else}}<button
+                            class="downtime-use-day"
+                            type="button"
+                            disabled
+                          >Use 1 Day</button>{{/if}}{{/unless}}
+                      {{#if canComplete}}<button
+                          type="button"
+                          data-tech-action="techFinish"
+                          data-tech-project="{{project.id}}"
+                        >Complete Project</button>{{/if}}
+                      {{#if canRoll}}<button
+                          type="button"
+                          data-tech-action="techRoll"
+                          data-tech-project="{{project.id}}"
+                        >Roll skill</button>{{else}}<button
+                          type="button"
+                          disabled
+                        >Roll skill</button>{{/if}}
+                      <button
+                        type="button"
+                        data-tech-action="techCancel"
+                        data-tech-project="{{project.id}}"
+                        title="Cancel project; upgrade item returns to this character"
+                      >Cancel</button>
+                    </div>
+                    {{#unless enabled}}<small>Requires
+                        {{requiredWorkshop}}</small>{{/unless}}
+                  {{else}}
+                    {{#if enabled}}
+                      <strong>{{number}}.</strong>
+                      {{#if canCraft}}<select
+                          data-tech-mode
+                          aria-label="Project type"
+                        ><option value="fabricate">Fabricate Item</option><option
+                            value="upgrade"
+                          >Upgrade Item</option><option
+                            value="invention"
+                          >Invention</option><option value="repair">Repair Item</option></select>{{/if}}
+                      <div data-tech-drop class="tech-drop">Drop Item here</div>
+                      <button type="button" data-tech-new hidden>Create</button>
+                    {{else}}<strong>{{number}}.</strong><span
+                        class="notes"
+                      >Requires {{requiredWorkshop}}</span>{{/if}}
+                  {{/if}}
+                </div>
+              {{/each}}
+            </details>
+          {{/if}}
           {{#if canMedtech}}
             <details
               class="payout-heading hub-status downtime-medical"

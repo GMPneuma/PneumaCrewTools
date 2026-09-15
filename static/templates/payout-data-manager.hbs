@@ -1,46 +1,135 @@
 <form class="payout-data-manager-form">
-  <p class="data-manager-warning">
-    <i class="fas fa-triangle-exclamation"></i>
-    Clearing data is permanent. Configuration, Discord mappings, journal IDs,
-    and the selected Payout Container are preserved. Headquarters and downtime
-    Journals are not cleared here.
-  </p>
-
-  <section class="data-manager-actions">
-    <button type="button" data-clear-section="reputation">
-      <i class="fas fa-medal"></i>
-      Clear Faction Reputation
-      <small>{{reputationCount}} records</small>
-    </button>
-    <button type="button" data-clear-section="attendance">
-      <i class="fas fa-users"></i>
-      Clear Attendance
-      <small>{{attendanceCount}} records</small>
-    </button>
-    <button type="button" data-clear-section="acknowledgments">
-      <i class="fas fa-receipt"></i>
-      Clear Unacknowledged
-      <small>{{acknowledgmentCount}} records</small>
-    </button>
-    <button type="button" data-clear-section="humanity">
-      <i class="fas fa-dice-d6"></i>
-      Clear Pending Humanity
-      <small>{{humanityCount}} rolls</small>
-    </button>
-    <button type="button" data-clear-section="history">
-      <i class="fas fa-clock-rotate-left"></i>
-      Clear Payout History
-      <small>{{historyCount}} records/pages</small>
-    </button>
-  </section>
-
-  <button type="button" class="data-manager-clear-all" data-clear-section="all">
-    <i class="fas fa-trash"></i>
-    Clear All Recorded and Pending Payout Data
-  </button>
-
-  <label class="data-manager-json">
-    <strong>Stored Payout Data</strong>
-    <textarea readonly spellcheck="false">{{storedDataJson}}</textarea>
-  </label>
+  <p>Inspect and maintain CrewTools bookkeeping. Native character resources and
+    inventory require a Foundry world backup.</p>
+  <div class="data-manager-toolbar">
+    <button type="button" data-action="refresh"><i class="fas fa-sync"></i>
+      Refresh</button>
+    <button type="button" data-action="backup"><i class="fas fa-download"></i>
+      Download full backup</button>
+  </div>
+  <details open data-section="records">
+    <summary><strong>Records</strong></summary>
+    {{#each groups}}
+      <details data-section="category-{{name}}">
+        <summary>{{name}} — {{entries.length}} entries</summary>
+        {{#each entries}}
+          <div class="data-manager-record">
+            <strong>{{name}}</strong>
+            {{#if settingValue}}<span>Current value:
+                {{settingValue}}</span>{{/if}}<span>{{count}}
+              ·
+              {{pending}}
+              pending / active ·
+              {{completed}}
+              completed</span>
+            {{#if journalId}}<button
+                type="button"
+                data-open-journal="{{journalId}}"
+              >Open Journal</button>{{/if}}
+            {{#each warnings}}<p
+                class="data-manager-warning"
+              >{{this}}</p>{{/each}}
+          </div>
+        {{else}}<p>No records in this category.</p>{{/each}}
+      </details>
+    {{/each}}
+  </details>
+  <details data-section="cleanup">
+    <summary><strong>Targeted cleanup</strong></summary>
+    <p>Active projects, reserved downtime, pending payments, and item transfers
+      are protected from cleanup. Use their normal management screens to resolve
+      them. Have other users disconnect before clearing records.</p>
+    <div class="data-manager-toolbar">
+      <button type="button" data-action="downtime">Downtime &amp; projects</button>
+      <button type="button" data-action="rent">Rent &amp; payments</button>
+      <button type="button" data-action="hq">Headquarters</button>
+    </div>
+    <div class="form-group"><label>Character</label><select name="actor"><option
+          value=""
+        >All characters</option>{{#each actors}}{{#if selected}}<option
+              value="{{id}}"
+              selected
+            >{{name}}</option>{{else}}<option
+              value="{{id}}"
+            >{{name}}</option>{{/if}}{{/each}}</select></div>
+    <div class="form-group"><label>Records to clear</label><select
+        name="cleanup"
+      >{{#each cleanupOptions}}{{#if selected}}<option
+              value="{{id}}"
+              selected
+            >{{label}}</option>{{else}}<option
+              value="{{id}}"
+            >{{label}}</option>{{/if}}{{/each}}</select></div>
+    <p>Payout history is shared across characters; select All characters to
+      clear it.</p>
+    <p class="data-manager-warning">{{cleanupWarning}}</p>
+    <p><strong>{{cleanupCount}} records selected.</strong>
+      Completed receipts and Humanity results remain unless explicitly selected
+      above.</p>
+    {{#each cleanupTargets}}
+      <details><summary>{{name}} — {{count}} records</summary><p
+        >{{records}}</p><button
+          type="button"
+          data-open-journal="{{journalId}}"
+          data-page="{{pageId}}"
+        >Open records</button></details>
+    {{/each}}
+    <div class="data-manager-toolbar">
+      <button type="button" data-action="export-cleanup">Export selected cleanup
+        records</button>
+      {{#if cleanupCount}}<button type="button" data-action="clear">Review &amp;
+          clear selected records</button>{{else}}<button
+          type="button"
+          data-action="clear"
+          disabled
+        >Review &amp; clear selected records</button>{{/if}}
+    </div>
+  </details>
+  <details data-section="exports">
+    <summary><strong>Backup exports</strong></summary>
+    <p>Export CrewTools Journals, module flags, hustle tables, world settings
+      and folder metadata. These files are for reference and manual recovery.
+      Use Foundry world backups for recovery of the full world.</p>
+    <fieldset><legend>Categories for export</legend>
+      {{#each categories}}<label class="data-manager-category">{{#if
+            selected
+          }}<input
+              type="checkbox"
+              data-category
+              value="{{name}}"
+              checked
+            />{{else}}<input
+              type="checkbox"
+              data-category
+              value="{{name}}"
+            />{{/if}}{{name}}</label>{{/each}}
+    </fieldset>
+    <button type="button" data-action="export">Export selected categories as a
+      record snapshot</button>
+    <p>CrewTools does not import or restore these exports.</p>
+  </details>
+  <details data-section="configuration"><summary><strong
+      >Configuration</strong></summary><p>Configuration is included in full
+      backups. Use normal settings to edit individual options; this manager has
+      no bulk reset.</p><button type="button" data-action="settings">Open module
+      settings</button></details>
+  {{#if report}}<section><h3>Operation report</h3><p>{{report.completed.length}}
+        completed ·
+        {{report.skipped.length}}
+        skipped ·
+        {{report.failed.length}}
+        failed</p>{{#each report.completed}}<p>Completed:
+          {{this}}</p>{{/each}}{{#each report.skipped}}<p>Skipped:
+          {{this}}</p>{{/each}}{{#each report.failed}}<p
+          class="data-manager-warning"
+        >Failed: {{this}}</p>{{/each}}<button
+        type="button"
+        data-action="report"
+      >Download report</button></section>{{/if}}
+  <details data-section="technical"><summary><strong>Technical details</strong></summary><label
+      class="data-manager-json"
+    ><textarea
+        readonly
+        spellcheck="false"
+      >{{technical}}</textarea></label></details>
 </form>

@@ -1,3 +1,4 @@
+import { isNetrunner, netrunnerSkill, netrunnerItem } from "./netrunner-system";
 import {
   armorRepairDays,
   registerArmorRepairSettings,
@@ -76,12 +77,32 @@ export function validateTechRequest(
   actor: FoundryActor,
   slots: number,
   input?: TechInput,
+  serverRoom = false,
 ) {
   const existing = techProjects(state, actor.id).find(
     (p) => p.id === event.projectId,
   );
+  const track = event.kind === "techStart" ? input?.track : existing?.track;
+  const netrunner = track === "netrunner";
+  if (track !== undefined && !netrunner)
+    throw new Error("Unknown crafting track.");
+  // Enforce role, facility, and skill on the authoritative request path, not just the form.
+  if (netrunner) {
+    if (event.kind !== "techCancel") {
+      if (!isNetrunner(actor))
+        throw new Error("A ranked Netrunner role is required.");
+      if (!serverRoom) throw new Error("Requires an HQ Server Room II.");
+      if (
+        !netrunnerSkill(actor) ||
+        (event.kind === "techStart" ? input?.skillId : existing?.skillId) !==
+          netrunnerSkill(actor)?.id
+      )
+        throw new Error("Electronics/Security Tech is required.");
+    }
+    slots = 1;
+  }
   const isTech = !!techRole(actor);
-  if (!isTech && (input?.mode ?? existing?.mode) !== "repair")
+  if (!netrunner && !isTech && (input?.mode ?? existing?.mode) !== "repair")
     throw new Error("A ranked TECH role is required.");
   if (!isTech) slots = 1;
   if (event.days !== (event.kind === "techDay" ? 1 : 0))
@@ -99,7 +120,7 @@ export function validateTechRequest(
       throw new Error("Choose an enabled TECH project slot.");
     if (
       techProjects(state, actor.id).some(
-        (p) => p.active && p.slot === input.slot,
+        (p) => p.active && p.slot === input.slot && p.track === track,
       )
     )
       throw new Error("This project slot is occupied.");
@@ -153,6 +174,7 @@ export interface TechProcessContext {
   requester?: FoundryUser;
   slots: number;
   workshop?: boolean;
+  serverRoom?: boolean;
   save: (state: DowntimeState) => Promise<void>;
   attempt: (details: Record<string, unknown> | null) => Promise<void>;
 }
@@ -170,7 +192,11 @@ export async function processTechRequest(
     )
       throw new Error("One available downtime day is required.");
     const projects = techProjects(state, actor.id).filter(
-      (p) => p.active && p.progress < p.required && p.slot < slots,
+      (p) =>
+        p.track !== "netrunner" &&
+        p.active &&
+        p.progress < p.required &&
+        p.slot < slots,
     );
     if (!projects.length) throw new Error("No projects need additional days.");
     for (const p of projects)
@@ -187,11 +213,16 @@ export async function processTechRequest(
     await ctx.save(state);
     return;
   }
-  if (ctx.workshop && event.kind === "techDay" && techRole(actor))
+  const netrunner =
+    (event.kind === "techStart"
+      ? input?.track
+      : techProjects(state, actor.id).find((p) => p.id === event.projectId)
+          ?.track) === "netrunner";
+  if (!netrunner && ctx.workshop && event.kind === "techDay" && techRole(actor))
     throw new Error(
       "Use Apply 1 day to all projects while a Workshop is available.",
     );
-  validateTechRequest(state, event, actor, slots, input);
+  validateTechRequest(state, event, actor, slots, input, ctx.serverRoom);
   let mutation = false;
   if (event.kind === "techStart") {
     const data = input!;
@@ -225,6 +256,10 @@ export async function processTechRequest(
         )
       )
         throw new Error("This Item already has an active project.");
+      if (netrunner && !netrunnerItem(source))
+        throw new Error(
+          "Choose a Cyberdeck, Program, or cyberdeck Hardware Item.",
+        );
       data.price = itemPrice(source);
       data.category = categoryForPrice(data.price);
       data.name = source.name;
@@ -438,7 +473,11 @@ export async function processTechRequest(
         speaker: { actor: actor.id, alias: actor.name },
         whisper: activityRollRecipients(actor),
         content: rollCard({
-          title: project?.mode === "repair" ? "Repair Gear" : "TECH Project",
+          title: netrunner
+            ? "Netrunner Project"
+            : project?.mode === "repair"
+              ? "Repair Gear"
+              : "TECH Project",
 
           subject: project?.name ?? event.tech?.name ?? "Project",
           outcome:

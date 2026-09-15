@@ -1,3 +1,4 @@
+import { isNetrunner } from "./netrunner-system";
 import { recordEscape } from "./journal-format";
 import { resourceTransactionsHtml } from "./downtime-journal-view";
 import { ensureActorPayoutJournal } from "./journal-records";
@@ -307,12 +308,12 @@ export async function ensureDowntime(
     await ledgerPage()!.update({
       [`flags.${MODULE_ID}.${FLAG}`]: { ...state, events: [] },
     });
-  // Prepare inventory storage only for eligible TECHs; this does not create character Journals.
+  // Prepare inventory storage for eligible TECHs and Netrunners; this does not create character Journals.
   for (const actor of Array.from(game.actors))
     if (
       (!maintenanceActorIds || maintenanceActorIds.includes(actor.id)) &&
       playerCharacter(actor) &&
-      techRole(actor)
+      (techRole(actor) || isNetrunner(actor))
     )
       await storageActor(actor);
   await syncUpgradeStorage(maintenanceActorIds);

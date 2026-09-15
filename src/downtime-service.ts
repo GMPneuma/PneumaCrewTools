@@ -1,3 +1,4 @@
+import { serverRoomAvailable } from "./netrunner-system";
 import { requireNomadGarage } from "./nomad-vehicles";
 import { validateNomadEvent, nomadRespecDays } from "./nomad-model";
 import { activityRollRecipients } from "./roll-visibility";
@@ -80,6 +81,10 @@ export function workshopLevel(): number {
       ),
     0,
   );
+}
+// Any registered HQ with Server Room II enables the role's single crafting slot.
+export function hasServerRoom(): boolean {
+  return serverRoomAvailable(getHeadquarters(false));
 }
 export function currentTechSlots(): number {
   return techSlotLimit(workshopLevel());
@@ -214,6 +219,7 @@ async function executeDowntimeCommand(
         requester,
         slots: currentTechSlots(),
         workshop: workshopLevel() > 0,
+        serverRoom: hasServerRoom(),
         save,
         attempt: async (details) => {
           const ledger = ledgerPage()!;

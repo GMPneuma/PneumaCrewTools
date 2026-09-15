@@ -1,3 +1,4 @@
+import { netrunnerPanel, bindNetrunner } from "./netrunner-panel";
 import {
   nomadVehiclePanel,
   bindNomadVehicles,
@@ -78,6 +79,7 @@ interface InboxData {
   status: ReturnType<typeof getHubStatus>;
   teammates: ReturnType<typeof teammatePanel>;
   nomad: ReturnType<typeof nomadVehiclePanel>;
+  netrunner: ReturnType<typeof netrunnerPanel>;
   rent: ReturnType<typeof rentStatus>;
   pharma: ReturnType<PharmaTransferPanel["getData"]>;
   cards: InboxCard[];
@@ -125,6 +127,16 @@ export function registerPayoutInboxSettings(): void {
     )
       refresh();
   });
+  // Inventory hooks refresh deck names, equipment states, and role eligibility.
+  for (const hook of ["createItem", "updateItem", "deleteItem"] as const) {
+    Hooks.on(hook, (item: FoundryItem) => {
+      if (
+        payoutInbox?.rendered &&
+        item.parent?.id === payoutInbox.getSelectedActorId()
+      )
+        refresh();
+    });
+  }
   Hooks.on("createActor", refresh);
   Hooks.on("deleteActor", refresh);
   Hooks.on("updateUser", refresh);
@@ -163,12 +175,18 @@ export function hasInboxItemsForCurrentUser(): boolean {
 export async function clearAllPayoutAcknowledgments(): Promise<number> {
   if (!game.user?.isGM)
     throw new Error("Only a GM can clear payout acknowledgments.");
-  const users = Array.from(game.users);
-  const count = users.reduce((total, user) => {
-    const value = getAcknowledgments(user);
-    return total + (Array.isArray(value) ? value.length : 0);
-  }, 0);
-  await Promise.all(users.map((user) => saveAcknowledgments(user, [])));
+  // Receipts share character pages: update each once and retain acknowledged history.
+  let count = 0;
+  for (const actor of game.actors) {
+    const previous = actorPayoutRecords<PayoutAcknowledgment>(
+      actor.id,
+      "acknowledgments",
+    );
+    const remaining = previous.filter((entry) => entry.acknowledgedAt !== null);
+    if (remaining.length === previous.length) continue;
+    await saveActorPayoutRecords(actor, "acknowledgments", remaining);
+    count += previous.length - remaining.length;
+  }
   return count;
 }
 
@@ -263,6 +281,7 @@ export class PlayerHub extends CrewToolsForm {
     this.#displayedActorId = status.actorId;
     return {
       status,
+      netrunner: netrunnerPanel(game.actors.get(status.actorId)),
       teammates: teammatePanel(status.actorId),
       nomad: nomadVehiclePanel(game.actors.get(status.actorId)),
       rent: rentStatus(status.actorId),
@@ -284,6 +303,7 @@ export class PlayerHub extends CrewToolsForm {
     if (!root) return;
     // Capture the selected Actor for roster dialogs even if the Hub later switches characters.
     const nomadId = this.#displayedActorId ?? "";
+    if (root) bindNetrunner(root, nomadId);
     bindNomadVehicles(
       root,
       () => nomadId,

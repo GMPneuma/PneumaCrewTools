@@ -271,6 +271,7 @@ interface FoundryUser {
 }
 
 declare const game: {
+  i18n: { localize(key: string): string };
   items?: Iterable<FoundryItem>;
   packs?: Iterable<{
     documentName: string;

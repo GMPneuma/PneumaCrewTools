@@ -192,7 +192,14 @@ function fixture() {
       },
     ],
   };
-  async function run(kind, input, projectId, slots = 1, workshop = false) {
+  async function run(
+    kind,
+    input,
+    projectId,
+    slots = 1,
+    workshop = false,
+    serverRoom = false,
+  ) {
     if (attempt) throw Error("GM review required");
     const event = {
       id: "e" + ++id,
@@ -213,6 +220,7 @@ function fixture() {
       requester: player,
       slots,
       workshop,
+      serverRoom,
       save: async (s) => {
         if (failSave) throw Error("save failed");
         model.validateDowntime(s);
@@ -852,3 +860,144 @@ for (const [mode, specialty] of Object.entries({
     );
   });
 }
+
+function netrunner(f, multiclass = false) {
+  if (!multiclass)
+    f.actor.items = f.actor.items.filter((i) => i.type !== "role");
+  f.actor.items.push({
+    id: "netrole",
+    name: "Netrunner",
+    type: "role",
+    system: { rank: 4, mainRoleAbility: "Interface" },
+  });
+  const skill = f.actor.items.find((i) => i.id === "skill");
+  f.actor.items.push({
+    ...skill,
+    id: "electronics",
+    name: "Electronics/Security Tech",
+  });
+  return {
+    ...f.invention(),
+    track: "netrunner",
+    skillId: "electronics",
+    name: "New cyberdeck blueprint",
+  };
+}
+test("Netrunner requires role, Server Room II, fixed skill and a single independent slot", async () => {
+  const f = fixture(),
+    input = netrunner(f, true);
+  await assert.rejects(f.run("techStart", input), /Server Room II/);
+  await assert.rejects(
+    f.run(
+      "techStart",
+      { ...input, skillId: "skill" },
+      undefined,
+      3,
+      false,
+      true,
+    ),
+    /Electronics/,
+  );
+  await assert.rejects(
+    f.run("techStart", { ...input, slot: 1 }, undefined, 3, false, true),
+    /enabled/,
+  );
+  const tech = await f.run(
+    "techStart",
+    f.invention(),
+    undefined,
+    3,
+    true,
+    true,
+  );
+  const net = await f.run("techStart", input, undefined, 3, true, true);
+  await assert.rejects(
+    f.run("techStart", input, undefined, 3, true, true),
+    /occupied/,
+  );
+  await f.run("techWorkshop", undefined, undefined, 3, true, true);
+  assert.equal(f.projects().find((p) => p.id === tech).progress, 1);
+  assert.equal(f.projects().find((p) => p.id === net).progress, 0);
+  await f.run("techDay", undefined, net, 3, true, true);
+  assert.equal(f.projects().find((p) => p.id === net).progress, 1);
+  await assert.rejects(
+    f.run("techDay", undefined, net, 3, true, false),
+    /Server Room II/,
+  );
+  f.actor.items = f.actor.items.filter((i) => i.id !== "netrole");
+  await assert.rejects(
+    f.run("techDay", undefined, net, 3, true, true),
+    /Netrunner/,
+  );
+  await f.run("techCancel", undefined, net, 3, true, false);
+  assert.equal(f.projects().find((p) => p.id === net).active, false);
+});
+test("Netrunner invention completes with Electronics/Security Tech and no Maker specialty", async () => {
+  const f = fixture(),
+    input = netrunner(f);
+  const id = await f.run("techStart", input, undefined, 1, false, true);
+  for (let n = 0; n < 3; n++)
+    await f.run("techDay", undefined, id, 1, false, true);
+  await f.run("techRoll", undefined, id, 1, false, true);
+  assert.equal(f.mods().length, 0);
+  for (let n = 0; n < 4; n++)
+    await f.run("techDay", undefined, id, 1, false, true);
+  assert.equal(f.projects()[0].active, false);
+  assert.equal(f.actor.items.filter((i) => i.type === "gear").length, 1);
+  assert.ok(f.messages[0].content.includes("Electronics/Security Tech"));
+});
+test("Netrunner source restrictions cover fabrication, upgrade return and repair", async () => {
+  for (const mode of ["fabricate", "upgrade", "repair"]) {
+    const f = fixture(),
+      input = netrunner(f);
+    const weapon = f.makeItem(
+      { name: "Pistol", type: "weapon", system: { price: { market: 500 } } },
+      f.actor,
+    );
+    f.actor.items.push(weapon);
+    await assert.rejects(
+      f.run(
+        "techStart",
+        { ...input, mode, sourceUuid: weapon.uuid },
+        undefined,
+        1,
+        false,
+        true,
+      ),
+      /Cyberdeck/,
+    );
+    const deck = f.makeItem(
+      { name: "Deck", type: "cyberdeck", system: { price: { market: 500 } } },
+      f.actor,
+    );
+    f.actor.items.push(deck);
+    const id = await f.run(
+      "techStart",
+      { ...input, mode, sourceUuid: deck.uuid },
+      undefined,
+      1,
+      false,
+      true,
+    );
+    if (mode === "upgrade") {
+      assert.equal(
+        f.actor.items.some((i) => i.id === deck.id),
+        false,
+      );
+      await f.run("techCancel", undefined, id, 1, false, false);
+      assert.equal(
+        f.actor.items.filter((i) => i.type === "cyberdeck").length,
+        1,
+      );
+    } else {
+      for (let n = 0; n < 7; n++)
+        await f.run("techDay", undefined, id, 1, false, true);
+      await f.run("techRoll", undefined, id, 1, false, true);
+      assert.equal(f.projects()[0].active, false);
+      assert.equal(
+        f.actor.items.filter((i) => i.type === "cyberdeck").length,
+        mode === "fabricate" ? 2 : 1,
+      );
+    }
+  }
+});
