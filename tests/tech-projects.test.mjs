@@ -27,6 +27,8 @@ function fixture() {
     settings: {
       get: (_ns, k) => settings.get(k),
       register: (_ns, k, v) => registered.set(k, v),
+      registerMenu: (_ns, k, v) => registered.set(k, v),
+      set: async (_ns, k, v) => settings.set(k, v),
     },
   };
   const makeItem = (data, parent) => {
@@ -46,6 +48,12 @@ function fixture() {
       toCompendium: () => structuredClone(raw),
       testUserPermission: (u) => u.isGM || u.id === "player",
       update: async (update) => {
+        for (const [key, value] of Object.entries(update)) {
+          let node = item;
+          const parts = key.split(".");
+          for (const part of parts.slice(0, -1)) node = node[part] ??= {};
+          node[parts.at(-1)] = value;
+        }
         if ("system.amount" in update) {
           raw.system.amount = update["system.amount"];
           item.system.amount = update["system.amount"];
@@ -117,6 +125,7 @@ function fixture() {
     },
   });
   const globals = {
+    FormApplication: class {},
     game,
     console,
     structuredClone,
@@ -183,13 +192,13 @@ function fixture() {
       },
     ],
   };
-  async function run(kind, input, projectId, slots = 1) {
+  async function run(kind, input, projectId, slots = 1, workshop = false) {
     if (attempt) throw Error("GM review required");
     const event = {
       id: "e" + ++id,
       actorId: "hero",
       kind,
-      days: kind === "techDay" ? 1 : 0,
+      days: ["techDay", "techWorkshop"].includes(kind) ? 1 : 0,
       period: state.period,
       date: "2078-01-01",
       reason: kind,
@@ -203,6 +212,7 @@ function fixture() {
       input,
       requester: player,
       slots,
+      workshop,
       save: async (s) => {
         if (failSave) throw Error("save failed");
         model.validateDowntime(s);
@@ -273,7 +283,7 @@ test("TECH costs enforce Premium+, 28-day default month and Super Luxury ceiling
   assert.equal(f.registered.get("techCraftingMonthDays").default, 28);
   assert.equal(f.registered.get("techMultipleWithoutWorkshop").default, false);
   assert.equal(f.service.techSlotLimit(false), 1);
-  assert.equal(f.service.techSlotLimit(true), 3);
+  assert.equal(f.service.techSlotLimit(true), 2);
   f.settings.set("techMultipleWithoutWorkshop", true);
   assert.equal(f.service.techSlotLimit(false), 3);
 });
@@ -536,3 +546,309 @@ test("failed TECH check card shows outcome and burned days without internal Acto
   assert.match(card, /0 days burned/);
   assert.doesNotMatch(card, /Actor\./);
 });
+
+test("non-TECH repairs retain one original Item and restore native armor without fabrication", async () => {
+  const f = fixture();
+  f.actor.items = f.actor.items.filter((i) => i.type !== "role");
+  const item = f.makeItem(
+    {
+      name: "Light Armorjack",
+      type: "armor",
+      system: {
+        price: { market: 100 },
+        amount: 1,
+        isBodyLocation: true,
+        bodyLocation: { sp: 11, ablation: 5 },
+      },
+    },
+    f.actor,
+  );
+  f.actor.items.push(item);
+  const input = {
+    ...f.invention("premium", 100),
+    mode: "repair",
+    sourceUuid: item.uuid,
+  };
+  const id = await f.run("techStart", input);
+  await assert.rejects(
+    f.run("techStart", { ...input, slot: 1 }, undefined, 3),
+    /slot/,
+  );
+  await f.run("techRoll", undefined, id);
+  assert.equal(f.projects()[0].success, true);
+  assert.equal(f.mods().length, 0);
+  await f.run("techDay", undefined, id);
+  assert.equal(f.projects()[0].active, false);
+  assert.equal(item.system.bodyLocation.ablation, 0);
+  assert.equal(item.system.bodyLocation.sp, 11);
+  assert.equal(f.actor.items.filter((i) => i.type === "armor").length, 1);
+  assert.equal(f.model.downtimeBalance(f.state(), "hero"), 99);
+  assert.match(f.messages.at(-1).content, /Repair Gear/);
+});
+test("armor overrides use actual price category, honor TECH-only, and snapshot duration", async () => {
+  for (const techOnly of [false, true]) {
+    const f = fixture();
+    f.actor.items = f.actor.items.filter((i) => i.type !== "role");
+    f.settings.set("armorRepairTimes", {
+      enabled: true,
+      techOnly,
+      days: { expensive: 2 },
+    });
+    const item = f.makeItem(
+      {
+        name: "Special Kevlar",
+        type: "armor",
+        system: { price: { market: 500 }, amount: 1 },
+      },
+      f.actor,
+    );
+    f.actor.items.push(item);
+    await f.run("techStart", {
+      ...f.invention(),
+      mode: "repair",
+      sourceUuid: item.uuid,
+    });
+    assert.equal(f.projects()[0].required, techOnly ? 7 : 2);
+    f.settings.set("armorRepairTimes", {
+      enabled: false,
+      techOnly: false,
+      days: { expensive: 9 },
+    });
+    f.model.validateDowntime(f.state());
+    assert.equal(f.projects()[0].required, techOnly ? 7 : 2);
+  }
+  const f = fixture();
+  f.settings.set("armorRepairTimes", {
+    enabled: true,
+    techOnly: true,
+    days: { premium: 3 },
+  });
+  const armor = f.makeItem(
+    { name: "Armor", type: "armor", system: { price: { market: 100 } } },
+    f.actor,
+  );
+  f.actor.items.push(armor);
+  await f.run("techStart", {
+    ...f.invention("premium", 100),
+    mode: "repair",
+    sourceUuid: armor.uuid,
+  });
+  assert.equal(f.projects()[0].required, 3);
+});
+test("repair cancellation preserves damage; missing original prevents completion", async () => {
+  const f = fixture();
+  const item = f.makeItem(
+    {
+      name: "Armor",
+      type: "armor",
+      system: {
+        price: { market: 100 },
+        isHeadLocation: true,
+        headLocation: { ablation: 4 },
+      },
+    },
+    f.actor,
+  );
+  f.actor.items.push(item);
+  const input = {
+    ...f.invention("premium", 100),
+    mode: "repair",
+    sourceUuid: item.uuid,
+  };
+  let id = await f.run("techStart", input);
+  await f.run("techCancel", undefined, id);
+  assert.equal(item.system.headLocation.ablation, 4);
+  id = await f.run("techStart", input);
+  await f.run("techRoll", undefined, id);
+  f.uuids.delete(item.uuid);
+  await assert.rejects(f.run("techDay", undefined, id), /missing/);
+  assert.equal(f.projects().find((p) => p.id === id).progress, 0);
+});
+test("Workshop I advances two projects for one day; II advances three; completion remains explicit", async () => {
+  for (const slots of [2, 3]) {
+    const f = fixture();
+    assert.equal(f.service.techSlotLimit(slots === 2 ? 1 : 2), slots);
+    const ids = [];
+    for (let slot = 0; slot < slots; slot++) {
+      const id = await f.run(
+        "techStart",
+        f.invention("premium", 100, slot),
+        undefined,
+        slots,
+      );
+      ids.push(id);
+      await f.run("techRoll", undefined, id, slots);
+    }
+    await assert.rejects(
+      f.run("techDay", undefined, ids[0], slots, true),
+      /all projects/,
+    );
+    await f.run("techWorkshop", undefined, undefined, slots, true);
+    assert.equal(f.model.downtimeBalance(f.state(), "hero"), 99);
+    assert.ok(f.projects().every((p) => p.progress === 1 && p.active));
+    await assert.rejects(
+      f.run("techWorkshop", undefined, undefined, slots, true),
+      /No projects/,
+    );
+    for (const id of ids) await f.run("techFinish", undefined, id, slots, true);
+    assert.ok(f.projects().every((p) => !p.active));
+    assert.equal(f.model.downtimeBalance(f.state(), "hero"), 99);
+  }
+});
+test("Workshop batch write failure spends no day and credits no projects", async () => {
+  const f = fixture();
+  await f.run("techStart", f.invention(), undefined, 2);
+  await f.run("techStart", f.invention("expensive", 500, 1), undefined, 2);
+  await assert.rejects(
+    f.run("techWorkshop", undefined, undefined, 2, false),
+    /Workshop/,
+  );
+  f.fail();
+  await assert.rejects(
+    f.run("techWorkshop", undefined, undefined, 2, true),
+    /save failed/,
+  );
+  assert.ok(f.projects().every((p) => p.progress === 0));
+  assert.equal(f.model.downtimeBalance(f.state(), "hero"), 100);
+});
+
+test("repair uses native Field Expertise modifiers without adding the bonus twice", async () => {
+  const f = fixture();
+  f.actor.items[0].system.abilities.push({ name: "Field Expertise", rank: 4 });
+  const item = f.makeItem(
+    { name: "Armor", type: "armor", system: { price: { market: 100 } } },
+    f.actor,
+  );
+  f.actor.items.push(item);
+  const id = await f.run("techStart", {
+    ...f.invention("premium", 100),
+    mode: "repair",
+    sourceUuid: item.uuid,
+  });
+  await f.run("techRoll", undefined, id);
+  assert.equal(f.mods().length, 0);
+});
+
+test("armor repair settings default off, expose price tiers, reject invalid days and non-GM changes", async () => {
+  const f = fixture();
+  f.service.registerTechSettings();
+  const Type = f.registered.get("armorRepair").type,
+    form = new Type();
+  assert.equal(form.getData().enabled, false);
+  assert.equal(form.getData().rows.length, 5);
+  await form._updateObject(null, {
+    enabled: true,
+    techOnly: true,
+    days0: 2,
+    days1: "",
+  });
+  assert.equal(f.settings.get("armorRepairTimes").days.premium, 2);
+  assert.equal(f.settings.get("armorRepairTimes").techOnly, true);
+  await assert.rejects(form._updateObject(null, { days0: 0 }), /whole days/);
+  f.game.user = f.player;
+  await assert.rejects(form._updateObject(null, { days0: 2 }), /GM/);
+});
+
+// Exercise the adapter with native-shaped modifier arrays, including dialog changes.
+function techAdapter() {
+  const exports = {};
+  vm.runInNewContext(
+    ts.transpileModule(fs.readFileSync("src/tech-system.ts", "utf8"), {
+      compilerOptions: {
+        module: ts.ModuleKind.CommonJS,
+        target: ts.ScriptTarget.ES2022,
+      },
+    }).outputText,
+    { exports },
+  );
+  return exports;
+}
+
+test("Item Skills admit only the seven eligible skills, including Electronics/Security Tech", () => {
+  const names = [
+    "Basic Tech",
+    "Cybertech",
+    "Air Vehicle Tech",
+    "Land Vehicle Tech",
+    "Sea Vehicle Tech",
+    "Weaponstech",
+    "Electronics/Security Tech",
+    "First Aid",
+    "Pick Lock",
+    "Forgery",
+  ];
+  const actor = {
+    items: names.map((name, id) => ({
+      id: String(id),
+      name,
+      type: "skill",
+      system: { stat: "tech" },
+    })),
+  };
+  assert.deepEqual(
+    Array.from(techAdapter().techSkills(actor), (i) => i.name),
+    names.slice(0, 7),
+  );
+});
+
+for (const [mode, specialty] of Object.entries({
+  fabricate: "Fabrication Expertise",
+  upgrade: "Upgrade Expertise",
+  invention: "Invention Expertise",
+  repair: "Field Expertise",
+})) {
+  test(`${mode} preserves native modifiers and uses only its matching Expertise`, async () => {
+    const field = { source: "Field Expertise", value: 4 };
+    const wound = { source: "Wound State", value: -2 };
+    let rolled = false;
+    const roll = {
+      mods: [field, wound],
+      addMod(mods) {
+        this.mods.push(...mods);
+      },
+      async handleRollDialog() {
+        assert.equal(
+          this.mods.some((m) => m.source === "Field Expertise"),
+          mode === "repair",
+        );
+        if (mode !== "repair") this.mods.push(field);
+        return true;
+      },
+      async roll() {
+        rolled = true;
+      },
+      resultTotal: 25,
+    };
+    const skill = {
+      id: "skill",
+      type: "skill",
+      name: "Electronics/Security Tech",
+      system: { stat: "tech" },
+      createRoll: () => roll,
+    };
+    const actor = {
+      items: [
+        skill,
+        {
+          id: "role",
+          name: "Tech",
+          type: "role",
+          system: { rank: 4, abilities: [{ name: specialty, rank: 4 }] },
+        },
+      ],
+    };
+    await techAdapter().checkProject(actor, {
+      mode,
+      skillId: "skill",
+      dv: 17,
+      half: 1,
+    });
+    assert.equal(rolled, true);
+    assert.equal(roll.mods.filter((m) => m.source === specialty).length, 1);
+    assert.equal(roll.mods.includes(wound), true);
+    assert.equal(
+      roll.mods.reduce((sum, m) => sum + m.value, 0),
+      2,
+    );
+  });
+}

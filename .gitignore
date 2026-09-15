@@ -7,3 +7,6 @@ dist/
 Thumbs.db
 .idea/
 .vscode/
+
+# Local UI preview artifact
+/rent-preview.png

@@ -1,9 +1,23 @@
 import type { techProjects } from "./tech-project-model";
 // Native Cyberpunk role, roll, item export, and installed-item operations.
+// Only these item skills are eligible; normalize spacing and punctuation in native names.
+const itemSkillNames = new Set([
+  "basictech",
+  "cybertech",
+  "airvehicletech",
+  "landvehicletech",
+  "seavehicletech",
+  "weaponstech",
+  "electronicssecuritytech",
+]);
+const normalizeSkillName = (name: string) =>
+  name.toLowerCase().replace(/[^a-z]/g, "");
 export function techSkills(actor: FoundryActor) {
   return Array.from(actor.items ?? []).filter(
     (i) =>
-      i.type === "skill" && (i.system as { stat?: string })?.stat === "tech",
+      i.type === "skill" &&
+      (i.system as { stat?: string })?.stat === "tech" &&
+      itemSkillNames.has(normalizeSkillName(i.name)),
   );
 }
 export function techRole(actor: FoundryActor) {
@@ -37,16 +51,29 @@ export async function checkProject(
     fabricate: "Fabrication Expertise",
     upgrade: "Upgrade Expertise",
     invention: "Invention Expertise",
+    repair: "Field Expertise",
   }[project.mode];
   const specialty = (
     role?.system as { abilities?: { name: string; rank: number }[] }
   )?.abilities?.find((a) => a.name.toLowerCase() === name.toLowerCase());
-  if (!skill?.createRoll || !specialty || !Number.isFinite(specialty.rank))
+  const repair = project.mode === "repair";
+  // Native skill creation already includes role modifiers such as Field Expertise.
+  const rank = repair ? 0 : specialty?.rank;
+  if (!skill?.createRoll || !Number.isFinite(rank))
     throw new Error(
       "The native TECH skill or " + name + " specialty is unavailable.",
     );
   const roll = skill.createRoll("skill", actor);
-  roll.addMod([{ value: specialty.rank, source: name }]);
+  // Field Expertise belongs only to repairs, including when a native dialog reintroduces it.
+  const excludeFieldExpertise = () => {
+    if (!repair && roll.mods) {
+      roll.mods = roll.mods.filter(
+        (mod) => normalizeSkillName(mod.source) !== "fieldexpertise",
+      );
+    }
+  };
+  excludeFieldExpertise();
+  if (rank) roll.addMod([{ value: rank, source: name }]);
   // Keep Maker's bonus in the normal native modifier dialog before rolling.
   if (
     !(await roll.handleRollDialog(
@@ -56,6 +83,7 @@ export async function checkProject(
     ))
   )
     return;
+  excludeFieldExpertise();
   await roll.roll();
   if (!Number.isFinite(roll.resultTotal))
     throw new Error("The native skill roll did not return a total.");
@@ -66,8 +94,8 @@ export async function checkProject(
     burned: roll.resultTotal > project.dv ? 0 : project.half,
     skillId: skill.id,
     skillName: skill.name,
-    specialty: name,
-    rank: specialty.rank,
+    specialty: repair ? "Native skill modifiers" : name,
+    rank: rank!,
   };
 }
 export function snapshot(item: FoundryItem): Record<string, unknown> {

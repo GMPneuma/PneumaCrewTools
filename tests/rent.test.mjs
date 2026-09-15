@@ -274,7 +274,7 @@ test("Player Hub labels pending rent below Money and rent templates compile", ()
   });
   assert.match(
     html,
-    /<dt>Money<\/dt>[\s\S]*?Pending Rent Payment:\s+700\s+eb[\s\S]*?<dt>IP/,
+    /<dt>Money<\/dt>[\s\S]*?Rent\s+Payment\s+Processing:\s+700\s+eb[\s\S]*?<dt>IP/,
   );
   for (const file of ["rent", "rent-settings"])
     assert.doesNotThrow(() =>

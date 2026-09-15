@@ -1,3 +1,4 @@
+import { registerShortcutDisplay, showHudShortcuts } from "./shortcut-display";
 import { openGMDashboard } from "./window-controls";
 import { rentNeedsAttention } from "./rent";
 import { MODULE_ID } from "./constants";
@@ -34,6 +35,11 @@ export function refreshCrewHud(): void {
   const root = document.getElementById("pneuma-crewtools-calendar");
   if (!root) return;
   let row = root.querySelector<HTMLElement>(".pneuma-crew-hud");
+  // Hidden shortcuts require no status reads; the date display remains intact.
+  if (!showHudShortcuts()) {
+    row?.remove();
+    return;
+  }
   if (!row) {
     row = document.createElement("div");
     row.className = "pneuma-crew-hud";
@@ -86,6 +92,7 @@ export function refreshCrewHud(): void {
 }
 
 export function registerCrewHud(): void {
+  registerShortcutDisplay(refreshCrewHud);
   const refresh = coalesceRefresh(refreshCrewHud);
   const refreshPage = (page: FoundryJournalPage) => {
     if (isCrewPage(page)) refresh();

@@ -2044,6 +2044,9 @@ html[data-cpr-theme="darkmode"] .pneuma-crewtools .medical-failure {
   overflow: hidden;
 }
 #pneuma-crewtools-downtime .pneuma-downtime {
+  /* Override the inbox cap so vertical resizing expands the scrolling panel. */
+  max-height: none;
+  flex: 1;
   height: 100%;
   min-height: 0;
   overflow: hidden;
@@ -2755,7 +2758,7 @@ html[data-cpr-theme="darkmode"] .crewtools-roll-outcome.failure,
 .pneuma-crewtools .hq-picture img,
 .pneuma-crewtools .hq-image-link img {
   width: 120px;
-  height: 140px;
+  height: 120px;
   object-fit: contain;
   border: 0;
 }
@@ -2770,30 +2773,64 @@ html[data-cpr-theme="darkmode"] .crewtools-roll-outcome.failure,
 .pneuma-crewtools .hq-image-link:hover {
   outline: 1px solid var(--color-border-highlight, #999);
 }
+/* Stack labels above controls so native form flex rules cannot split rent fields. */
 .pneuma-crewtools .hq-property-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem 0.85rem;
   min-width: 0;
 }
-.pneuma-crewtools .hq-management .hq-property-fields .form-group > label {
-  flex-basis: 95px;
+.pneuma-crewtools .hq-property-fields .hq-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
   font-size: 0.85rem;
 }
-.pneuma-crewtools .hq-capacity-fields {
+.pneuma-crewtools .hq-field-wide {
+  grid-column: 1 / -1;
+}
+.pneuma-crewtools .hq-management .hq-field :is(input, select, textarea) {
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+  margin: 0;
+  font: inherit;
+}
+.pneuma-crewtools .hq-management .hq-field :is(input, select) {
+  height: 2rem;
+}
+.pneuma-crewtools .hq-management .hq-field textarea {
+  resize: vertical;
+  min-height: 3.5rem;
+}
+.pneuma-crewtools .hq-property-actions {
   display: flex;
-  gap: 0.75rem;
+  justify-content: flex-end;
+  margin-top: 0.85rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid var(--color-border-light-primary, #888);
 }
-.pneuma-crewtools .hq-capacity-fields label {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  flex: 1;
-  font-size: 0.85rem;
+.pneuma-crewtools .hq-property-actions button {
+  flex: 0 0 auto;
+  width: auto;
+  min-width: 100px;
 }
-.pneuma-crewtools .hq-capacity-fields input {
-  width: 70px;
-  min-width: 55px;
+.pneuma-crewtools .hq-management {
+  container-type: inline-size;
 }
-.pneuma-crewtools .hq-property-fields select[name="rentModifier"] {
-  flex: 0 0 72px;
+@container (max-width: 520px) {
+  .pneuma-crewtools .hq-properties {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .pneuma-crewtools .hq-picture {
+    justify-self: center;
+  }
+}
+@container (max-width: 340px) {
+  .pneuma-crewtools .hq-property-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 .pneuma-crewtools .hq-improvements-layout {
   display: grid;
@@ -3066,4 +3103,255 @@ html[data-cpr-theme="darkmode"] .crewtools-roll-outcome.failure,
 .pneuma-crewtools .payout-time-section [data-expire-downtime] {
   width: 100%;
   margin: 0;
+}
+
+/* Exec teammates stay compact and use the Hub's existing colors and native controls. */
+.pneuma-crewtools .hub-teammate-slots {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+.pneuma-crewtools .hub-teammate-slot {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.5rem;
+  border: 1px solid var(--color-border-light-primary, #999);
+  border-radius: 4px;
+}
+.pneuma-crewtools .hub-teammate-heading {
+  display: flex;
+  gap: 0.25rem;
+  align-items: center;
+}
+.pneuma-crewtools .hub-teammate-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: bold;
+}
+.pneuma-crewtools button.hub-teammate-remove {
+  flex: 0 0 1.6rem;
+  width: 1.6rem;
+  padding: 0;
+}
+.pneuma-crewtools .hub-teammate-loyalty strong {
+  font-size: 1.25em;
+}
+.pneuma-crewtools .hub-teammate-loyalty .fa-pen {
+  font-size: 0.75em;
+  margin-left: 0.35rem;
+}
+.pneuma-crewtools .hub-teammate-slot button {
+  margin: 0;
+}
+
+/* Native details preserve keyboard access; healing and the balance are never folded. */
+.pneuma-crewtools details[data-downtime-section] {
+  padding: 0.6rem;
+}
+.pneuma-crewtools details[data-downtime-section] > summary {
+  cursor: pointer;
+  font-weight: bold;
+  color: inherit;
+}
+.pneuma-crewtools details[data-downtime-section][open] > summary {
+  margin-bottom: 0.6rem;
+}
+
+/* Stack the Actor portrait and name above Loyalty and the roll control. */
+.pneuma-crewtools .hub-teammate-heading {
+  position: relative;
+}
+.pneuma-crewtools .hub-teammate-name {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem;
+  /* The sheet link looks like a portrait and caption, not a native action button. */
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  height: auto;
+  text-align: center;
+  white-space: normal;
+}
+.pneuma-crewtools .hub-teammate-name .hub-teammate-portrait {
+  flex: 0 0 auto;
+  width: min(100%, 120px);
+  height: auto;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border: 0;
+  border-radius: 2px;
+}
+.pneuma-crewtools .hub-teammate-name span {
+  width: 100%;
+  min-width: 0;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+.pneuma-crewtools .hub-teammate-heading .hub-teammate-remove {
+  position: absolute;
+  top: 0.2rem;
+  right: 0.2rem;
+}
+/* Yellow identifies the Exec roster while retaining the native Hub panel layout. */
+.pneuma-crewtools .hub-teammates {
+  --pneuma-purple: #947000;
+  border-left-color: #d4ac18;
+  background: rgba(230, 190, 35, 0.1);
+}
+html[data-cpr-theme="darkmode"] .pneuma-crewtools .hub-teammates {
+  --pneuma-purple: #e6c443;
+}
+
+.pneuma-crewtools .hub-teammate-name:hover,
+.pneuma-crewtools .hub-teammate-name:active {
+  background: transparent;
+  box-shadow: none;
+  text-shadow: none;
+}
+.pneuma-crewtools .hub-teammate-name:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+/* Override system/theme button and image fills throughout the portrait control. */
+.pneuma-crewtools .hub-teammates .hub-teammate-name,
+.pneuma-crewtools .hub-teammates .hub-teammate-name:hover,
+.pneuma-crewtools .hub-teammates .hub-teammate-name:focus,
+.pneuma-crewtools .hub-teammates .hub-teammate-name:active,
+.pneuma-crewtools .hub-teammates .hub-teammate-name:disabled,
+.pneuma-crewtools .hub-teammates .hub-teammate-portrait {
+  appearance: none;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+/* Nomad vehicles use brown role accents and one shared respec bar below the roster. */
+.pneuma-crewtools .downtime-nomad {
+  --pneuma-purple: #825635;
+  background: rgba(130, 86, 53, 0.12);
+  margin-bottom: 0.5rem;
+}
+html[data-cpr-theme="darkmode"] .pneuma-crewtools .downtime-nomad {
+  --pneuma-purple: #c8996f;
+}
+.pneuma-crewtools .nomad-vehicle-slots {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+.pneuma-crewtools .nomad-vehicle-slot {
+  min-width: 0;
+  padding: 0.4rem;
+  border: 1px solid var(--color-border-light-primary, #999);
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  text-align: center;
+}
+.pneuma-crewtools .nomad-vehicle-heading {
+  position: relative;
+}
+.pneuma-crewtools .nomad-vehicle-portrait {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  height: auto;
+  width: 100%;
+  white-space: normal;
+  line-height: 1.2;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+.pneuma-crewtools .nomad-vehicle-portrait img {
+  width: min(100%, 120px);
+  height: auto;
+  aspect-ratio: 1;
+  object-fit: cover;
+  background: transparent !important;
+  border: 0;
+}
+.pneuma-crewtools .nomad-vehicle-portrait span {
+  overflow-wrap: anywhere;
+}
+.pneuma-crewtools .nomad-vehicle-remove {
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 1.6rem;
+  padding: 0;
+}
+.pneuma-crewtools .nomad-respec {
+  margin-top: 0.65rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--color-border-light-primary, #999);
+}
+.pneuma-crewtools .nomad-respec > strong {
+  display: block;
+  margin-bottom: 0.4rem;
+}
+/* The Nomad heading shares the section's brown accent in both system themes. */
+.pneuma-crewtools details.downtime-nomad > summary {
+  color: var(--pneuma-purple);
+}
+
+/* Keep the downtime adjustment readable within the native confirmation dialog. */
+.pneuma-crewtools.crew-downtime-adjustment {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.35rem 0.25rem 0.75rem;
+}
+.crew-downtime-adjustment .crew-adjustment-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.crew-downtime-adjustment .crew-adjustment-field :is(input, select) {
+  width: 100%;
+  min-width: 0;
+  height: 2rem;
+  margin: 0;
+  font: inherit;
+}
+.crew-downtime-adjustment .crew-adjustment-balance {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.65rem 0.75rem;
+  border-left: 4px solid #745091;
+  border-radius: 3px;
+  background: rgba(116, 80, 145, 0.12);
+}
+.crew-downtime-adjustment .notes {
+  margin: -0.4rem 0 0;
+}
+.crew-downtime-adjustment-dialog .dialog-buttons {
+  gap: 0.5rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid var(--color-border-light-primary, #888);
+}
+.crew-downtime-adjustment-dialog .dialog-buttons button {
+  margin: 0;
+}
+
+/* Keep rent and its compact percentage control together at every window width. */
+.pneuma-crewtools .hq-property-fields .hq-rent-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 7rem;
+  align-items: end;
+  gap: 0.85rem;
+  min-width: 0;
 }

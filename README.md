@@ -72,3 +72,7 @@ Payout history, attendance, faction reputation, receipts and pending/completed H
 Character bookkeeping is organized in one **Crew Tools — Character** Journal, with Downtime Log, Active Projects and payout action pages. Active and completed TECH/medical records share a structured lifecycle. See [the data model](docs/data-model.md).
 
 HQ management includes editable improvements, explicit Medbay/Workshop effects, shared IP corrections, and rent setup/payment progress. See [Headquarters](docs/headquarters.md).
+
+Players can choose **HUD only**, **Token Controls only**, or **Both** under **Module Settings → HUD → Crew Tools shortcut location**. This personal, client-scoped setting updates the shortcuts immediately; the calendar remains visible. Both is the default.
+
+GMs can use **GM Dashboard → Export Payout to Discord** to select any saved payout and copy its recorded rewards. Historical names, amounts, and pending-roll status come from the ledger; mentions use current Discord links. Exporting never applies rewards again.

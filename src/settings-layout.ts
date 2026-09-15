@@ -6,14 +6,24 @@ const GROUP_KEYS: Record<string, string[]> = {
   Payout: ["payoutContainerMenu", "payoutAcknowledgmentsEnabled"],
   "Faction Reputation": ["factions"],
   Headquarters: ["hqImprovements"],
-  HUD: ["calendarFontColor", "hudIconColor", "hudAttentionColor"],
+  Teammates: ["loyaltyCheckDie"],
+  HUD: [
+    "shortcutDisplay",
+    "calendarFontColor",
+    "hudIconColor",
+    "hudAttentionColor",
+  ],
   Downtime: [
     "privateActivityRolls",
     "multiplyAntibioticBonus",
     "requireFullDowntimeWeek",
   ],
   "Rent & Lifestyle": ["rentSettings"],
-  Crafting: ["techCraftingMonthDays", "techMultipleWithoutWorkshop"],
+  Crafting: [
+    "techCraftingMonthDays",
+    "techMultipleWithoutWorkshop",
+    "armorRepair",
+  ],
 };
 const DISCORD_KEYS = ["discordMarkdownEnabled", "discordLinksMenu"];
 

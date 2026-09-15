@@ -1,3 +1,5 @@
+import { requireNomadGarage } from "./nomad-vehicles";
+import { validateNomadEvent, nomadRespecDays } from "./nomad-model";
 import { activityRollRecipients } from "./roll-visibility";
 import { rollCard } from "./roll-card";
 import { requiresFullDowntimeWeek } from "./downtime-settings";
@@ -57,21 +59,30 @@ import {
 } from "./downtime-model";
 import { type TechInput } from "./tech-project-model";
 import { techSlotLimit, processTechRequest } from "./tech-projects";
-export function currentTechSlots(): number {
-  const workshop = getHeadquarters(false).headquarters.some((h) =>
-    h.improvements.some(
-      (i) =>
-        i.effect === "workshop" ||
-        (i.effect === undefined &&
-          ["workshop", "workshopaddon"].includes(
-            i.name
-              .trim()
-              .toLowerCase()
-              .replace(/[\s-]+/g, ""),
-          )),
-    ),
+export function workshopLevel(): number {
+  return getHeadquarters(false).headquarters.reduce(
+    (level, h) =>
+      Math.max(
+        level,
+        ...h.improvements
+          .filter(
+            (i) =>
+              i.effect === "workshop" ||
+              (i.effect === undefined &&
+                ["workshop", "workshopaddon"].includes(
+                  i.name
+                    .trim()
+                    .toLowerCase()
+                    .replace(/[\s-]+/g, ""),
+                )),
+          )
+          .map((i) => i.level ?? 1),
+      ),
+    0,
   );
-  return techSlotLimit(workshop);
+}
+export function currentTechSlots(): number {
+  return techSlotLimit(workshopLevel());
 }
 
 export const isDowntimeGM = isPrimaryGM;
@@ -144,7 +155,11 @@ interface SpendRequest {
     | "techStart"
     | "techDay"
     | "techRoll"
-    | "techCancel";
+    | "techCancel"
+    | "techFinish"
+    | "techWorkshop"
+    | "nomadRespecDay"
+    | "nomadRespecReset";
   actorId: string;
   projectId?: string;
   roleItemId?: string;
@@ -198,6 +213,7 @@ async function executeDowntimeCommand(
         input: request.tech ? structuredClone(request.tech) : undefined,
         requester,
         slots: currentTechSlots(),
+        workshop: workshopLevel() > 0,
         save,
         attempt: async (details) => {
           const ledger = ledgerPage()!;
@@ -274,7 +290,25 @@ async function executeDowntimeCommand(
       candidate.reason = healingSummary(candidate.healing);
       healActor = actor;
     }
-    applyActivityRequest(state, candidate, actor, requiresFullDowntimeWeek());
+    if (
+      candidate.kind === "nomadRespecDay" ||
+      candidate.kind === "nomadRespecReset"
+    ) {
+      // Progress and the downtime charge commit together on the character's ledger page.
+      requireNomadGarage(actor.id);
+      validateNomadEvent(candidate, state.events);
+      if (candidate.kind === "nomadRespecDay") {
+        const progress =
+          nomadRespecDays(state.events, actor.id) + candidate.days;
+        candidate.reason =
+          "Respec Nomad Vehicle — " +
+          progress +
+          "/7 days" +
+          (progress === 7 ? "; complete — change vehicle manually" : "");
+      }
+      recordDowntimeTransaction(state, candidate);
+    } else
+      applyActivityRequest(state, candidate, actor, requiresFullDowntimeWeek());
     event = candidate;
 
     // Commit healing once. Failed HP/ledger writes retain an attempt marker until resolved.
@@ -532,7 +566,13 @@ function hustleSummary(h: HustleReward): string {
   );
 }
 export async function requestTechAction(
-  kind: "techStart" | "techDay" | "techRoll" | "techCancel",
+  kind:
+    | "techStart"
+    | "techDay"
+    | "techRoll"
+    | "techCancel"
+    | "techFinish"
+    | "techWorkshop",
   actorId: string,
   projectId?: string,
   tech?: TechInput,
@@ -542,7 +582,7 @@ export async function requestTechAction(
     actorId,
     projectId,
     tech,
-    days: kind === "techDay" ? 1 : 0,
+    days: ["techDay", "techWorkshop"].includes(kind) ? 1 : 0,
     period: 0,
     reason: tech?.name ?? kind,
   });
@@ -743,5 +783,20 @@ export async function adjustPlayerDowntime(
       ...(amount > 0 ? { payoutId: id } : {}),
     });
     await save(state);
+  });
+}
+
+// Shared seven-day Nomad task; resetting a completed cycle never charges another day.
+export function requestNomadRespec(
+  actorId: string,
+  days: number,
+  reset = false,
+): Promise<void> {
+  return submitActivityRequest({
+    actorId,
+    days,
+    kind: reset ? "nomadRespecReset" : "nomadRespecDay",
+    period: 0,
+    reason: reset ? "Respec Nomad Vehicle — new task" : "Respec Nomad Vehicle",
   });
 }

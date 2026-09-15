@@ -246,3 +246,24 @@ test("absent character selection never awards excluded cars or all alternate cha
     ["a1"],
   );
 });
+
+test("Crew filtering reads the Actor collection once and picks up permission and exclusion changes immediately", () => {
+  const f = fixture();
+  const policy = f.load("actor-policy");
+  let visits = 0;
+  f.game.actors[Symbol.iterator] = function* () {
+    for (const actor of this.values()) {
+      visits++;
+      yield actor;
+    }
+  };
+  assert.equal(policy.accessibleCrewActors().length, 2);
+  assert.equal(visits, f.game.actors.size);
+  f.values.set("excludedActorIds", ["car", "a1"]);
+  assert.deepEqual(
+    Array.from(policy.accessibleCrewActors(), (a) => a.id),
+    ["a2"],
+  );
+  f.two.testUserPermission = () => false;
+  assert.equal(policy.accessibleCrewActors().length, 0);
+});

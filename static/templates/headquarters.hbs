@@ -18,73 +18,80 @@
         ></i>
         HQ Properties</legend>
       <div class="hq-properties">
-        <div class="hq-picture">{{#if hasContainer}}<button
+        <div class="hq-picture">
+          {{#if hasContainer}}<button
               type="button"
               class="hq-image-link"
               data-open-container
               title="Open HQ Container"
               aria-label="Open HQ Container"
-            ><img src="{{hq.image}}" alt="{{hq.name}}" /></button>{{else}}<img
+            ><img src="{{hq.image}}" alt="{{hq.name}}" /></button>
+          {{else}}<img
               src="modules/pneuma-crewtools/images/headquarters.svg"
               alt="New HQ"
-            />{{/if}}<button type="submit" class="hq-save-properties"><i
-              class="fas fa-save"
-            ></i>
-            Save</button></div>
+            />{{/if}}
+        </div>
         <div class="hq-property-fields">
-          <div class="form-group"><label>Name</label><input
+          <label class="hq-field hq-field-wide">Name<input
+              type="text"
               name="name"
               value="{{hq.name}}"
               maxlength="100"
               required
-            /></div>
-          <div class="form-group"><label>Description / Location</label><textarea
+            /></label>
+          <label class="hq-field hq-field-wide">Description / Location<textarea
               name="description"
               rows="2"
               maxlength="2000"
-            >{{hq.description}}</textarea></div>
-          <div class="hq-capacity-fields"><label>Bedrooms
-              <input
-                type="number"
-                name="bedrooms"
-                value="{{hq.bedrooms}}"
-                min="0"
-                step="1"
-              /></label><label>Max improvements
-              <input
-                type="number"
-                name="maxImprovements"
-                value="{{hq.maxImprovements}}"
-                min="0"
-                step="1"
-                placeholder="No limit"
-              /></label></div>
-          <div class="form-group hq-rent-property"><label>Rent type</label><select
-              name="rentType"
-            ><option value="">Not configured</option>{{#each rentRates}}{{#if
-                  selected
-                }}<option value="{{id}}" selected>{{name}}
-                    ·
-                    {{cost}}
-                    eb</option>{{else}}<option value="{{id}}">{{name}}
-                    ·
-                    {{cost}}
-                    eb</option>{{/if}}{{/each}}</select><select
-              name="rentModifier"
-              aria-label="Rent modifier"
-            >{{#each rentModifiers}}{{#if selected}}<option
-                    value="{{value}}"
+            >{{hq.description}}</textarea></label>
+          <label class="hq-field">Bedrooms<input
+              type="number"
+              name="bedrooms"
+              value="{{hq.bedrooms}}"
+              min="0"
+              step="1"
+            /></label>
+          <label class="hq-field">Max improvements<input
+              type="number"
+              name="maxImprovements"
+              value="{{hq.maxImprovements}}"
+              min="0"
+              step="1"
+              placeholder="No limit"
+            /></label>
+          <div class="hq-rent-row hq-field-wide">
+            <label class="hq-field">Rent type<select name="rentType"><option
+                  value=""
+                >Not configured</option>{{#each rentRates}}{{#if
                     selected
-                  >{{label}}</option>{{else}}<option
-                    value="{{value}}"
-                  >{{label}}</option>{{/if}}{{/each}}</select></div>
-          {{#unless hq}}<div class="form-group"><label>Container</label><select
+                  }}<option value="{{id}}" selected>{{name}}
+                      ·
+                      {{cost}}
+                      eb</option>{{else}}<option value="{{id}}">{{name}}
+                      ·
+                      {{cost}}
+                      eb</option>{{/if}}{{/each}}</select></label>
+            <label class="hq-field">% modifier<select
+                name="rentModifier"
+              >{{#each rentModifiers}}{{#if selected}}<option
+                      value="{{value}}"
+                      selected
+                    >{{label}}</option>{{else}}<option
+                      value="{{value}}"
+                    >{{label}}</option>{{/if}}{{/each}}</select></label>
+          </div>
+          {{#unless hq}}<label class="hq-field hq-field-wide">Container<select
                 name="actorId"
               ><option value="">Create new</option>{{#each containers}}<option
                     value="{{id}}"
-                  >{{name}}</option>{{/each}}</select></div>{{/unless}}
-
-        </div></div></fieldset>
+                  >{{name}}</option>{{/each}}</select></label>{{/unless}}
+        </div>
+      </div>
+      <div class="hq-property-actions"><button
+          type="submit"
+          class="hq-save-properties"
+        ><i class="fas fa-save"></i> Save</button></div>
+    </fieldset>
   {{else if hq}}<fieldset class="payout-heading hub-status"><legend
       >{{hq.name}}</legend><div class="hq-properties"><button
           type="button"
@@ -114,7 +121,7 @@
           >{{remaining}} eb due</strong><progress
             value="{{progress}}"
             max="100"
-            aria-label="Confirmed rent payments"
+            aria-label="Rent paid"
           ></progress></div>{{else}}<p class="notes">No outstanding rent bills.</p>{{/each}}</fieldset>
     <fieldset class="payout-heading hub-status"><legend><i
           class="fas fa-tools"

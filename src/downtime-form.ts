@@ -1,3 +1,5 @@
+import { nomadRespecPanel, bindNomadVehicles } from "./nomad-vehicles";
+import { armorRepairDays } from "./repair-settings";
 import { accessibleCrewActors } from "./actor-policy";
 import { medtechRole } from "./medtech-system";
 import { loadMedicalCatalog } from "./medtech";
@@ -26,11 +28,18 @@ import { MODULE_ID } from "./constants";
 import { hustleDays } from "./downtime-model";
 import {
   TECH_CATEGORIES,
+  TECH_MONTH_SETTING,
+  projectSchedule,
   techProjects,
   type TechInput,
   type TechMode,
 } from "./tech-project-model";
-import { techSkills, itemPrice, categoryForPrice } from "./tech-projects";
+import {
+  techSkills,
+  techRole,
+  itemPrice,
+  categoryForPrice,
+} from "./tech-projects";
 import {
   actorLedger,
   getDowntime,
@@ -40,11 +49,13 @@ import {
   ownedCharacter,
 } from "./downtime-store";
 import {
+  requestNomadRespec,
   requestMedicalAction,
   requestTechAction,
   requestDowntimeUse,
   requestHustleRoll,
   currentTechSlots,
+  workshopLevel,
   healingFormula,
   report,
 } from "./downtime-service";
@@ -63,6 +74,19 @@ export async function projectDialog(
     throw new Error("Drop an Item onto the project first.");
   const price = source ? itemPrice(source) : 100;
   const category = categoryForPrice(price);
+  const schedule =
+    mode === "repair"
+      ? projectSchedule(
+          category,
+          price,
+          Number(game.settings.get(MODULE_ID, TECH_MONTH_SETTING) ?? 28),
+        )
+      : undefined;
+  const repairDays = schedule
+    ? ((source?.type === "armor"
+        ? armorRepairDays(category, !!techRole(actor))
+        : undefined) ?? schedule.required)
+    : undefined;
   const skills = techSkills(actor);
   if (!skills.length) throw new Error("This character has no TECH skills.");
   const input = await new Promise<TechInput | null>((resolve) => {
@@ -72,7 +96,9 @@ export async function projectDialog(
           ? "Invention"
           : mode === "upgrade"
             ? "Upgrade Item"
-            : "Fabricate Item",
+            : mode === "repair"
+              ? "Repair Gear"
+              : "Fabricate Item",
       content:
         '<form><div class="form-group"><label>Name</label><input name="projectName" maxlength="100" value="' +
         escape(source?.name ?? "") +
@@ -86,7 +112,14 @@ export async function projectDialog(
             ).join("") +
             "</select></div>" +
             '<div class="form-group"><label>Super Luxury value (eb)</label><input name="price" type="number" min="10000" step="1" value="10000"></div>') +
-        '<div class="form-group"><label>TECH skill</label><select name="skillId">' +
+        (schedule
+          ? "<p>Repair time: " +
+            repairDays +
+            " days · DV " +
+            schedule.dv +
+            "</p>"
+          : "") +
+        '<div class="form-group"><label>Item Skill</label><select name="skillId" required><option value="" selected disabled>Choose Item Skill…</option>' +
         skills
           .map(
             (i) =>
@@ -208,6 +241,12 @@ export async function startTherapyDialog(
 export class DowntimeForm extends CrewToolsForm {
   selectedActorId: string | undefined;
   selectedHustleRoleId: string | undefined;
+  private sectionOpen = new Map<string, boolean>();
+  // Reopening the reused window starts folded; redraws keep current choices.
+  override async close(): Promise<void> {
+    await super.close();
+    this.sectionOpen.clear();
+  }
   private patientChoice = "standard";
   private patientPC = false;
   private patientAddiction = "";
@@ -334,9 +373,12 @@ export class DowntimeForm extends CrewToolsForm {
     const roles = characterRoles(actor).filter((r) => r.rank <= 10);
     const canCraft = roles.some((r) => r.tech);
     const medical = medicalView(actor, medicalPage, balance);
-    const hasRoleAreas = canCraft || medical.canMedtech;
+    const hasRoleAreas = !!actor;
+    const workshop = canCraft ? workshopLevel() : 0;
     const canHustle = roles.some((r) => r.rank <= 10);
     return {
+      // The vehicle roster lives in the Hub; downtime exposes only its shared respec task.
+      nomad: nomadRespecPanel(actor, state, available),
       patientChoices: THERAPIES.map((t) => ({
         id: t.id,
         label: t.name + " · " + (this.patientPC ? 0 : t.cost) + " eb",
@@ -370,14 +412,25 @@ export class DowntimeForm extends CrewToolsForm {
             ?.id,
       })),
       canCraft,
-      techSlots: canCraft
-        ? Array.from({ length: 3 }, (_, slot) => {
+      canRepair: !!actor && !canCraft,
+      workshop,
+      canWorkshopDay:
+        workshop > 0 &&
+        available > 0 &&
+        projects.some(
+          (p) => p.active && p.slot < slotLimit && p.progress < p.required,
+        ),
+      techSlots: actor
+        ? Array.from({ length: canCraft ? 3 : 1 }, (_, slot) => {
             const project = actor
               ? projects.find((p) => p.active && p.slot === slot)
               : undefined;
-            const enabled = slot < slotLimit;
+            const enabled = slot < (canCraft ? slotLimit : 1);
             return {
               slot,
+              workshop,
+              canCraft,
+              requiredWorkshop: slot === 2 ? "Workshop II" : "Workshop I",
               number: slot + 1,
               enabled,
               project,
@@ -388,6 +441,10 @@ export class DowntimeForm extends CrewToolsForm {
                 !!actor &&
                 available > 0,
               canRoll: enabled && project?.canRoll,
+              canComplete:
+                enabled &&
+                project?.success &&
+                project.progress >= project.required,
               stored: !!project?.storageItemId,
               progressPercent: project
                 ? Math.max(
@@ -421,6 +478,32 @@ export class DowntimeForm extends CrewToolsForm {
   override activateListeners(html: FoundryHtml): void {
     super.activateListeners(html);
     const root = html[0];
+    if (root)
+      bindNomadVehicles(
+        root,
+        () =>
+          this.selectedActorId ??
+          root.querySelector<HTMLInputElement>('[name="actorId"]')?.value ??
+          "",
+        () => this.render(false),
+        (days, reset) =>
+          requestNomadRespec(
+            this.selectedActorId ??
+              root.querySelector<HTMLInputElement>('[name="actorId"]')?.value ??
+              "",
+            days,
+            reset,
+          ),
+      );
+    root
+      ?.querySelectorAll<HTMLDetailsElement>("[data-downtime-section]")
+      .forEach((section) => {
+        const key = section.dataset.downtimeSection!;
+        section.open = this.sectionOpen.get(key) ?? false;
+        section.addEventListener("toggle", () =>
+          this.sectionOpen.set(key, section.open),
+        );
+      });
     const field = (name: string) =>
       root?.querySelector<HTMLInputElement | HTMLSelectElement>(
         '[name="' + name + '"]',
@@ -441,8 +524,8 @@ export class DowntimeForm extends CrewToolsForm {
     root?.querySelectorAll<HTMLElement>("[data-tech-slot]").forEach((row) => {
       const slot = Number(row.dataset.techSlot);
       const mode = () =>
-        row.querySelector<HTMLSelectElement>("[data-tech-mode]")
-          ?.value as TechMode;
+        (row.querySelector<HTMLSelectElement>("[data-tech-mode]")
+          ?.value as TechMode) || "repair";
       row.querySelector("[data-tech-new]")?.addEventListener(
         "click",
         () =>
@@ -536,7 +619,11 @@ export class DowntimeForm extends CrewToolsForm {
               }
               await requestTechAction(
                 button.dataset.techAction as
-                  "techDay" | "techRoll" | "techCancel",
+                  | "techDay"
+                  | "techRoll"
+                  | "techCancel"
+                  | "techFinish"
+                  | "techWorkshop",
                 field("actorId"),
                 id,
               );

@@ -1,3 +1,4 @@
+import { registerTeammateSettings } from "./teammates";
 import { registerRentSettings } from "./rent-form";
 import { registerRentReconciliation } from "./rent";
 import { registerPharmaTransfers } from "./pharma-transfer";
@@ -50,6 +51,8 @@ Hooks.once("init", () => {
   registerActorExclusions();
   registerFactions();
   registerPharmaTransfers();
+  // Register the shared die preference before any teammate checks.
+  registerTeammateSettings();
   registerRentSettings();
   registerRentReconciliation();
   registerUiAppearance();

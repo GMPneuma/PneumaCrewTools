@@ -200,7 +200,12 @@ export async function refreshRecordTables(): Promise<void> {
     if (!["character", "payoutLedger"].includes(String(kind))) continue;
     for (const page of journal.pages) {
       const key = page.getFlag?.(MODULE_ID, "recordKey");
-      if (["rent", "rentConfig", "hqRent"].includes(String(key))) continue;
+      if (
+        ["rent", "rentConfig", "hqRent", "teammates", "nomadVehicles"].includes(
+          String(key),
+        )
+      )
+        continue;
       const data = page.getFlag?.(MODULE_ID, "data");
       if (typeof key !== "string" || data === undefined) continue;
       const record = data as import("./payout-record").PayoutRecord;

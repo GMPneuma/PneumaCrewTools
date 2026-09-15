@@ -18,6 +18,20 @@ function load(name, globals, deps) {
   vm.runInNewContext(code, {
     exports,
     require: (k) => {
+      if (k === "./nomad-vehicles")
+        return {
+          nomadVehiclePanel: () => ({ visible: false, slots: [] }),
+          nomadVehicleSlots: () => {
+            globals.nomadReads?.();
+            return [{ actorId: "vehicle" }];
+          },
+          bindNomadVehicles() {},
+        };
+      if (k === "./teammates")
+        return {
+          teammatePanel: () => ({ visible: false, slots: [] }),
+          bindTeammates() {},
+        };
       if (k === "./roll-visibility")
         return { activityRollRecipients: () => [] };
       if (k === "./rent")
@@ -39,6 +53,7 @@ function load(name, globals, deps) {
         });
       if (k === "./foundry-form") return load("foundry-form", globals, {});
       if (k === "./date-format") return load("date-format", globals, {});
+      if (k === "./nomad-model") return load("nomad-model", globals, {});
       if (k === "./tech-project-model")
         return load("tech-project-model", globals, {});
       if (k === "./actor-policy")
@@ -62,6 +77,10 @@ function load(name, globals, deps) {
   return exports;
 }
 function fixture() {
+  let nomadReadCount = 0;
+  const nomadReads = () => {
+    nomadReadCount++;
+  };
   const hooks = new Map();
   const timers = new Map();
   const renders = [];
@@ -141,6 +160,7 @@ function fixture() {
       { kind: "award", days: 7, actorId: "a2" },
     ],
   };
+  game.actors.get = (id) => game.actors.find((actor) => actor.id === id);
   const model = load(
     "downtime-model",
     {},
@@ -168,6 +188,7 @@ function fixture() {
     "payout-inbox",
     {
       game,
+      nomadReads,
       Hooks: { on: (name, fn) => hooks.set(name, fn) },
       setTimeout: (fn) => {
         const id = {};
@@ -202,6 +223,7 @@ function fixture() {
   );
   return {
     game,
+    nomadReads,
     p1,
     p2,
     gm,
@@ -209,6 +231,7 @@ function fixture() {
     state,
     status,
     inbox,
+    nomadReadCount: () => nomadReadCount,
     hooks,
     timers,
     renders,
@@ -439,4 +462,21 @@ test("resource tile shortcuts open the selected actor's native ledgers", async (
   for (const button of buttons) button.click();
   await Promise.resolve();
   assert.deepEqual(calls, ["wealth", "improvementPoints", "reputation"]);
+});
+
+test("Hub skips roster reads while closed or for unrelated changes and refreshes linked vehicle HP", () => {
+  const f = fixture();
+  f.game.settings.register = () => {};
+  f.inbox.registerPayoutInboxSettings();
+  f.inbox.openPlayerHub();
+  f.renders[0].app.getData();
+  const update = f.hooks.get("updateActor");
+  update({ id: "vehicle" }, { "system.wealth.value": 1 });
+  assert.equal(f.nomadReadCount(), 0);
+  update({ id: "vehicle" }, { "system.derivedStats.hp.value": 10 });
+  assert.equal(f.nomadReadCount(), 1);
+  assert.equal(f.timers.size, 1);
+  f.renders[0].app.rendered = false;
+  update({ id: "vehicle" }, { img: "changed.webp" });
+  assert.equal(f.nomadReadCount(), 1);
 });

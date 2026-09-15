@@ -10,9 +10,9 @@ HQ configuration appears to GMs in the same form. Choose a rent type and percent
 
 ## Pending HQ payments
 
-A player contribution immediately deducts money through the native character wealth ledger and records a pending payment in their character Journal. It does not require a connected GM or give players ownership of HQ Actors. The Player Hub displays **Pending Rent Payment** and the amount directly below Money.
+A player contribution immediately deducts money through the native character wealth ledger and records a pending payment in their character Journal. It does not require a connected GM or give players ownership of HQ Actors. The Player Hub displays **Rent Payment Processing** and the amount directly below Money.
 
-The current player processes contributions immediately when the HQ page permits editing; reconnect and GM reconciliation recover pending contributions. Confirmed payments reduce outstanding rent on the HQ Journal page. If pending contributions exceed the remaining bill, only the outstanding amount is applied and the rest is refunded to the contributor's native money ledger. Reprocessing a confirmed receipt cannot credit the HQ twice. An interrupted native money operation is recorded visibly for GM review before another payment is attempted.
+HQ contributions settle automatically on the player client when the HQ page permits editing. No GM approval is required. Automatic reconciliation on reconnect recovers unfinished contributions. Completed payments reduce outstanding rent on the HQ Journal page. If pending contributions exceed the remaining bill, only the outstanding amount is applied and the rest is refunded to the contributor's native money ledger. Reprocessing a confirmed receipt cannot credit the HQ twice. An interrupted native money operation is recorded visibly for GM review before another payment is attempted.
 
 ## Storage
 

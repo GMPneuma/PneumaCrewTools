@@ -103,11 +103,11 @@
               }}{{lifestyle.paymentAmount}}{{else}}{{lifestyle.amount}}{{/if}}
               eb</button>{{/if}}{{/if}}</div>
     </fieldset>{{/each}}
-  {{#if pending}}<fieldset class="payout-heading hub-status"><legend>Pending
-        Rent Payment</legend>{{#each pending}}<p>{{hqName}}
+  {{#if pending}}<fieldset class="payout-heading hub-status"><legend>Payment
+        Processing</legend>{{#each pending}}<p>{{hqName}}
           ·
           {{amount}}
-          eb · awaiting processing</p>{{/each}}</fieldset>{{/if}}
+          eb · processing automatically</p>{{/each}}</fieldset>{{/if}}
   {{#each headquarters}}<fieldset
       class="payout-heading hub-status"
       data-hq-rent
@@ -134,7 +134,7 @@
           >Save HQ Rent</button></div>{{/if}}
       {{#each bills}}<div class="rent-charge"><div><strong>Due
               {{date}}</strong><div>{{formula}}</div><div>{{paid}}
-              eb confirmed ·
+              eb paid ·
               {{remaining}}
               eb remaining</div></div><input
             type="number"

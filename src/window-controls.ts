@@ -1,3 +1,4 @@
+import { showTokenShortcuts } from "./shortcut-display";
 import { MODULE_ID } from "./constants";
 import { openDashboard } from "./gm-dashboard";
 import { PayoutWindow } from "./payout-window";
@@ -23,6 +24,11 @@ export function registerPayoutWindowControl(): void {
   Hooks.on("getSceneControlButtons", (controls: SceneControl[]) => {
     const tokenControls = controls.find(({ name }) => name === "token");
     if (!tokenControls) return;
+    // Replace only our entries when Foundry rebuilds controls, preserving native tools.
+    tokenControls.tools = tokenControls.tools.filter(
+      (tool) => tool.name !== MODULE_ID && tool.name !== MODULE_ID + "-inbox",
+    );
+    if (!showTokenShortcuts()) return;
     tokenControls.tools.push({
       name: `${MODULE_ID}-inbox`,
       title: "Open Crew Tools Player Hub",

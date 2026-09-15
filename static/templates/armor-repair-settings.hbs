@@ -1,0 +1,21 @@
+<form class="armor-repair-settings">
+  <label><input type="checkbox" name="enabled" {{checked enabled}} />
+    Override Armor Repair Time</label>
+  <label><input type="checkbox" name="techOnly" {{checked techOnly}} />
+    Only override for TECHs</label>
+  <p class="notes">Premium and higher only. Blank entries use normal fabrication
+    time. Overrides apply only to new repair projects.</p>
+  <table><thead><tr><th>Price category</th><th>Repair days</th></tr></thead><tbody
+    >
+      {{#each rows}}<tr><td>{{name}}</td><td><input
+              type="number"
+              name="days{{index}}"
+              value="{{days}}"
+              min="1"
+              step="1"
+              placeholder="Default"
+              aria-label="{{name}} repair days"
+            /></td></tr>{{/each}}
+    </tbody></table><button type="submit"><i class="fas fa-save"></i>
+    Save Repair Times</button>
+</form>

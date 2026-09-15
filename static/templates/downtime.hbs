@@ -89,7 +89,7 @@
           </div>
         </fieldset>
 
-        <fieldset class="payout-heading hub-status">
+        <fieldset class="payout-heading hub-status downtime-hustle">
           <legend><i class="fas fa-coins"></i> Hustle</legend>
           <div class="downtime-hustle-row downtime-hustle-main">
             {{#unless fullWeek}}
@@ -152,8 +152,12 @@
               hustle.</p>{{/unless}}
         </fieldset>
 
-        <fieldset class="payout-heading hub-status">
-          <legend><i class="fas fa-heart-pulse"></i> Therapy · Patient</legend>
+        <details
+          class="payout-heading hub-status"
+          data-downtime-section="patient"
+        >
+          <summary><i class="fas fa-heart-pulse"></i>
+            Therapy · Patient</summary>
           {{#if patient}}
             <div class="downtime-hustle-row">
               {{#unless fullWeek}}<span class="downtime-progress"><progress
@@ -261,9 +265,12 @@
                 value="{{patientAddiction}}"
               />{{/if}}
           {{/if}}
-        </fieldset>
-        <fieldset class="payout-heading hub-status">
-          <legend>Other Activity</legend>
+        </details>
+        <details
+          class="payout-heading hub-status"
+          data-downtime-section="other"
+        >
+          <summary>Other Activity</summary>
           <div class="downtime-other-row">
             <label class="downtime-days-label"># of days
               <input
@@ -287,15 +294,75 @@
             />
             <button type="submit" class="downtime-use-day">Use Days</button>
           </div>
-        </fieldset>
+        </details>
       {{/if}}
     </section>
     {{#if hasRoleAreas}}
       <section class="downtime-roles" aria-label="Role downtime">
         {{#if ready}}
-          {{#if canCraft}}
-            <fieldset class="payout-heading hub-status downtime-tech">
-              <legend>TECH Projects</legend>
+          {{#if nomad.visible}}
+            <details
+              class="payout-heading hub-status downtime-nomad"
+              data-downtime-section="nomad"
+            >
+              <summary><i class="fas fa-car"></i>
+                Nomad · Vehicle Respec</summary>
+              {{#unless nomad.garage}}<p class="notes">must have garage to use</p>{{/unless}}
+              <div class="nomad-respec">
+                <strong>Respec Nomad Vehicle</strong>
+                <div class="downtime-hustle-row">
+                  <span class="downtime-progress"><progress
+                      max="100"
+                      value="{{nomad.progress}}"
+                      aria-label="Respec Nomad Vehicle"
+                      aria-valuetext="{{nomad.days}} / 7 days"
+                    ></progress><strong>{{nomad.days}}
+                      / 7 days</strong></span>
+                  {{#if nomad.complete}}
+                    <button
+                      type="button"
+                      data-nomad-action="reset"
+                      {{disabled nomad.cannotReset}}
+                    >Start New Respec</button>
+                  {{else}}
+                    <button
+                      type="button"
+                      data-nomad-action="day"
+                      data-days="1"
+                      {{disabled nomad.cannotAdd}}
+                    >Use 1 Day</button>
+                    <button
+                      type="button"
+                      data-nomad-action="fill"
+                      data-days="{{nomad.remaining}}"
+                      {{disabled nomad.cannotFill}}
+                    >Use {{nomad.remaining}} Days</button>
+                  {{/if}}
+                </div>
+                {{#if nomad.complete}}<p class="notes">Complete — change the
+                    vehicle manually.</p>{{/if}}
+              </div>
+            </details>
+          {{/if}}
+          {{#if hasActor}}
+            <details
+              class="payout-heading hub-status downtime-tech"
+              data-downtime-section="tech"
+            >
+              <summary>{{#if canCraft}}TECH Projects{{else}}Repair Gear{{/if}}</summary>
+              {{#if workshop}}<p class="notes">Workshop
+                  {{workshop}}
+                  · one downtime day advances
+                  {{#if canWorkshopDay}}active{{else}}eligible{{/if}}
+                  projects together.</p>{{#if canWorkshopDay}}<button
+                    type="button"
+                    class="downtime-use-day"
+                    data-tech-action="techWorkshop"
+                  >Apply 1 day to all projects</button>{{else}}<button
+                    type="button"
+                    class="downtime-use-day"
+                    disabled
+                  >Apply 1 day to all projects</button>{{/if}}{{/if}}
               {{#each techSlots}}
                 <div class="tech-slot" data-tech-slot="{{slot}}">
                   {{#if project}}
@@ -314,17 +381,22 @@
                         {{project.dv}}{{#if project.success}}
                           · Check passed{{/if}}</small></div>
                     <div class="tech-slot-actions">
-                      {{#if canAdd}}<button
-                          class="downtime-use-day"
+                      {{#unless workshop}}{{#if canAdd}}<button
+                            class="downtime-use-day"
+                            type="button"
+                            data-tech-action="techDay"
+                            data-tech-project="{{project.id}}"
+                            title="Allocate one downtime day"
+                          >Use 1 Day</button>{{else}}<button
+                            class="downtime-use-day"
+                            type="button"
+                            disabled
+                          >Use 1 Day</button>{{/if}}{{/unless}}
+                      {{#if canComplete}}<button
                           type="button"
-                          data-tech-action="techDay"
+                          data-tech-action="techFinish"
                           data-tech-project="{{project.id}}"
-                          title="Allocate one downtime day"
-                        >Use 1 Day</button>{{else}}<button
-                          class="downtime-use-day"
-                          type="button"
-                          disabled
-                        >Use 1 Day</button>{{/if}}
+                        >Complete Project</button>{{/if}}
                       {{#if canRoll}}<button
                           type="button"
                           data-tech-action="techRoll"
@@ -340,30 +412,36 @@
                         title="Cancel project; upgrade item returns to this character"
                       >Cancel</button>
                     </div>
-                    {{#unless enabled}}<small>Requires Workshop</small>{{/unless}}
+                    {{#unless enabled}}<small>Requires
+                        {{requiredWorkshop}}</small>{{/unless}}
                   {{else}}
                     {{#if enabled}}
                       <strong>{{number}}.</strong>
-                      <select data-tech-mode aria-label="Project type"><option
-                          value="fabricate"
-                        >Fabricate Item</option><option value="upgrade">Upgrade
-                          Item</option><option
-                          value="invention"
-                        >Invention</option></select>
+                      {{#if canCraft}}<select
+                          data-tech-mode
+                          aria-label="Project type"
+                        ><option value="fabricate">Fabricate Item</option><option
+                            value="upgrade"
+                          >Upgrade Item</option><option
+                            value="invention"
+                          >Invention</option><option value="repair">Repair Item</option></select>{{/if}}
                       <div data-tech-drop class="tech-drop">Drop Item here</div>
                       <button type="button" data-tech-new hidden>Create</button>
                     {{else}}<strong>{{number}}.</strong><span
                         class="notes"
-                      >Requires Workshop</span>{{/if}}
+                      >Requires {{requiredWorkshop}}</span>{{/if}}
                   {{/if}}
                 </div>
               {{/each}}
-            </fieldset>
+            </details>
           {{/if}}
           {{#if canMedtech}}
-            <fieldset class="payout-heading hub-status downtime-medical">
-              <legend><i class="fas fa-user-doctor"></i>
-                Medtech · Therapy</legend>
+            <details
+              class="payout-heading hub-status downtime-medical"
+              data-downtime-section="provider"
+            >
+              <summary><i class="fas fa-user-doctor"></i>
+                Medtech · Therapy</summary>
               {{#if provider}}
                 <div class="downtime-hustle-row">
                   {{#unless fullWeek}}<span class="downtime-progress"><progress
@@ -439,10 +517,13 @@
                   >Provide Therapy{{#if fullWeek}}
                       · 7 days{{else}}…{{/if}}</button>{{/if}}
               {{/if}}
-            </fieldset>
-            <fieldset class="payout-heading hub-status downtime-medical">
-              <legend><i class="fas fa-briefcase-medical"></i>
-                Medtech · Workday</legend>
+            </details>
+            <details
+              class="payout-heading hub-status downtime-medical"
+              data-downtime-section="workday"
+            >
+              <summary><i class="fas fa-briefcase-medical"></i>
+                Medtech · Workday</summary>
               <div class="downtime-hustle-row medical-day-status"><strong
                 >{{medicalHours}} / 16 hours</strong></div>
               <div class="medical-workday-layout"><div
@@ -556,7 +637,7 @@
                   <p class="notes">Spending the day clears the list and forfeits
                     unused hours.</p>
                 </div></div>
-            </fieldset>
+            </details>
           {{/if}}
         {{/if}}
       </section>

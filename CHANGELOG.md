@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.6.0 - 2026-09-14
+
+- Added Exec teammates with permission-filtered Actor selection, portraits, Loyalty controls, and configurable 1d6/1d10 checks.
+- Added Nomad vehicle portraits and HP to the Player Hub, with three slots expanding to six. Added one seven-day vehicle respec task in Downtime, requiring an HQ Garage; vehicle changes remain manual.
+- Added explicit TECH item-skill selection, corrected Expertise modifiers, and configurable armor repair settings.
+- Added personal HUD / Token Controls / Both shortcut preferences.
+- Added historical Discord payout export from saved records, without reapplying rewards.
+- Improved downtime resizing and collapsed defaults, keeping Hustle always open. Cleaned up Headquarters and downtime adjustment forms, and added Mark Rent Due confirmation.
+- Optimized actor discovery, refresh handling, Nomad record reads, and downtime validation.
+- Clarified automatic rent settlement labels. Known limitation: HQ permission or missing-record problems can leave contributions pending; interrupted money/Journal writes can still require manual review.
+- Tracked Netrunner cyberdecks and Server Room level 2 crafting as future work.
+- Foundry compatibility remains v12. Integrated live GM/player verification remains pending.
+
 ## 0.1.1 - 2026-09-12
 
 - Added a shared date-only campaign calendar with GM date and day-advance controls.

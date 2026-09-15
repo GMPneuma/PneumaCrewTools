@@ -1,4 +1,4 @@
-import { isActorExcluded } from "./actor-policy";
+import { excludedActorIds } from "./actor-policy";
 export const PLAYER_DISCOVERY_ISSUES = [
   "noAssignedActor",
   "noEligibleActors",
@@ -32,13 +32,16 @@ const PAYOUT_ACTOR_TYPES = new Set(["character"]);
 
 export function discoverPlayerAccounts(): PlayerAccount[] {
   const players = Array.from(game.users).filter((user) => !user.isGM);
-  const actors = Array.from(game.actors).filter(
-    (actor) => PAYOUT_ACTOR_TYPES.has(actor.type) && !isActorExcluded(actor.id),
+  // One fresh exclusion snapshot serves both discovery and assigned-Actor checks.
+  const allActors = Array.from(game.actors);
+  const excluded = excludedActorIds(allActors);
+  const actors = allActors.filter(
+    (actor) => PAYOUT_ACTOR_TYPES.has(actor.type) && !excluded.has(actor.id),
   );
   const actorOwners = indexActorOwners(players, actors);
 
   return players
-    .map((user) => toPlayerAccount(user, actors, actorOwners))
+    .map((user) => toPlayerAccount(user, actors, actorOwners, excluded))
     .sort((left, right) =>
       left.userName.localeCompare(right.userName, undefined, {
         sensitivity: "base",
@@ -64,11 +67,10 @@ function toPlayerAccount(
   user: FoundryUser,
   actors: FoundryActor[],
   actorOwners: Map<string, string[]>,
+  excluded: Set<string>,
 ): PlayerAccount {
   const assignedActor =
-    user.character && !isActorExcluded(user.character.id)
-      ? user.character
-      : null;
+    user.character && !excluded.has(user.character.id) ? user.character : null;
   const issues: PlayerDiscoveryIssue[] = [];
   const associatedActors = actors
     .filter(

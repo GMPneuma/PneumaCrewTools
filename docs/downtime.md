@@ -115,3 +115,7 @@ New TECH, hustle and Medtech roll messages use the native CPR chat frame, outcom
 Patient therapy setup and completion are inline: choose a course, optionally select a free PC therapist, and enter an addiction only for addiction treatment. Completing seven days enables the Humanity roll or completion button without opening another window. PC patients confirm therapist success or record failure in the same panel.
 
 The scene-control **Crew Tools GM Dashboard** opens GM actions above outstanding payout acknowledgements and Humanity rolls. It includes payouts, calendar, downtime, headquarters and confirmed expiration of unspent days into the next downtime session. Rent remains disabled until rent tracking is implemented. Existing player-action safeguards apply to the pending records.
+
+## Collapsible activities
+
+Healing and the available-day header are always expanded. Hustle, patient therapy, Other Activity, projects/repair, provider therapy and the medical workday use native collapsible sections. Their open/closed state survives redraws while the downtime window remains open.

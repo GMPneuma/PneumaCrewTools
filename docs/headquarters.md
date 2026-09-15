@@ -31,7 +31,7 @@ Costs are GM-defined; no unsupplied prices or additional mechanics are assumed. 
 
 ## Shared rent
 
-The viewer shows configured monthly rent, unpaid bills, confirmed payment progress, and remaining balance. Configure Rent uses housing rates and percentage modifiers from Rent & Lifestyle settings. Changes affect future bills.
+The viewer shows configured monthly rent, unpaid bills, payment progress, and remaining balance. Configure Rent uses housing rates and percentage modifiers from Rent & Lifestyle settings. Changes affect future bills.
 
 Rent & Contributions opens the existing payment screen. Eligible crew characters may contribute regardless of residence. Payments are recorded in character Journals and immediately applied to the editable HQ page. Excess is refunded. Interrupted payments remain recoverable; restricted HQ page access leaves them pending. Billed HQs cannot be relinked. See [Rent](rent.md).
 

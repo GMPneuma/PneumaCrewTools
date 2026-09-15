@@ -1,3 +1,9 @@
+import {
+  nomadVehiclePanel,
+  bindNomadVehicles,
+  nomadVehicleSlots,
+} from "./nomad-vehicles";
+import { teammatePanel, bindTeammates } from "./teammates";
 import { activityRollRecipients } from "./roll-visibility";
 import { openRent } from "./rent-form";
 import { rentStatus } from "./rent";
@@ -70,6 +76,8 @@ interface InboxCard {
 
 interface InboxData {
   status: ReturnType<typeof getHubStatus>;
+  teammates: ReturnType<typeof teammatePanel>;
+  nomad: ReturnType<typeof nomadVehiclePanel>;
   rent: ReturnType<typeof rentStatus>;
   pharma: ReturnType<PharmaTransferPanel["getData"]>;
   cards: InboxCard[];
@@ -93,11 +101,32 @@ export function registerPayoutInboxSettings(): void {
     }, 50);
   };
   Hooks.on("updateActor", (actor, changes) => {
+    // Ignore updates before any Journal lookup when the Hub is closed.
+    if (!payoutInbox?.rendered) return;
     const membership = Object.keys(changes).some((key) =>
       /^(name|ownership|type)(\.|$)/.test(key),
     );
-    if (membership || actor.id === payoutInbox?.getSelectedActorId()) refresh();
+    const selected = payoutInbox.getSelectedActorId();
+    if (membership || actor.id === selected) {
+      refresh();
+      return;
+    }
+    // Only HP and portrait changes on another Actor can affect the vehicle tiles.
+    const system = changes.system as
+      { derivedStats?: { hp?: unknown } } | undefined;
+    const affectsVehicle =
+      Object.keys(changes).some((key) =>
+        /^(img|system\.derivedStats\.hp)(\.|$)/.test(key),
+      ) || system?.derivedStats?.hp !== undefined;
+    if (
+      affectsVehicle &&
+      selected &&
+      nomadVehicleSlots(selected).some((slot) => slot?.actorId === actor.id)
+    )
+      refresh();
   });
+  Hooks.on("createActor", refresh);
+  Hooks.on("deleteActor", refresh);
   Hooks.on("updateUser", refresh);
   const refreshPage = (page: FoundryJournalPage) => {
     if (isCrewPage(page)) refresh();
@@ -234,6 +263,8 @@ export class PlayerHub extends CrewToolsForm {
     this.#displayedActorId = status.actorId;
     return {
       status,
+      teammates: teammatePanel(status.actorId),
+      nomad: nomadVehiclePanel(game.actors.get(status.actorId)),
       rent: rentStatus(status.actorId),
       pharma: this.#pharma.getData(status.actorId),
       cards,
@@ -251,6 +282,16 @@ export class PlayerHub extends CrewToolsForm {
     super.activateListeners(html);
     const root = html[0];
     if (!root) return;
+    // Capture the selected Actor for roster dialogs even if the Hub later switches characters.
+    const nomadId = this.#displayedActorId ?? "";
+    bindNomadVehicles(
+      root,
+      () => nomadId,
+      () => this.render(false, { focus: false }),
+    );
+    bindTeammates(root, this.#displayedActorId ?? "", () =>
+      this.render(false, { focus: false }),
+    );
     root
       .querySelector<HTMLSelectElement>("[data-hub-actor]")
       ?.addEventListener("change", (event) => {

@@ -10,7 +10,7 @@ The character selector and available downtime balance share one compact header r
 - **Upgrade Item:** drop an owned world or inventory Item. One item moves into **Actors → CrewTools → Upgrade Projects — Character Name**. A stack is reduced by one. Compendium templates cannot be upgraded because they are not a current world possession.
 - **Invention:** choose the mode and click **Create**. Enter a name, description, cost category and TECH skill. Completion creates a normal **Gear** Item in that character's inventory.
 
-The setup dialog selects the relevant TECH skill. Upgrade notes are recorded in the Journal and appended to the returned item's description on completion. No specific mechanical upgrades are applied yet. Fabrication and upgrades use the source item's native **system.price.market** value to determine category and duration; changing a request's price cannot make a source item cheaper.
+The setup dialog requires an explicit Item Skill selection: Basic Tech, Cybertech, Air Vehicle Tech, Land Vehicle Tech, Sea Vehicle Tech, Weaponstech, or Electronics/Security Tech. The selected character skill is retained with the project. Fabrication, Upgrade, and Invention add their matching Expertise and exclude native Field Expertise; repairs retain native Field Expertise without adding it twice. Upgrade notes are recorded in the Journal and appended to the returned item's description on completion. No specific mechanical upgrades are applied yet. Fabrication and upgrades use the source item's native **system.price.market** value to determine category and duration; changing a request's price cannot make a source item cheaper.
 
 Native Item export/import handles installed contents. Upgrade removal uses native uninstall/delete methods rather than editing inventory arrays or system files. The holding container is an ordinary Cyberpunk RED container Actor with the character's current owners; permissions and its displayed name are synchronized during GM setup and ownership changes.
 
@@ -67,3 +67,13 @@ A connected GM automatically prepares holding containers for eligible player-own
 The project Cancel button asks for confirmation, warns that allocated days will not be refunded, and defaults to **Keep Project**. Closing the confirmation also keeps the project. Upgrade cancellation returns the held item without pending upgrade notes.
 
 Skill checks open the native roll dialog for modifiers. Cancelling leaves the activity unchanged and does not roll or charge resources.
+
+## Repairs and Workshop allocation
+
+Non-TECH characters have one Repair Gear slot. TECHs select Repair in their project slots. Premium and higher items use fabrication schedules and the same progress/check workflow; hourly repairs remain in Other Activity. Repair operates on the original owned inventory Item, without making a copy or moving it into an upgrade container. Armor completion clears native body/head ablation or restores shield HP. Other gear receives a completion record; no generic damage flags are invented. Repairs use the native skill dialog and native role modifiers, including Field Expertise where configured by the system.
+
+Settings → Crafting → Configure Armor Repair Times provides optional whole-day overrides by actual item price category, with a TECH-only switch. Defaults are disabled and blank; durations are fixed when the project starts. Super Luxury overrides are flat days for that category.
+
+Workshop I supports two slots; Workshop II or above supports three. Without a Workshop the existing multiple-project setting still permits three independently funded slots. With a Workshop, Apply 1 day to all projects replaces individual day buttons and advances each enabled active project that still needs time for a single downtime-day charge. This Journal update is atomic at the character-state service boundary. A passed project reaching full progress this way exposes Complete Project for its Item update; completion costs no additional day.
+
+The shared techWorkshop transaction carries the single day charge; per-project techDay activity entries carry the credited progress. techFinish records completion without another charge.

@@ -24,7 +24,7 @@ export function registerDowntime(): void {
   registerTechSettings();
   game.settings.register(MODULE_ID, PRIVATE_ROLLS_SETTING, {
     name: "Private activity rolls",
-    hint: "Show hustle, therapy, Humanity, TECH crafting, and Medtech roll results only to the character's owners and GMs. Disabled: results appear in public chat.",
+    hint: "Show hustle, therapy, Humanity, TECH crafting, Medtech, and Loyalty roll results only to the character's owners and GMs. Disabled: results appear in public chat.",
     scope: "world",
     config: true,
     type: Boolean,
@@ -78,11 +78,11 @@ export function registerDowntime(): void {
   Hooks.on("updateItem", roleChanged);
   Hooks.on("deleteItem", roleChanged);
   Hooks.on("createActor", (actor: FoundryActor) => {
-    if (actor.type === "character") refreshRoles();
+    if (["character", "mook"].includes(actor.type)) refreshRoles();
     scheduleDowntimeMaintenance(actor.id);
   });
   Hooks.on("deleteActor", (actor) => {
-    if (actor.type === "character") refreshRoles();
+    if (["character", "mook"].includes(actor.type)) refreshRoles();
   });
   Hooks.on(
     "updateActor",
@@ -97,7 +97,12 @@ export function registerDowntime(): void {
   const refreshPage = (page: FoundryJournalPage) => {
     if (!isCrewPage(page)) return;
     const actorId = page.parent?.getFlag?.(MODULE_ID, "actorId");
-    if (!actorId || actorId === window?.selectedActorId) refreshRoles();
+    if (
+      !actorId ||
+      actorId === window?.selectedActorId ||
+      page.getFlag?.(MODULE_ID, "recordKey") === "hq"
+    )
+      refreshRoles();
   };
   Hooks.on("updateJournalEntryPage", refreshPage);
   Hooks.on("createJournalEntryPage", refreshPage);

@@ -102,13 +102,7 @@ test("GM dashboard guards entry, preserves pending records and routes actions", 
   const f = fixture(),
     dashboard = new f.exports.GMDashboard(() => f.calls.push("payout"));
   assert.equal(dashboard.getData().cards[0].id, "receipt");
-  for (const action of [
-    "payout",
-    "calendar",
-    "downtime",
-    "headquarters",
-    "rent",
-  ]) {
+  for (const action of ["payout", "calendar", "downtime", "headquarters"]) {
     let click;
     const button = {
       dataset: { gmDashboardAction: action },
@@ -149,4 +143,37 @@ test("expiration requires confirmation; module records refresh an open dashboard
   assert.equal(f.calls.length, before);
   f.hooks.get("updateJournalEntryPage")({ crew: true });
   assert.equal(f.calls.length, before + 1);
+});
+
+test("rent requires confirmation; cancel, close and repeated clicks are safe", async () => {
+  const f = fixture();
+  const dashboard = new f.exports.GMDashboard(() => {});
+  let click;
+  const button = {
+    dataset: { gmDashboardAction: "rent" },
+    addEventListener: (_e, fn) => (click = fn),
+  };
+  dashboard.activateListeners([{ querySelectorAll: () => [button] }]);
+  for (const dismiss of ["cancel", "close"]) {
+    click();
+    const dialog = f.dialogs.at(-1);
+    assert.equal(dialog.default, "cancel");
+    assert.equal(button.disabled, true);
+    assert.ok(!f.calls.includes("rent"));
+    if (dismiss === "close") dialog.close();
+    else dialog.buttons.cancel.callback();
+    await new Promise((r) => setImmediate(r));
+    assert.ok(!f.calls.includes("rent"));
+    assert.equal(button.disabled, false);
+  }
+  click();
+  const count = f.dialogs.length;
+  click();
+  assert.equal(f.dialogs.length, count);
+  const dialog = f.dialogs.at(-1);
+  dialog.buttons.confirm.callback();
+  dialog.close();
+  await new Promise((r) => setImmediate(r));
+  assert.equal(f.calls.filter((c) => c === "rent").length, 1);
+  assert.equal(button.disabled, false);
 });

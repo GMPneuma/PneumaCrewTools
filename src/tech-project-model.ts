@@ -16,7 +16,7 @@ export const TECH_CATEGORIES = [
   { id: "luxury", name: "Luxury", price: 5000, days: 0, dv: 29 },
   { id: "superLuxury", name: "Super Luxury", price: 10000, days: 0, dv: 29 },
 ] as const;
-export type TechMode = "fabricate" | "upgrade" | "invention";
+export type TechMode = "fabricate" | "upgrade" | "invention" | "repair";
 export interface TechInput {
   mode: TechMode;
   slot: number;
@@ -28,6 +28,7 @@ export interface TechInput {
   skillId: string;
 }
 export interface TechSpec extends TechInput {
+  repairOverrideDays?: number;
   required: number;
   dv: number;
   monthDays: number;
@@ -112,7 +113,7 @@ export function validateTechEvent(event: DowntimeEvent) {
     const t = event.tech;
     if (
       !t ||
-      !["fabricate", "upgrade", "invention"].includes(t.mode) ||
+      !["fabricate", "upgrade", "invention", "repair"].includes(t.mode) ||
       !Number.isInteger(t.slot) ||
       t.slot < 0 ||
       t.slot > 2 ||
@@ -123,13 +124,21 @@ export function validateTechEvent(event: DowntimeEvent) {
     )
       throw new Error("Invalid TECH project.");
     const schedule = projectSchedule(t.category, t.price, t.monthDays);
-    if (schedule.required !== t.required || schedule.dv !== t.dv)
+    if (
+      (t.repairOverrideDays !== undefined &&
+        (t.mode !== "repair" ||
+          t.itemData.type !== "armor" ||
+          !Number.isSafeInteger(t.repairOverrideDays) ||
+          t.repairOverrideDays < 1)) ||
+      (t.repairOverrideDays ?? schedule.required) !== t.required ||
+      schedule.dv !== t.dv
+    )
       throw new Error("Invalid TECH project schedule.");
     if (t.mode === "upgrade" && (!t.storageActorId || !t.storageItemId))
       throw new Error("Upgrade project requires a stored item.");
   }
   if (
-    ["techDay", "techRoll", "techCancel"].includes(event.kind) &&
+    ["techDay", "techRoll", "techCancel", "techFinish"].includes(event.kind) &&
     !event.projectId
   )
     throw new Error("TECH actions require a project ID.");

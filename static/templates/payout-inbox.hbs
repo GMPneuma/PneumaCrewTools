@@ -8,6 +8,10 @@
             class="fas fa-coins"
           ></i>
           Initiate Payout</button>
+        <button type="button" data-gm-dashboard-action="exportPayout"><i
+            class="fab fa-discord"
+          ></i>
+          Export Payout to Discord</button>
         <button type="button" data-gm-dashboard-action="calendar"><i
             class="fas fa-calendar"
           ></i>
@@ -90,7 +94,8 @@
               class="hub-metric-detail hub-housing-detail"
               title="Lifestyle: {{rent.lifestyle}}"
             >{{rent.lifestyle}}</span>
-            {{#if rent.pending}}<span class="rent-pending">Pending Rent Payment:
+            {{#if rent.pending}}<span class="rent-pending">Rent Payment
+                Processing:
                 {{rent.pending}}
                 eb</span>{{/if}}
             {{#if rent.due}}<span class="rent-pending">Rent & Lifestyle Due</span>{{/if}}
@@ -142,6 +147,113 @@
         >{{status.downtimeNote}}</p>{{/if}}
 
     </fieldset>
+    {{#if nomad.visible}}
+      <fieldset class="payout-heading hub-status downtime-nomad hub-nomad">
+        <legend><i class="fas fa-car"></i> Nomad · Vehicles</legend>
+        <div class="nomad-vehicle-slots">
+          {{#each nomad.slots}}
+            <div class="nomad-vehicle-slot">
+              {{#if occupied}}
+                <div class="nomad-vehicle-heading">
+                  <button
+                    type="button"
+                    class="nomad-vehicle-portrait"
+                    data-nomad-action="open"
+                    data-slot="{{index}}"
+                    {{disabled missing}}
+                  >
+                    <img src="{{img}}" alt="" /><span>{{name}}</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="nomad-vehicle-remove"
+                    data-nomad-action="remove"
+                    data-slot="{{index}}"
+                    aria-label="Remove vehicle"
+                    title="Remove vehicle"
+                  ><i class="fas fa-times"></i></button>
+                </div>
+                {{#if missing}}<span>Actor missing</span>{{else}}<strong>HP
+                    {{hp}}
+                    /
+                    {{maxHp}}</strong>{{/if}}
+              {{else}}
+                <span>Vehicle {{number}}</span>
+                <button
+                  type="button"
+                  data-nomad-action="add"
+                  data-slot="{{index}}"
+                ><i class="fas fa-plus"></i> Add Vehicle</button>
+              {{/if}}
+            </div>
+          {{/each}}
+        </div>
+      </fieldset>
+    {{/if}}
+    {{#if teammates.visible}}
+      <fieldset class="payout-heading hub-status hub-teammates">
+        <legend><i class="fas fa-user-tie"></i> Teammates</legend>
+        <div class="hub-teammate-slots">
+          {{#each teammates.slots}}
+            <div class="hub-teammate-slot">
+              {{#if occupied}}
+                <div class="hub-teammate-heading">{{#if canOpen}}<button
+                      type="button"
+                      class="hub-teammate-name"
+                      data-team-action="open"
+                      data-slot="{{index}}"
+                    ><img
+                        class="hub-teammate-portrait"
+                        src="{{img}}"
+                        alt=""
+                      /><span>{{name}}</span></button>{{else}}<button
+                      type="button"
+                      class="hub-teammate-name"
+                      disabled
+                    ><img
+                        class="hub-teammate-portrait"
+                        src="{{img}}"
+                        alt=""
+                      /><span>{{name}}</span></button>{{/if}}<button
+                    type="button"
+                    class="hub-teammate-remove"
+                    data-team-action="remove"
+                    data-slot="{{index}}"
+                    aria-label="Remove teammate"
+                    title="Remove teammate"
+                  ><i class="fas fa-times"></i></button></div>
+                <button
+                  type="button"
+                  class="hub-teammate-loyalty"
+                  data-team-action="adjust"
+                  data-slot="{{index}}"
+                  title="Adjust Loyalty"
+                >Loyalty
+                  <strong>{{loyalty}}</strong>
+                  <i class="fas fa-pen"></i></button>
+                {{#if missing}}<button type="button" disabled><i
+                      class="fas fa-dice-d6"
+                    ></i>
+                    Roll Loyalty Check</button>{{else}}<button
+                    type="button"
+                    data-team-action="roll"
+                    data-slot="{{index}}"
+                  ><i class="fas fa-dice-d6"></i>
+                    Roll Loyalty Check</button>{{/if}}
+                {{#if missing}}<small>Actor missing</small>{{/if}}
+              {{else}}
+                <span>Teammate {{number}}</span>
+                <button
+                  type="button"
+                  data-team-action="add"
+                  data-slot="{{index}}"
+                ><i class="fas fa-plus"></i> Add Teammate</button>
+              {{/if}}
+            </div>
+          {{/each}}
+        </div>
+      </fieldset>
+    {{/if}}
     {{#if status.isMedtech}}
       <fieldset
         class="payout-heading hub-status downtime-medical hub-pharma"

@@ -565,7 +565,7 @@ test("current TECH slots use Workshop improvements or the explicit setting", asy
   f.game.settings.get = () => false;
   assert.equal(f.api.currentTechSlots(), 1);
   f.headquarters.headquarters = [{ improvements: [{ name: "Workshop" }] }];
-  assert.equal(f.api.currentTechSlots(), 3);
+  assert.equal(f.api.currentTechSlots(), 2);
   f.headquarters.headquarters = [];
   f.game.settings.get = () => true;
   assert.equal(f.api.currentTechSlots(), 3);
@@ -1713,7 +1713,8 @@ test("downtime locks column width while retaining resized height across characte
   assert.equal(form.position.width, 640);
   assert.equal(form.position.height, 420);
   form.selectedActorId = "other";
-  assert.equal(form.getData().hasRoleAreas, false);
+  assert.equal(form.getData().hasRoleAreas, true);
+  assert.equal(form.getData().canRepair, true);
   form.setPosition({ width: 1300 });
   assert.equal(form.position.width, 640);
   assert.equal(form.position.height, 420);
@@ -2062,8 +2063,11 @@ test("character actions and dashboard never read or write another character's hi
     .accounts.find((a) => a.actorId === other.id);
   const otherJournal = f.game.journal.get(otherAccount.characterJournalId);
   for (const page of otherJournal.pages) {
-    page.getFlag = () => {
-      throw Error("Unrelated history read");
+    const getFlag = page.getFlag.bind(page);
+    page.getFlag = (ns, key) => {
+      // Roster discovery may inspect page identity, but never unrelated history.
+      if (key !== "recordKey") throw Error("Unrelated history read");
+      return getFlag(ns, key);
     };
     page.update = async () => {
       throw Error("Unrelated history write");
@@ -2254,7 +2258,7 @@ test("Explicit HQ effects survive renaming and notes-only improvements grant no 
   f.headquarters.headquarters = [
     { improvements: [{ name: "Machine Shop", effect: "workshop" }] },
   ];
-  assert.equal(f.api.currentTechSlots(), 3);
+  assert.equal(f.api.currentTechSlots(), 2);
   f.headquarters.headquarters = [
     { improvements: [{ name: "Workshop", effect: "notes" }] },
   ];
@@ -2283,4 +2287,174 @@ test("GM downtime corrections accept signed days and log the reason without over
   await assert.rejects(
     f.api.adjustPlayerDowntime(actorId, 1, "Player attempt"),
   );
+});
+
+test("Workshop progress and its one-day charge survive character Journal reloads", async () => {
+  const f = fixture();
+  await f.award(8);
+  f.game.settings.get = (_ns, key) =>
+    key === "techCraftingMonthDays" ? 28 : false;
+  f.headquarters.headquarters = [
+    { improvements: [{ name: "Workshop", effect: "workshop", level: 1 }] },
+  ];
+  const actor = f.p1.character;
+  actor.items.push({
+    id: "repair-skill",
+    name: "Basic Tech",
+    type: "skill",
+    system: { stat: "tech" },
+  });
+  f.game.user = f.p1;
+  f.gm.active = false;
+  for (let slot = 0; slot < 2; slot++)
+    await f.api.requestTechAction("techStart", actor.id, undefined, {
+      mode: "invention",
+      slot,
+      name: "Project " + slot,
+      description: "Test",
+      category: "expensive",
+      price: 500,
+      skillId: "repair-skill",
+    });
+  await f.api.requestTechAction("techWorkshop", actor.id);
+  assert.equal(f.balance(), 7);
+  const records = f.api
+    .getDowntime(actor.id)
+    .activities.filter((r) => r.kind === "tech");
+  assert.equal(records.length, 2);
+  assert.ok(records.every((r) => r.progress.value === 1));
+  assert.equal(f.api.currentTechSlots(), 2);
+  f.headquarters.headquarters[0].improvements[0].level = 2;
+  assert.equal(f.api.currentTechSlots(), 3);
+});
+
+test("downtime section fold state survives redraws", () => {
+  const f = fixture(),
+    form = new f.api.DowntimeForm();
+  function section() {
+    return {
+      dataset: { downtimeSection: "hustle" },
+      open: true,
+      addEventListener(_name, fn) {
+        this.toggle = fn;
+      },
+    };
+  }
+  const first = section();
+  const root = (part) => ({
+    querySelector: () => null,
+    querySelectorAll: (selector) =>
+      selector === "[data-downtime-section]" ? [part] : [],
+  });
+  form.activateListeners([root(first)]);
+  first.open = false;
+  first.toggle();
+  const second = section();
+  form.activateListeners([root(second)]);
+  assert.equal(second.open, false);
+});
+
+test("Nomad shared respec charges seven days atomically, survives Garage removal, and starts a fresh cycle", async () => {
+  const f = fixture();
+  await f.award(15);
+  f.game.user = f.p1;
+  const actor = f.p1.character;
+  actor.items.push({
+    id: "nomad",
+    name: "Nomad",
+    type: "role",
+    system: { rank: 4, mainRoleAbility: "Moto" },
+  });
+  const progress = () =>
+    load("nomad-model", {}, {}).nomadRespecDays(
+      f.api.getDowntime(actor.id).events,
+      actor.id,
+    );
+  await assert.rejects(f.api.requestNomadRespec(actor.id, 1), /Garage/);
+  f.headquarters.headquarters = [{ improvements: [{ name: "Garage" }] }];
+  await f.api.requestNomadRespec(actor.id, 2);
+  assert.equal(progress(), 2);
+  assert.equal(f.balance(), 13);
+  await assert.rejects(f.api.requestNomadRespec(actor.id, 0, true), /Complete/);
+  f.headquarters.headquarters = [];
+  await assert.rejects(f.api.requestNomadRespec(actor.id, 1), /Garage/);
+  assert.equal(progress(), 2);
+  f.headquarters.headquarters = [{ improvements: [{ name: "garage" }] }];
+  f.failSave(true);
+  await assert.rejects(f.api.requestNomadRespec(actor.id, 5), /write failed/);
+  assert.equal(progress(), 2);
+  assert.equal(f.balance(), 13);
+  f.failSave(false);
+  await f.api.requestNomadRespec(actor.id, 5);
+  assert.equal(progress(), 7);
+  assert.equal(f.balance(), 8);
+  await assert.rejects(f.api.requestNomadRespec(actor.id, 1), /remaining/);
+  assert.match(
+    f.api.getDowntime(actor.id).events.at(-1).reason,
+    /complete.*manually/,
+  );
+  await f.api.requestNomadRespec(actor.id, 0, true);
+  assert.equal(progress(), 0);
+  assert.equal(f.balance(), 8);
+  const results = await Promise.allSettled([
+    f.api.requestNomadRespec(actor.id, 7),
+    f.api.requestNomadRespec(actor.id, 7),
+  ]);
+  assert.equal(results.filter((r) => r.status === "fulfilled").length, 1);
+  assert.equal(progress(), 7);
+  assert.equal(f.balance(), 1);
+  await f.api.requestNomadRespec(actor.id, 0, true);
+  await assert.rejects(f.api.requestNomadRespec(actor.id, 7), /Not enough/);
+  actor.items = actor.items.filter((i) => i.id !== "nomad");
+  await assert.rejects(f.api.requestNomadRespec(actor.id, 1), /Nomad role/);
+});
+
+test("Ledger validation keeps interleaved respec pools separate without rescanning prefixes", () => {
+  let id = 0;
+  const event = (actorId, kind, days) => ({
+    id: String(++id),
+    actorId,
+    kind,
+    days,
+    period: 1,
+    date: "2045-01-01",
+    reason: kind,
+  });
+  const state = {
+    version: 1,
+    period: 1,
+    accounts: ["a", "b"].map((actorId) => ({
+      actorId,
+      name: actorId,
+      characterJournalId: actorId,
+    })),
+    events: [
+      { ...event("a", "award", 20), payoutId: "pa" },
+      { ...event("b", "award", 20), payoutId: "pb" },
+      event("a", "nomadRespecDay", 7),
+      event("b", "nomadRespecDay", 1),
+      event("a", "nomadRespecReset", 0),
+      event("b", "nomadRespecDay", 6),
+      event("b", "nomadRespecReset", 0),
+      event("a", "nomadRespecDay", 1),
+    ],
+  };
+  Object.defineProperties(state.events, {
+    slice: {
+      value: () => {
+        throw Error("history copied");
+      },
+    },
+    indexOf: {
+      value: () => {
+        throw Error("history rescanned");
+      },
+    },
+  });
+  model.validateDowntime(state);
+  state.events.push(event("a", "nomadRespecReset", 0));
+  assert.throws(() => model.validateDowntime(state), /Complete/);
+  state.events.pop();
+  state.events.push(event("b", "nomadRespecDay", 8));
+  assert.throws(() => model.validateDowntime(state), /remaining/);
 });

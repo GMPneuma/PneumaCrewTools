@@ -1,3 +1,7 @@
+import {
+  armorRepairDays,
+  registerArmorRepairSettings,
+} from "./repair-settings";
 import { activityRollRecipients } from "./roll-visibility";
 import { rollCard } from "./roll-card";
 import {
@@ -30,13 +34,13 @@ import {
   type TechSpec,
 } from "./tech-project-model";
 
-export function techSlotLimit(hasWorkshop: boolean): number {
-  return hasWorkshop ||
-    game.settings.get(MODULE_ID, TECH_MULTIPLE_SETTING) === true
-    ? 3
-    : 1;
+export function techSlotLimit(workshop: boolean | number): number {
+  const level = Number(workshop);
+  if (level > 0) return level >= 2 ? 3 : 2;
+  return game.settings.get(MODULE_ID, TECH_MULTIPLE_SETTING) === true ? 3 : 1;
 }
 export function registerTechSettings() {
+  registerArmorRepairSettings();
   game.settings.register(MODULE_ID, TECH_MONTH_SETTING, {
     name: "TECH crafting days per month",
     hint: "Used when starting Luxury and Super Luxury projects. Existing project durations stay fixed.",
@@ -73,7 +77,13 @@ export function validateTechRequest(
   slots: number,
   input?: TechInput,
 ) {
-  if (!techRole(actor)) throw new Error("A ranked TECH role is required.");
+  const existing = techProjects(state, actor.id).find(
+    (p) => p.id === event.projectId,
+  );
+  const isTech = !!techRole(actor);
+  if (!isTech && (input?.mode ?? existing?.mode) !== "repair")
+    throw new Error("A ranked TECH role is required.");
+  if (!isTech) slots = 1;
   if (event.days !== (event.kind === "techDay" ? 1 : 0))
     throw new Error("Invalid TECH day count.");
   if (event.period !== state.period)
@@ -81,7 +91,7 @@ export function validateTechRequest(
   if (event.kind === "techStart") {
     if (
       !input ||
-      !["fabricate", "upgrade", "invention"].includes(input.mode) ||
+      !["fabricate", "upgrade", "invention", "repair"].includes(input.mode) ||
       !Number.isInteger(input.slot) ||
       input.slot < 0 ||
       input.slot >= slots
@@ -103,7 +113,7 @@ export function validateTechRequest(
         "Enter a project name and description (up to 4,000 characters).",
       );
     if (!techSkills(actor).some((s) => s.id === input.skillId))
-      throw new Error("Choose a TECH skill on this character.");
+      throw new Error("Choose an eligible Item Skill on this character.");
     if (input.mode === "invention" && !input.description.trim())
       throw new Error("Describe the invention.");
     return;
@@ -129,6 +139,9 @@ export function validateTechRequest(
       throw new Error(
         "Allocate half the required days before rolling; after failure allocate another half.",
       );
+  } else if (event.kind === "techFinish") {
+    if (!project.success || project.progress < project.required)
+      throw new Error("Finish the required days and pass the check first.");
   } else if (event.kind !== "techCancel")
     throw new Error("Unknown TECH action.");
 }
@@ -139,6 +152,7 @@ export interface TechProcessContext {
   input?: TechInput;
   requester?: FoundryUser;
   slots: number;
+  workshop?: boolean;
   save: (state: DowntimeState) => Promise<void>;
   attempt: (details: Record<string, unknown> | null) => Promise<void>;
 }
@@ -146,6 +160,37 @@ export async function processTechRequest(
   ctx: TechProcessContext,
 ): Promise<void> {
   const { state, event, actor, input, slots } = ctx;
+  if (event.kind === "techWorkshop") {
+    if (!ctx.workshop || !techRole(actor))
+      throw new Error("An HQ Workshop and ranked TECH role are required.");
+    if (
+      event.days !== 1 ||
+      event.period !== state.period ||
+      downtimeBalance(state, actor.id) < 1
+    )
+      throw new Error("One available downtime day is required.");
+    const projects = techProjects(state, actor.id).filter(
+      (p) => p.active && p.progress < p.required && p.slot < slots,
+    );
+    if (!projects.length) throw new Error("No projects need additional days.");
+    for (const p of projects)
+      recordTechActivity(state, {
+        ...event,
+        id: event.id + "-" + p.slot,
+        kind: "techDay",
+        projectId: p.id,
+        reason: "Workshop: " + p.name,
+      });
+    event.reason =
+      "Workshop: 1 day applied to " + projects.map((p) => p.name).join(", ");
+    recordDowntimeTransaction(state, event);
+    await ctx.save(state);
+    return;
+  }
+  if (ctx.workshop && event.kind === "techDay" && techRole(actor))
+    throw new Error(
+      "Use Apply 1 day to all projects while a Workshop is available.",
+    );
   validateTechRequest(state, event, actor, slots, input);
   let mutation = false;
   if (event.kind === "techStart") {
@@ -160,7 +205,7 @@ export async function processTechRequest(
         !ctx.requester ||
         !source.testUserPermission?.(
           ctx.requester,
-          data.mode === "upgrade" ? "OWNER" : "OBSERVER",
+          ["upgrade", "repair"].includes(data.mode) ? "OWNER" : "OBSERVER",
         )
       )
         throw new Error("You do not have permission to use this source Item.");
@@ -168,6 +213,18 @@ export async function processTechRequest(
         throw new Error(
           "Upgrade a world or inventory Item, not a compendium template.",
         );
+      if (
+        data.mode === "repair" &&
+        (source.pack || source.parent?.id !== actor.id)
+      )
+        throw new Error("Repair an Item in this character’s inventory.");
+      if (
+        data.mode === "repair" &&
+        techProjects(state, actor.id).some(
+          (p) => p.active && p.sourceUuid === data.sourceUuid,
+        )
+      )
+        throw new Error("This Item already has an active project.");
       data.price = itemPrice(source);
       data.category = categoryForPrice(data.price);
       data.name = source.name;
@@ -191,6 +248,13 @@ export async function processTechRequest(
             },
           },
     };
+    if (data.mode === "repair" && source?.type === "armor") {
+      const days = armorRepairDays(data.category, !!techRole(actor));
+      if (days !== undefined) {
+        spec.required = days;
+        spec.repairOverrideDays = days;
+      }
+    }
     if (data.mode === "upgrade" && source) {
       const storage = await storageActor(actor);
       const itemId = foundry.utils.randomID(16);
@@ -264,7 +328,50 @@ export async function processTechRequest(
     ((project.success && project.progress >= project.required) ||
       event.kind === "techCancel")
   ) {
-    if (event.kind !== "techCancel" || project.mode === "upgrade") {
+    if (project.mode === "repair" && event.kind !== "techCancel") {
+      const item = (await fromUuid(project.sourceUuid ?? "")) as
+        FoundryItem | undefined;
+      if (
+        !item ||
+        item.documentName !== "Item" ||
+        item.parent?.id !== actor.id ||
+        !ctx.requester ||
+        !item.testUserPermission?.(ctx.requester, "OWNER")
+      )
+        throw new Error(
+          "The original repair Item is missing or no longer owned.",
+        );
+      const system = item.system as {
+        isHeadLocation?: boolean;
+        isBodyLocation?: boolean;
+        isShield?: boolean;
+        shieldHitPoints?: { max: number };
+        headLocation?: { ablation: number };
+        bodyLocation?: { ablation: number };
+      };
+      const update: Record<string, unknown> = {};
+      if (item.type === "armor") {
+        if (system.isHeadLocation && system.headLocation)
+          update["system.headLocation.ablation"] = 0;
+        if (system.isBodyLocation && system.bodyLocation)
+          update["system.bodyLocation.ablation"] = 0;
+        if (system.isShield && Number.isFinite(system.shieldHitPoints?.max))
+          update["system.shieldHitPoints.value"] = system.shieldHitPoints!.max;
+      }
+      if (Object.keys(update).length) {
+        await ctx.attempt({
+          requestId: event.requestId,
+          projectId: project.id,
+          action: "Repair original Item",
+          sourceUuid: item.uuid,
+          update,
+        });
+        mutation = true;
+        await item.update!(update);
+      }
+      event.techDelivery = { actorId: actor.id, itemId: item.id };
+      event.reason += "; repaired " + item.name;
+    } else if (event.kind !== "techCancel" || project.mode === "upgrade") {
       let held: FoundryItem | undefined;
       if (project.mode === "upgrade") {
         const storage = Array.from(game.actors).find(
@@ -331,7 +438,7 @@ export async function processTechRequest(
         speaker: { actor: actor.id, alias: actor.name },
         whisper: activityRollRecipients(actor),
         content: rollCard({
-          title: "TECH Project",
+          title: project?.mode === "repair" ? "Repair Gear" : "TECH Project",
 
           subject: project?.name ?? event.tech?.name ?? "Project",
           outcome:
@@ -348,18 +455,22 @@ export async function processTechRequest(
                 total: event.techCheck.total,
                 dv: event.techCheck.dv,
                 label:
-                  event.techCheck.skillName +
-                  " + " +
-                  event.techCheck.specialty +
-                  " " +
-                  event.techCheck.rank,
+                  event.techCheck.rank === 0
+                    ? event.techCheck.skillName
+                    : event.techCheck.skillName +
+                      " + " +
+                      event.techCheck.specialty +
+                      " " +
+                      event.techCheck.rank,
               }
             : undefined,
           effect:
             event.kind === "techCancel"
               ? "Item returned to inventory. Allocated days are lost."
               : event.techDelivery
-                ? "Item added to inventory."
+                ? project?.mode === "repair"
+                  ? "Repair complete. Original Item retained."
+                  : "Item added to inventory."
                 : event.techCheck?.success
                   ? "Check passed. " +
                     project?.progress +

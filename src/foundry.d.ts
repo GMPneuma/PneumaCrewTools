@@ -152,6 +152,8 @@ interface SceneControl {
 }
 
 interface FoundrySettingConfig {
+  // Native select settings map stored values to their display labels.
+  choices?: Record<string, string>;
   onChange?: (value: unknown) => void;
   name: string;
   hint?: string;
@@ -199,7 +201,10 @@ interface FoundryActor {
       property: "wealth" | "improvementPoints" | "reputation",
     ): Promise<unknown>;
   };
-  testUserPermission(user: FoundryUser, permission: "OWNER"): boolean;
+  testUserPermission(
+    user: FoundryUser,
+    permission: "OWNER" | "OBSERVER",
+  ): boolean;
   update(data: Record<string, unknown>): Promise<unknown>;
   createEmbeddedDocuments(
     type: "Item",
@@ -233,6 +238,8 @@ interface FoundryItem {
     actor: FoundryActor,
     extraData?: Record<string, unknown>,
   ): {
+    // Native CPR roll modifiers can be filtered before and after its dialog.
+    mods?: { value: number; source: string; id?: string }[];
     addMod(mods: { value: number; source: string }[]): void;
     handleRollDialog(
       event: { type: string; ctrlKey: boolean; metaKey: boolean },
@@ -308,6 +315,8 @@ declare const game: {
 };
 
 declare const ui: {
+  // Native v12 scene-control refresh used by personal shortcut preferences.
+  controls?: { initialize(): void };
   windows?: Record<
     string,
     {

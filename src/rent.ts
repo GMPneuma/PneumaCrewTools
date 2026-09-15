@@ -174,7 +174,7 @@ export function characterRentHtml(data: CharacterRent): string {
         "@UUID[Actor." + c.hqId + "]{" + esc(c.hqName) + "}",
         c.amount + " eb",
         c.status === "pending"
-          ? "Pending processing"
+          ? "Payment processing"
           : c.applied +
             " eb applied" +
             (c.refunded ? "; " + c.refunded + " eb refunded" : ""),
@@ -199,7 +199,7 @@ export function characterRentHtml(data: CharacterRent): string {
         data.attempt.after +
         " eb.</p>"
       : "") +
-    "<details><summary>About this page</summary><p>Residence, due tasks, payment receipts and HQ contributions are stored in flags.pneuma-crewtools.data. The GM marks tasks due; prices are recorded only when the player pays; money uses the native character ledger. Pending HQ payments await GM processing. Editing this text does not change payments.</p></details>"
+    "<details><summary>About this page</summary><p>Residence, due tasks, payment receipts and HQ contributions are stored in flags.pneuma-crewtools.data. The GM marks tasks due; prices are recorded only when the player pays; money uses the native character ledger. HQ contributions settle automatically; no GM approval is required. Editing this text does not change payments.</p></details>"
   );
 }
 async function saveCharacterRent(actor: FoundryActor, data: CharacterRent) {

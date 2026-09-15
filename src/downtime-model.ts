@@ -1,3 +1,4 @@
+import { validateNomadProgress } from "./nomad-model";
 import type { ActivityRecord } from "./activity-records";
 import type { ResourceChange } from "./actor-resources";
 import { validateHealingResult, type HealingResult } from "./downtime-healing";
@@ -37,7 +38,11 @@ export interface DowntimeEvent {
     | "techStart"
     | "techDay"
     | "techRoll"
-    | "techCancel";
+    | "techCancel"
+    | "techFinish"
+    | "techWorkshop"
+    | "nomadRespecDay"
+    | "nomadRespecReset";
   days: number;
   period: number;
   date: string;
@@ -158,6 +163,9 @@ export function validateDowntime(state: DowntimeState): void {
   const requests = new Set<string>();
   const awards = new Set<string>();
   const balances = new Map<string, number>();
+  // Running pools preserve chronological checks without repeatedly copying prior history.
+  const hustlePools = new Map<string, number>();
+  const respecPools = new Map<string, number>();
   for (const event of state.events) {
     if (
       !event ||
@@ -178,15 +186,21 @@ export function validateDowntime(state: DowntimeState): void {
         "techDay",
         "techRoll",
         "techCancel",
+        "techFinish",
+        "techWorkshop",
+        "nomadRespecDay",
+        "nomadRespecReset",
       ].includes(event.kind) ||
       !Number.isSafeInteger(event.days) ||
       ([
         "resource",
+        "nomadRespecReset",
         "rejected",
         "hustleRoll",
         "techStart",
         "techRoll",
         "techCancel",
+        "techFinish",
       ].includes(event.kind)
         ? event.days !== 0
         : event.days < 1) ||
@@ -204,9 +218,8 @@ export function validateDowntime(state: DowntimeState): void {
     }
     if (event.kind === "hustleRoll") {
       const h = event.hustleReward;
-      const prior = state.events.slice(0, state.events.indexOf(event));
       if (
-        hustleDays({ ...state, events: prior }, event.actorId) < 7 ||
+        (hustlePools.get(event.actorId) ?? 0) < 7 ||
         !event.roleItemId ||
         !h ||
         !h.tableId ||
@@ -231,6 +244,21 @@ export function validateDowntime(state: DowntimeState): void {
     } else if (event.hustleReward)
       throw new Error("Only a hustle roll can record a reward.");
 
+    // Each actor has independent pools, even when histories are interleaved.
+    if (event.kind === "hustle" || event.kind === "hustleRoll")
+      hustlePools.set(
+        event.actorId,
+        (hustlePools.get(event.actorId) ?? 0) +
+          (event.kind === "hustle" ? event.days : -7),
+      );
+    if (event.kind.startsWith("nomadRespec")) {
+      const progress = respecPools.get(event.actorId) ?? 0;
+      validateNomadProgress(event, progress);
+      respecPools.set(
+        event.actorId,
+        event.kind === "nomadRespecReset" ? 0 : progress + event.days,
+      );
+    }
     ids.add(event.id);
     if (event.requestId !== undefined) {
       if (

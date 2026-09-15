@@ -3,6 +3,7 @@ import {
   EXCLUDED_ACTORS_SETTING,
   isActorExcluded,
   isUpgradeStorageActor,
+  isTeammateActor,
 } from "./actor-policy";
 import { MODULE_ID } from "./constants";
 
@@ -30,7 +31,12 @@ class ActorExclusionsForm extends CrewToolsForm {
   override getData(): object {
     return {
       actors: Array.from(game.actors)
-        .filter((a) => hasPlayerOwner(a) && !isUpgradeStorageActor(a))
+        .filter(
+          (a) =>
+            hasPlayerOwner(a) &&
+            !isUpgradeStorageActor(a) &&
+            !isTeammateActor(a.id),
+        )
         .sort((a, b) => a.name.localeCompare(b.name))
         .map((a) => ({
           id: a.id,

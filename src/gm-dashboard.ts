@@ -1,3 +1,4 @@
+import { openPayoutHistoryExport } from "./payout-history-export";
 import { confirmExpireDowntime } from "./expire-downtime";
 import { accessibleCrewActors } from "./actor-policy";
 import { storedDowntimeBalance } from "./downtime-records";
@@ -59,7 +60,7 @@ export class GMDashboard extends PlayerHub {
             new Dialog({
               title: "Adjust Player Downtime",
               content:
-                '<div class="form-group"><label>Character</label><select name="actorId">' +
+                '<div class="pneuma-crewtools crew-downtime-adjustment"><label class="crew-adjustment-field">Character<select name="actorId">' +
                 actors
                   .map(
                     (a) =>
@@ -70,20 +71,27 @@ export class GMDashboard extends PlayerHub {
                       "</option>",
                   )
                   .join("") +
-                '</select></div><p>Current downtime: <strong data-current-days></strong> days</p><div class="form-group"><label>Adjust days by</label><input type="number" name="adjustment" step="1" value="0"></div><div class="form-group"><label>Reason</label><input type="text" name="reason" maxlength="500"></div>',
+                '</select></label><div class="crew-adjustment-balance"><span>Current downtime</span><strong data-current-days aria-live="polite"></strong></div><label class="crew-adjustment-field">Adjust days by<input type="number" name="adjustment" step="1" value="0" aria-describedby="crew-adjustment-hint"></label><p id="crew-adjustment-hint" class="notes">Positive adds days; negative removes days.</p><label class="crew-adjustment-field">Reason<input type="text" name="reason" maxlength="500" placeholder="Reason for this adjustment"></label></div>',
               render: (html) => {
                 const root = html[0];
+                // Scope spacing to this dialog without changing other native dialogs.
+                root
+                  ?.closest(".app")
+                  ?.classList.add("crew-downtime-adjustment-dialog");
                 const select =
                   root?.querySelector<HTMLSelectElement>('[name="actorId"]');
                 const refresh = () => {
                   const value = root?.querySelector("[data-current-days]");
                   if (value && select) {
                     try {
-                      value.textContent = String(
-                        storedDowntimeBalance(select.value),
-                      );
+                      value.textContent = `${storedDowntimeBalance(select.value)} days`;
+                      value.removeAttribute("title");
                     } catch {
                       value.textContent = "Unavailable";
+                      value.setAttribute(
+                        "title",
+                        "No valid saved downtime balance is available for this character.",
+                      );
                     }
                   }
                 };
@@ -179,10 +187,32 @@ export class GMDashboard extends PlayerHub {
         case "playerHub":
           openPlayerHub();
           break;
-        case "rent":
-          ui.notifications.info(
-            "Rent and lifestyle are due: " + (await issueRent()),
-          );
+        case "rent": {
+          // Leave rent records unchanged unless the GM explicitly confirms.
+          const confirmed = await new Promise<boolean>((resolve) => {
+            new Dialog({
+              title: "Mark Rent Due",
+              content:
+                "<p>Mark rent and lifestyle due for the current campaign month? This adds amounts due for eligible characters and headquarters; it does not deduct money.</p>",
+              buttons: {
+                confirm: {
+                  label: "Mark Rent Due",
+                  callback: () => resolve(true),
+                },
+                cancel: { label: "Cancel", callback: () => resolve(false) },
+              },
+              default: "cancel",
+              close: () => resolve(false),
+            }).render(true);
+          });
+          if (confirmed)
+            ui.notifications.info(
+              "Rent and lifestyle are due: " + (await issueRent()),
+            );
+          break;
+        }
+        case "exportPayout":
+          openPayoutHistoryExport();
           break;
         case "payout":
           this.openPayout();
