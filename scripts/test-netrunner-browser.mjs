@@ -41,11 +41,11 @@ try {
         testUserPermission: () => true,
         items: [
           { type: "role", name: "Netrunner", system: { rank: 4 } },
-          ...[0, 1, 2].map((i) => ({
+          ...[0, 1, 2, 3, 4].map((i) => ({
             id: "d" + i,
             type: "cyberdeck",
             name: "Cyberdeck " + (i + 1),
-            system: { equipped: ["owned", "carried", "equipped"][i] },
+            system: { equipped: ["owned", "carried", "equipped"][i % 3] },
             sheet: {
               render: () => calls.push(["open", i]),
               _manageInstalledItems: async (type) => calls.push([type, i]),
@@ -117,7 +117,7 @@ try {
     },
     { code, hub, downtime },
   );
-  assert.equal(await page.locator('[data-deck-action="open"]').count(), 3);
+  assert.equal(await page.locator('[data-deck-action="open"]').count(), 5);
   for (const action of ["open", "equip", "programs", "upgrades"])
     await page
       .locator('[data-deck-action="' + action + '"]')
@@ -152,6 +152,23 @@ try {
       .count(),
     1,
   );
+  const tiles = await page
+    .locator(".netrunner-deck")
+    .evaluateAll((els) =>
+      els.map((el) => ({ x: el.offsetLeft, y: el.offsetTop })),
+    );
+  assert.equal(tiles[0].y, tiles[2].y);
+  assert(tiles[0].x < tiles[1].x && tiles[1].x < tiles[2].x);
+  assert(tiles[3].y > tiles[0].y);
+  assert.equal(tiles[3].x, tiles[0].x);
+  assert.equal(await page.locator(".netrunner-deck-actions button").count(), 0);
+  assert.equal(
+    (await page.locator(".netrunner-deck-actions").first().innerText()).trim(),
+    "",
+  );
+  await page.locator('[data-deck-action="programs"]').first().focus();
+  await page.keyboard.press("Enter");
+  assert.deepEqual(await page.evaluate(() => calls.at(-1)), ["program", 0]);
   const layout = await page
     .locator(".netrunner-deck")
     .first()
@@ -174,7 +191,7 @@ try {
     fullPage: true,
   });
   console.log(
-    "Netrunner browser checks passed: native action delegation, three decks, controls beneath names, facility gate, one slot and four actions.",
+    "Netrunner browser checks passed: native action delegation, five decks wrapping three across, icon-only controls beneath names, facility gate, one slot and four actions.",
   );
 } finally {
   await browser.close();

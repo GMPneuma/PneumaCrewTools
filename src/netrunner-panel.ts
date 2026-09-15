@@ -67,6 +67,13 @@ export async function deckAction(
 }
 export function bindNetrunner(root: HTMLElement, actorId: string) {
   root.querySelectorAll<HTMLElement>("[data-deck-action]").forEach((button) => {
+    // Icon links retain keyboard activation without native button styling.
+    button.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        button.click();
+      }
+    });
     button.addEventListener("click", (event) => {
       event.preventDefault();
       void deckAction(

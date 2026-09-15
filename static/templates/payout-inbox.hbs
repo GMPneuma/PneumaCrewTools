@@ -191,41 +191,55 @@
       </fieldset>
     {{/if}}
     {{#if netrunner.visible}}
-      <section class="payout-heading hub-status netrunner-decks">
-        <h3>Netrunner · Cyberdecks</h3>
-        {{#each netrunner.decks}}
-          <div
-            class="netrunner-deck item"
-            data-item-id="{{id}}"
-            data-item-category="cyberdeck"
-          >
-            <a
-              class="netrunner-deck-name"
-              data-deck-action="open"
+      <fieldset
+        class="payout-heading hub-status netrunner-decks netrunner-role"
+      >
+        <legend>Netrunner · Cyberdecks</legend>
+        <div class="netrunner-deck-grid">
+          {{#each netrunner.decks}}
+            <div
+              class="netrunner-deck item"
               data-item-id="{{id}}"
-            ><img src="{{img}}" alt="" />{{name}}</a>
-            <div class="netrunner-deck-actions">
-              <button
-                type="button"
-                data-deck-action="equip"
+              data-item-category="cyberdeck"
+            >
+              <a
+                class="netrunner-deck-name"
+                role="button"
+                tabindex="0"
+                data-deck-action="open"
                 data-item-id="{{id}}"
-                data-item-prop="system.equipped"
-                title="Cycle Owned / Carried / Equipped"
-              ><i class="{{icon}}"></i> {{state}}</button>
-              <button
-                type="button"
-                data-deck-action="programs"
-                data-item-id="{{id}}"
-              ><i class="fa-solid fa-folder-plus"></i> Manage Programs</button>
-              <button
-                type="button"
-                data-deck-action="upgrades"
-                data-item-id="{{id}}"
-              ><i class="fab fa-superpowers"></i> Manage Upgrades</button>
+              ><img src="{{img}}" alt="" /><span>{{name}}</span></a>
+              <div class="netrunner-deck-actions">
+                <a
+                  role="button"
+                  tabindex="0"
+                  data-deck-action="equip"
+                  data-item-id="{{id}}"
+                  data-item-prop="system.equipped"
+                  title="{{state}} · Cycle Owned / Carried / Equipped"
+                  aria-label="{{state}} · Cycle Owned / Carried / Equipped"
+                ><i class="{{icon}}" aria-hidden="true"></i></a>
+                <a
+                  role="button"
+                  tabindex="0"
+                  data-deck-action="programs"
+                  title="Manage Programs"
+                  aria-label="Manage Programs"
+                  data-item-id="{{id}}"
+                ><i class="fa-solid fa-folder-plus" aria-hidden="true"></i></a>
+                <a
+                  role="button"
+                  tabindex="0"
+                  data-deck-action="upgrades"
+                  title="Manage Upgrades"
+                  aria-label="Manage Upgrades"
+                  data-item-id="{{id}}"
+                ><i class="fab fa-superpowers" aria-hidden="true"></i></a>
+              </div>
             </div>
-          </div>
-        {{else}}<p class="notes">No cyberdecks in inventory.</p>{{/each}}
-      </section>
+          {{else}}<p class="notes">No cyberdecks in inventory.</p>{{/each}}
+        </div>
+      </fieldset>
     {{/if}}
     {{#if teammates.visible}}
       <fieldset class="payout-heading hub-status hub-teammates">

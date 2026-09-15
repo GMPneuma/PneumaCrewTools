@@ -1,8 +1,8 @@
 # Changelog
 
-## Unreleased
+## 0.7.0 - 2026-09-15
 
-- Added Netrunner cyberdecks to the Player Hub with native equipment, program and upgrade controls.
+- Added Netrunner cyberdecks to the Player Hub with native equipment, program and upgrade controls. Cyberdecks appear three across with additional rows, black action icons, and orange Netrunner accents in Hub and Downtime.
 - Added one independent Netrunner crafting slot for Fabricate, Upgrade, Invention and Repair, requiring HQ Server Room II and Electronics/Security Tech.
 
 - Replaced the payout-only data manager with grouped record inspection, Journal links, targeted cleanup and downloadable reports.
