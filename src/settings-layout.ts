@@ -2,7 +2,8 @@ import { MODULE_ID } from "./constants";
 
 // Categorize visible native controls; hidden data settings never produce a row.
 const GROUP_KEYS: Record<string, string[]> = {
-  Module: ["actorExclusions", "payoutDataManager"],
+  // Keep public credits alongside the module-wide settings.
+  Module: ["actorExclusions", "payoutDataManager", "iconCredits"],
   Payout: ["payoutContainerMenu", "payoutAcknowledgmentsEnabled"],
   "Faction Reputation": ["factions"],
   Headquarters: ["hqImprovements"],

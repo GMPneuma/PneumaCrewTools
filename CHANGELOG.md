@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.1 - 2026-09-15
+
+- Added Icon credits in module settings, available to players and GMs.
+- Credited the original hustle role glyph artists and sources, including license links and a modification notice.
+- Included the credits in the README and distributed module package.
+
 ## 0.6.0 - 2026-09-14
 
 - Added Exec teammates with permission-filtered Actor selection, portraits, Loyalty controls, and configurable 1d6/1d10 checks.

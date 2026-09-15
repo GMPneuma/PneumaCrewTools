@@ -1,3 +1,4 @@
+import { registerIconCredits } from "./icon-credits";
 import { registerTeammateSettings } from "./teammates";
 import { registerRentSettings } from "./rent-form";
 import { registerRentReconciliation } from "./rent";
@@ -57,6 +58,8 @@ Hooks.once("init", () => {
   registerRentReconciliation();
   registerUiAppearance();
   registerSettingsLayout();
+  // Make attribution available to players as well as GMs.
+  registerIconCredits();
   registerCampaignCalendar();
   registerCrewHud();
   registerDowntime();
