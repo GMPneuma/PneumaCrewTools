@@ -17,6 +17,23 @@ import {
 } from "./headquarters";
 import { coalesceRefresh, isCrewPage } from "./ui-refresh";
 
+// Only close adjustment dialogs after validation and persistence succeed.
+class AdjustmentDialog extends Dialog {
+  private saving = false;
+  override async submit(button: DialogButtonConfig): Promise<void> {
+    if (this.saving) return;
+    this.saving = true;
+    try {
+      await button.callback?.(this.element);
+      await this.close();
+    } catch (error) {
+      report(error);
+    } finally {
+      this.saving = false;
+    }
+  }
+}
+
 // Reuse the inbox's pending records and guarded GM controls, rather than maintaining another queue.
 export class GMDashboard extends PlayerHub {
   private busy = false;
@@ -57,7 +74,7 @@ export class GMDashboard extends PlayerHub {
             amount: number;
             reason: string;
           } | null>((resolve) => {
-            new Dialog({
+            new AdjustmentDialog({
               title: "Adjust Player Downtime",
               content:
                 '<div class="pneuma-crewtools crew-downtime-adjustment"><label class="crew-adjustment-field">Character<select name="actorId">' +
@@ -71,7 +88,7 @@ export class GMDashboard extends PlayerHub {
                       "</option>",
                   )
                   .join("") +
-                '</select></label><div class="crew-adjustment-balance"><span>Current downtime</span><strong data-current-days aria-live="polite"></strong></div><label class="crew-adjustment-field">Adjust days by<input type="number" name="adjustment" step="1" value="0" aria-describedby="crew-adjustment-hint"></label><p id="crew-adjustment-hint" class="notes">Positive adds days; negative removes days.</p><label class="crew-adjustment-field">Reason<input type="text" name="reason" maxlength="500" placeholder="Reason for this adjustment"></label></div>',
+                '</select></label><div class="crew-adjustment-balance"><span>Current downtime</span><strong data-current-days aria-live="polite"></strong></div><label class="crew-adjustment-field">Adjust days by<input type="number" name="adjustment" step="1" value="0" aria-describedby="crew-adjustment-hint"></label><p id="crew-adjustment-hint" class="notes">Positive adds days; negative removes days.</p><label class="crew-adjustment-field">Reason<input type="text" name="reason" required maxlength="500" placeholder="Reason for this adjustment"></label></div>',
               render: (html) => {
                 const root = html[0];
                 // Scope spacing to this dialog without changing other native dialogs.
@@ -101,9 +118,9 @@ export class GMDashboard extends PlayerHub {
               buttons: {
                 apply: {
                   label: "Apply Adjustment",
-                  callback: (html) => {
+                  callback: async (html) => {
                     const root = html[0];
-                    resolve({
+                    const adjustment = {
                       actorId:
                         root?.querySelector<HTMLSelectElement>(
                           '[name="actorId"]',
@@ -116,7 +133,13 @@ export class GMDashboard extends PlayerHub {
                       reason:
                         root?.querySelector<HTMLInputElement>('[name="reason"]')
                           ?.value ?? "",
-                    });
+                    };
+                    await adjustPlayerDowntime(
+                      adjustment.actorId,
+                      adjustment.amount,
+                      adjustment.reason,
+                    );
+                    resolve(adjustment);
                   },
                 },
                 cancel: { label: "Cancel", callback: () => resolve(null) },
@@ -126,11 +149,6 @@ export class GMDashboard extends PlayerHub {
             }).render(true);
           });
           if (adjustment) {
-            await adjustPlayerDowntime(
-              adjustment.actorId,
-              adjustment.amount,
-              adjustment.reason,
-            );
             ui.notifications.info(
               "Downtime adjusted and recorded in the Downtime Log.",
             );
@@ -139,11 +157,11 @@ export class GMDashboard extends PlayerHub {
         }
         case "hqIp": {
           // Shared HQ IP belongs to the world, independent of the selected headquarters.
-          const adjustment = await new Promise<{
+          await new Promise<{
             amount: number;
             reason: string;
           } | null>((resolve) => {
-            new Dialog({
+            new AdjustmentDialog({
               title: "Adjust Shared HQ IP",
               content: `<div class="pneuma-crewtools hq-ip-adjustment">
                 <div class="hq-ip-balance"><span>Shared HQ IP</span><strong>${headquartersIp().toLocaleString("en-US")}</strong></div>
@@ -152,7 +170,7 @@ export class GMDashboard extends PlayerHub {
                   <input id="crew-hq-ip-adjustment" type="number" name="ipAdjustment" step="1" value="0" aria-describedby="crew-hq-ip-hint">
                   <p id="crew-hq-ip-hint" class="hq-ip-hint">Positive adds IP; negative removes IP.</p>
                   <label for="crew-hq-ip-reason">Reason</label>
-                  <input id="crew-hq-ip-reason" type="text" name="ipReason" maxlength="200" placeholder="What is this adjustment for?">
+                  <input id="crew-hq-ip-reason" type="text" name="ipReason" required maxlength="200" placeholder="What is this adjustment for?">
                 </div>
               </div>`,
               render: (html: FoundryHtml) => {
@@ -161,8 +179,8 @@ export class GMDashboard extends PlayerHub {
               buttons: {
                 apply: {
                   label: "Apply Adjustment",
-                  callback: (html: FoundryHtml) =>
-                    resolve({
+                  callback: async (html: FoundryHtml) => {
+                    const adjustment = {
                       amount: Number(
                         html[0]?.querySelector<HTMLInputElement>(
                           '[name="ipAdjustment"]',
@@ -172,7 +190,13 @@ export class GMDashboard extends PlayerHub {
                         html[0]?.querySelector<HTMLInputElement>(
                           '[name="ipReason"]',
                         )?.value ?? "",
-                    }),
+                    };
+                    await adjustHeadquartersIp(
+                      adjustment.amount,
+                      adjustment.reason,
+                    );
+                    resolve(adjustment);
+                  },
                 },
                 cancel: { label: "Cancel", callback: () => resolve(null) },
               },
@@ -180,8 +204,7 @@ export class GMDashboard extends PlayerHub {
               close: () => resolve(null),
             }).render(true);
           });
-          if (adjustment)
-            await adjustHeadquartersIp(adjustment.amount, adjustment.reason);
+
           break;
         }
         case "playerHub":

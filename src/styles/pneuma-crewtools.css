@@ -2938,6 +2938,24 @@ html[data-cpr-theme="darkmode"] .crewtools-roll-outcome.failure,
   font-weight: 600;
 }
 
+/* Keep this small form content-sized, independent of inbox and system form flex rules. */
+#pneuma-crewtools-calendar-form .window-content {
+  display: block;
+}
+.pneuma-crewtools form.pneuma-calendar-form {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  height: auto;
+  min-height: 0;
+  gap: 0.65rem;
+  padding: 0.5rem;
+}
+.pneuma-crewtools form.pneuma-calendar-form > * {
+  flex: 0 0 auto;
+  height: auto;
+  min-height: 0;
+}
 /* Calendar separates an exact date from a relative advance. */
 .pneuma-crewtools .calendar-current {
   display: flex;

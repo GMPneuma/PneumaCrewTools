@@ -373,6 +373,9 @@ interface DialogButtonConfig {
 }
 
 declare class Dialog {
+  element: FoundryHtml;
+  close(): Promise<void>;
+  submit(button: DialogButtonConfig): Promise<void>;
   constructor(
     config: {
       title: string;

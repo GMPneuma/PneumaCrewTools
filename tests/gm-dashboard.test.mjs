@@ -6,7 +6,9 @@ import ts from "typescript";
 function fixture() {
   const calls = [],
     hooks = new Map(),
-    dialogs = [];
+    dialogs = [],
+    instances = [],
+    errors = [];
   const game = { user: { isGM: true } };
   class PlayerHub {
     static get defaultOptions() {
@@ -22,7 +24,15 @@ function fixture() {
       return this;
     }
   }
+  const saveAdjustment = async (amount, reason) => {
+    if (!reason.trim()) throw Error("Enter a reason");
+    await Promise.resolve();
+    calls.push("adjustment-saved");
+  };
   const deps = {
+    "./actor-policy": { accessibleCrewActors: () => [{ id: "a", name: "A" }] },
+    "./downtime-records": { storedDowntimeBalance: () => 5 },
+    "./downtime-store": { escape: String },
     "./rent": {
       issueRent: async () => {
         calls.push("rent");
@@ -35,11 +45,17 @@ function fixture() {
     "./downtime": { openDowntime: () => calls.push("downtime") },
     "./downtime-service": {
       startNextDowntimeSession: async () => calls.push("expire"),
+      adjustPlayerDowntime: (_actor, amount, reason) =>
+        saveAdjustment(amount, reason),
       report: (e) => {
-        throw e;
+        errors.push(e);
       },
     },
-    "./headquarters": { openHeadquarters: () => calls.push("headquarters") },
+    "./headquarters": {
+      openHeadquarters: () => calls.push("headquarters"),
+      headquartersIp: () => 10,
+      adjustHeadquartersIp: saveAdjustment,
+    },
     "./ui-refresh": { coalesceRefresh: (f) => f, isCrewPage: (p) => p.crew },
   };
   const exports = {};
@@ -73,6 +89,12 @@ function fixture() {
             Dialog: class {
               constructor(config) {
                 dialogs.push(config);
+                instances.push(this);
+                this.config = config;
+              }
+              async close() {
+                this.closed = true;
+                this.config.close?.();
               }
               render() {
                 return this;
@@ -89,6 +111,12 @@ function fixture() {
       Dialog: class {
         constructor(config) {
           dialogs.push(config);
+          instances.push(this);
+          this.config = config;
+        }
+        async close() {
+          this.closed = true;
+          this.config.close?.();
         }
         render() {
           return this;
@@ -96,7 +124,7 @@ function fixture() {
       },
     },
   );
-  return { exports, game, calls, hooks, dialogs };
+  return { exports, game, calls, hooks, dialogs, instances, errors };
 }
 test("GM dashboard guards entry, preserves pending records and routes actions", async () => {
   const f = fixture(),
@@ -177,3 +205,57 @@ test("rent requires confirmation; cancel, close and repeated clicks are safe", a
   assert.equal(f.calls.filter((c) => c === "rent").length, 1);
   assert.equal(button.disabled, false);
 });
+
+for (const action of ["adjustDowntime", "hqIp"]) {
+  test(`${action} retains input on error, allows correction or cancellation, and blocks duplicate saves`, async () => {
+    const f = fixture();
+    const dashboard = new f.exports.GMDashboard(() => {});
+    let click;
+    const button = {
+      dataset: { gmDashboardAction: action },
+      addEventListener: (_e, fn) => (click = fn),
+    };
+    dashboard.activateListeners([{ querySelectorAll: () => [button] }]);
+    click();
+    const dialog = f.instances.at(-1);
+    const config = f.dialogs.at(-1);
+    const fields = {
+      actorId: { value: "a" },
+      adjustment: { value: "3" },
+      ipAdjustment: { value: "3" },
+      reason: { value: "   " },
+      ipReason: { value: "   " },
+    };
+    dialog.element = [
+      {
+        querySelector: (selector) =>
+          fields[selector.match(/name="([^"]+)"/)[1]],
+      },
+    ];
+    await dialog.submit(config.buttons.apply);
+    assert.equal(dialog.closed, undefined);
+    assert.equal(f.errors.length, 1);
+    assert.equal(fields.adjustment.value, "3");
+    assert.equal(button.disabled, true);
+    fields.reason.value = fields.ipReason.value = "Correction";
+    await Promise.all([
+      dialog.submit(config.buttons.apply),
+      dialog.submit(config.buttons.apply),
+    ]);
+    await new Promise((r) => setImmediate(r));
+    assert.equal(dialog.closed, true);
+    assert.equal(f.calls.filter((x) => x === "adjustment-saved").length, 1);
+    assert.equal(button.disabled, false);
+    click();
+    const cancelled = f.instances.at(-1);
+    cancelled.element = dialog.element;
+    fields.reason.value = fields.ipReason.value = "";
+    await cancelled.submit(f.dialogs.at(-1).buttons.apply);
+    assert.equal(cancelled.closed, undefined);
+    await cancelled.submit(f.dialogs.at(-1).buttons.cancel);
+    await new Promise((r) => setImmediate(r));
+    assert.equal(cancelled.closed, true);
+    assert.equal(button.disabled, false);
+    assert.equal(f.calls.filter((x) => x === "adjustment-saved").length, 1);
+  });
+}

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.8.2 - 2026-09-16
+
+- Fixed the Modify GameTime Date window stretching its status text and pushing date controls below the visible area.
+- Adjust Player Downtime and Adjust Shared HQ IP now stay open after validation or save errors, preserving entered values for correction. They close after a successful adjustment or cancellation.
+- Prevented repeated Apply clicks from submitting an adjustment twice while a save is in progress.
+
 ## 0.8.1 - 2026-09-16
 
 - Added custom downtime activities with optional day requirements and completion RollTables, managed with compact Add/Delete controls.
