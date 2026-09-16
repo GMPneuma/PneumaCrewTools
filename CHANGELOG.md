@@ -1,9 +1,9 @@
 # Changelog
 
-## 0.8.0 - 2026-09-16
+## 0.8.1 - 2026-09-16
 
 - Added custom downtime activities with optional day requirements and completion RollTables, managed with compact Add/Delete controls.
-- Added optional Money, Humanity, Hitpoints and Reputation payout tags. Results show a boxed description and separate payout list; dice payouts have individual Roll buttons and saved progress through Continue Result.
+- Added optional Money, Humanity, Hitpoints and Reputation payout tags. Humanity and Hitpoints support positive Xd6 and negative Xd6 or Xd5. Results show a boxed description and separate payout list; dice payouts have individual Roll buttons and saved progress through Continue Result.
 - Renamed Heal to Rest. Installed Skin Weave, Subdermal Armor and Heavy Subdermal Plating now repair one lost SP on both locations of their matching armor Items per rest day. FleshWeave / Sycust Fleshweave restores full SP. Repairs also work at full HP and appear in the Rest preview and Downtime Log.
 - Moved standalone settings above grouped settings and standardized custom activity, armor repair and faction forms with compact layouts and purple accents.
 - Reworked custom HQ improvements into an Add/Delete list with optional level 2 descriptions. HQ Everyone access clears explicit player overrides so players inherit default access.
