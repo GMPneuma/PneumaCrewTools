@@ -1,6 +1,6 @@
 # Hustle RollTables
 
-Crew Tools creates ten native tables in **Rollable Tables → CrewTools**, named **Hustle - Role**, on GM reload. Each uses **1d6** with six equally likely, repeatable results. [The supplied tables](hustle-tables-source.md) retain all original activities and rank payouts.
+Crew Tools creates its ten native **Hustle - Role** tables in the CrewTools folder when the primary GM connects. It maintains the descriptions and role icons of its tagged Hustle tables. GM-created custom RollTables remain untouched. Each uses **1d6** with six equally likely, repeatable results. [The supplied tables](hustle-tables-source.md) retain all original activities and rank payouts.
 
 ## Spend Downtime
 
@@ -18,6 +18,6 @@ The character’s Downtime Journal stores allocation events and zero-unallocated
 
 Before money is updated, the character’s owner-editable ledger records **flags.pneuma-crewtools.hustleAttempt**, containing the request ID, Actor ID and reward, with an explanatory visible paragraph. Accepted request IDs prevent repeated payment. If the ledger save fails, money is rolled back and the attempt is marked **rolledBack**. A failed save, uncertain money update or failed rollback retains the attempt and stops automatic processing for GM review; Actor update hooks cannot reroll the failed request. Chat failure never retries a payment.
 
-The GM creates missing tables and maintains a brief role-specific description on tagged Hustle tables. Existing results and names are retained. Changing visible table text alone does not change the structured reward; edit the earnings flags too if intentionally customizing a table. Missing or ambiguous role tables and invalid reward data stop payment without consuming days.
+Missing module Hustle tables are recreated during GM initialization. Existing module tables are identified by their Crew Tools hustleRole flag, not by their name; their descriptions and icons are refreshed without replacing result data or permissions. Changing visible table text alone does not change the structured reward; edit the earnings flags too if intentionally customizing a table. Missing or ambiguous role tables and invalid reward data stop payment without consuming days.
 
 Hustle income also appends a native money Journal row in **system.wealth.transactions**, recording amount, resulting balance, date and role/rank. The full activity description remains in the downtime Journal and chat. Balance and history are updated together; a failed downtime ledger save restores both. Existing history is retained. This applies to new rolls; old test payouts are not replayed.

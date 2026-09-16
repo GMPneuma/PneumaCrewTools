@@ -1,23 +1,40 @@
-<form autocomplete="off">
-  <p>Uncheck Available to hide a faction from new payouts. Existing reputation
-    is kept.</p>
-  <table><thead><tr><th>Faction</th><th>Available</th></tr></thead><tbody>
-      {{#each factions}}<tr><td><input
-              type="text"
-              name="name.{{id}}"
-              value="{{name}}"
-              maxlength="80"
-              aria-label="Faction name"
-            /></td><td><input
-              type="checkbox"
-              name="active.{{id}}"
-              {{checked active}}
-              aria-label="Available for payouts"
-            /></td></tr>{{/each}}
-    </tbody></table>
-  <footer class="sheet-footer flexrow"><button type="button" data-add-faction><i
+<form class="faction-settings crew-settings-form" autocomplete="off">
+  <header class="crew-settings-heading">
+    <h3>Manage Factions</h3>
+    <button type="button" data-add-faction><i
         class="fas fa-plus"
+        aria-hidden="true"
       ></i>
-      Add Faction</button><button type="submit"><i class="fas fa-save"></i>
-      Save</button></footer>
+      Add Faction</button>
+  </header>
+  <p class="crew-settings-hint">Uncheck Available to hide a faction from new
+    payouts. Existing reputation is kept.</p>
+  <div class="crew-settings-panel crew-settings-table-wrap">
+    <table class="crew-settings-table"><thead><tr><th
+            scope="col"
+          >Faction</th><th
+            scope="col"
+            class="crew-settings-toggle"
+          >Available</th></tr></thead><tbody>
+        {{#each factions}}<tr><td><input
+                type="text"
+                name="name.{{id}}"
+                value="{{name}}"
+                maxlength="80"
+                aria-label="Faction name"
+              /></td><td class="crew-settings-toggle"><input
+                type="checkbox"
+                name="active.{{id}}"
+                {{checked active}}
+                aria-label="Available for payouts"
+              /></td></tr>
+        {{else}}<tr><td colspan="2" class="crew-settings-empty">No factions yet.
+              Use Add Faction to create one.</td></tr>{{/each}}
+      </tbody></table>
+  </div>
+  <footer class="crew-settings-footer"><button type="submit"><i
+        class="fas fa-save"
+        aria-hidden="true"
+      ></i>
+      Save Factions</button></footer>
 </form>

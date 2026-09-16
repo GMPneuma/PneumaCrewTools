@@ -4,7 +4,7 @@ import fs from "node:fs";
 import vm from "node:vm";
 import ts from "typescript";
 import Handlebars from "handlebars";
-function fixture() {
+function fixture(customCatalog = []) {
   let sequence = 0,
     fail = false,
     queue = Promise.resolve();
@@ -21,8 +21,10 @@ function fixture() {
   const folders = game.folders;
   const make = (data) => {
     const d = { id: String(++sequence), ...structuredClone(data) };
-    d.testUserPermission = (user) =>
-      user.isGM || (d.ownership?.[user.id] ?? d.ownership?.default ?? 0) >= 3;
+    d.testUserPermission = (user, permission = "OWNER") =>
+      user.isGM ||
+      (d.ownership?.[user.id] ?? d.ownership?.default ?? 0) >=
+        (permission === "OBSERVER" ? 2 : 3);
     d.getFlag = (ns, key) => d.flags?.[ns]?.[key];
     d.update = async (changes) => {
       if (fail && d.getFlag("pneuma-crewtools", "kind") === "headquarters")
@@ -67,6 +69,7 @@ function fixture() {
   const deps = {
     "./hq-catalog": {
       getHqCatalog: () => [
+        ...customCatalog,
         {
           id: "medbay",
           name: "Medbay",
@@ -622,6 +625,75 @@ test("previous HQ roster and Actor rent transfer to one editable HQ page", async
   assert.equal(f.api.getHeadquarters().headquarters.length, 0);
 });
 
+test("custom improvement tiers use their descriptions and stop at the configured final level", async () => {
+  for (const hasLevel2 of [false, true]) {
+    const option = {
+      id: "custom",
+      name: "Custom Room",
+      cost: 15,
+      description: "First benefit",
+      effect: "notes",
+      hasLevel2,
+      level2Description: "Second benefit",
+    };
+    const f = fixture([option]);
+    const id = await f.api.saveHeadquarters({
+      name: "Home",
+      image: "",
+      bedrooms: 2,
+      maxImprovements: 1,
+      rentType: "apt",
+      rentModifier: 0,
+    });
+    await f.award(100);
+    await f.api.buyHqImprovement(
+      id,
+      option.name,
+      15,
+      "stale description",
+      "notes",
+      option.id,
+    );
+    assert.equal(
+      f.api.getHeadquarters().headquarters[0].improvements[0].notes,
+      "First benefit",
+    );
+    const form = new f.api.HeadquartersForm();
+    form.selectedId = id;
+    if (hasLevel2) {
+      assert.equal(
+        form.getData().catalog.find((i) => i.id === option.id).description,
+        "Second benefit",
+      );
+      await f.api.buyHqImprovement(
+        id,
+        option.name,
+        15,
+        "stale description",
+        "notes",
+        option.id,
+      );
+      assert.equal(
+        f.api.getHeadquarters().headquarters[0].improvements[0].notes,
+        "Second benefit",
+      );
+      assert.equal(
+        f.api.getHeadquarters().headquarters[0].improvements[0].level,
+        2,
+      );
+    }
+    assert.equal(
+      form.getData().catalog.some((i) => i.id === option.id),
+      false,
+    );
+    await assert.rejects(
+      f.api.buyHqImprovement(id, option.name, 15, "", "notes", option.id),
+      /final level/,
+    );
+    assert.equal(f.api.headquartersIp(), hasLevel2 ? 70 : 85);
+  }
+});
+
 test("HQ properties and rent persist on the Journal page; catalog levels preserve capacity and custom cost", async () => {
   const f = fixture();
   const id = await f.api.saveHeadquarters({
@@ -802,4 +874,138 @@ test("failed HQ deactivation restores container permissions", async () => {
   await assert.rejects(f.api.deactivateHeadquarters(id), /page failed/);
   assert.deepEqual(actor.ownership, before);
   assert.equal(f.api.getHeadquarters().headquarters.length, 1);
+});
+
+test("player HQ discovery and facility checks require both native document permissions", async () => {
+  const f = fixture();
+  const id = await f.api.saveHeadquarters({ name: "Private HQ" });
+  const actor = f.game.actors.get(id);
+  const page = f.records.hqPage(id);
+  page.flags["pneuma-crewtools"].properties.improvements = [
+    { id: "garage", name: "Garage", cost: 0, notes: "", date: "2078-02-06" },
+    {
+      id: "server",
+      catalogId: "serverRoom",
+      name: "Server Room",
+      level: 2,
+      cost: 0,
+      notes: "",
+      date: "2078-02-06",
+    },
+  ];
+  const loadFacility = (name) => {
+    const exports = {};
+    vm.runInNewContext(
+      ts.transpileModule(fs.readFileSync("src/" + name + ".ts", "utf8"), {
+        compilerOptions: {
+          module: ts.ModuleKind.CommonJS,
+          target: ts.ScriptTarget.ES2022,
+        },
+      }).outputText,
+      { exports, require: (key) => (key === "./headquarters" ? f.api : {}) },
+    );
+    return exports;
+  };
+  const nomad = loadFacility("nomad-vehicles");
+  const netrunner = loadFacility("netrunner-system");
+  const check = (visible) => {
+    assert.equal(
+      f.api.getHeadquarters(false).headquarters.length,
+      visible ? 1 : 0,
+    );
+    assert.equal(nomad.hasNomadGarage(), visible);
+    assert.equal(
+      netrunner.serverRoomAvailable(f.api.getHeadquarters(false)),
+      visible,
+    );
+  };
+  f.game.user.isGM = false;
+  check(true);
+  actor.ownership.default = 0;
+  check(false);
+  actor.ownership.player = 2;
+  check(true);
+  page.ownership.default = 0;
+  check(false);
+  page.ownership.player = 2;
+  check(true);
+  page.ownership.player = 1;
+  check(false);
+  f.game.user.id = "another-player";
+  check(false);
+  f.game.user.isGM = true;
+  check(true);
+});
+
+test("HQ access selection overrides defaults on both documents and Everyone restores access", async () => {
+  const f = fixture();
+  f.game.users = [
+    { id: "alex", name: "Alex", isGM: false },
+    { id: "sam", name: "Sam", isGM: false },
+    { id: "gm", name: "GM", isGM: true },
+  ];
+  const id = await f.api.saveHeadquarters({ name: "HQ" });
+  const actor = f.game.actors.get(id),
+    page = f.records.hqPage(id);
+  actor.ownership.alex = 3;
+  actor.ownership.gm = 3;
+  await f.api.saveHeadquartersAccess(id, false, ["alex"]);
+  assert.equal(f.api.headquartersAccess(id).summary, "Alex");
+  assert.equal(actor.ownership.alex, 3);
+  assert.equal(actor.ownership.gm, 3);
+  for (const doc of [actor, page]) {
+    assert.equal(doc.ownership.default, 0);
+    assert.equal(doc.testUserPermission(f.game.users[0], "OBSERVER"), true);
+    assert.equal(doc.testUserPermission(f.game.users[1], "OBSERVER"), false);
+  }
+  f.game.user = f.game.users[1];
+  assert.equal(f.api.getHeadquarters(false).headquarters.length, 0);
+  await assert.rejects(f.api.saveHeadquartersAccess(id, true, []));
+  f.game.user = f.game.users[2];
+  await f.api.saveHeadquartersAccess(id, true, []);
+  for (const doc of [actor, page]) {
+    assert.equal(doc.ownership.default, 2);
+    assert.equal(Object.hasOwn(doc.ownership, "alex"), false);
+    assert.equal(Object.hasOwn(doc.ownership, "sam"), false);
+    assert.equal(doc.testUserPermission(f.game.users[0], "OBSERVER"), true);
+    assert.equal(
+      doc.testUserPermission({ id: "new-player", isGM: false }, "OBSERVER"),
+      true,
+    );
+  }
+  assert.equal(actor.ownership.gm, 3);
+  assert.equal(f.api.headquartersAccess(id).summary, "Everyone");
+  f.game.user = f.game.users[1];
+  assert.equal(f.api.getHeadquarters(false).headquarters.length, 1);
+  f.game.user = f.game.users[2];
+  await f.api.saveHeadquartersAccess(id, false, []);
+  assert.equal(f.api.headquartersAccess(id).summary, "GM only");
+});
+
+test("HQ access failed page write restores explicit and inherited actor permissions", async () => {
+  const f = fixture();
+  f.game.users = [{ id: "alex", name: "Alex", isGM: false }];
+  const id = await f.api.saveHeadquarters({ name: "HQ" });
+  const actor = f.game.actors.get(id),
+    page = f.records.hqPage(id);
+  const before = structuredClone(actor.ownership);
+  page.update = async () => {
+    throw Error("page failed");
+  };
+  await assert.rejects(
+    f.api.saveHeadquartersAccess(id, false, []),
+    /page failed/,
+  );
+  assert.deepEqual(actor.ownership, before);
+  actor.ownership.alex = 3;
+  const explicitBefore = structuredClone(actor.ownership);
+  await assert.rejects(
+    f.api.saveHeadquartersAccess(id, true, []),
+    /page failed/,
+  );
+  assert.deepEqual(actor.ownership, explicitBefore);
+  await assert.rejects(
+    f.api.saveHeadquartersAccess(id, false, ["missing"]),
+    /no longer exists/,
+  );
 });

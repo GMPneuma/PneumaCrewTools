@@ -2,6 +2,16 @@
 
 ## Using it
 
+### Optional Simple Calendar integration
+
+Enable **Use Simple Calendar** in Crew Tools settings and save. The checkbox defaults off. The status beneath it reports the source and whether Simple Calendar is available. When enabled, Crew Tools reads the active Simple Calendar date through its public `currentDateTime()` API and refreshes on its date-change/ready hooks. It does not write either clock while following Simple Calendar. Crew Tools date-setting and day-advance controls (including its API) are disabled; make changes in Simple Calendar.
+
+Turning the checkbox off and saving opens **Switch to Crew Tools Calendar**. Select a valid date and choose **Set Date and Switch**. Cancel leaves Simple Calendar selected and does not change world time. The switch sets shared Foundry world time to midnight using Crew Tools' native-calendar/Gregorian conversion; other modules following world time may respond. If saving the source setting fails, Crew Tools attempts to restore the previous world time.
+
+If Simple Calendar is later disabled, uninstalled, or not ready, Crew Tools reports it as unavailable instead of silently using a different starting year. The checkbox can still be turned off to choose a new date. The integration supports Gregorian Cyberpunk dates; arbitrary fantasy calendar dates remain outside this module's date format. Integration tests use a mocked Simple Calendar API; live Foundry verification remains pending.
+
+### Crew Tools calendar mode
+
 The aqua city-clock display replaces the Foundry logo in the upper-left corner and shows the current world
 date to players and GMs. It does not change the clock merely to initialize the UI.
 On v12, a world time of zero displays 1970-01-01 under the Gregorian shim.

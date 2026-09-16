@@ -19,6 +19,7 @@ const browser = await chromium.launch({ channel: "msedge", headless: true });
 try {
   const page = await browser.newPage();
   const result = await page.evaluate((source) => {
+    window.game = { user: { isGM: true } };
     const exports = {};
     new Function("exports", "require", source)(exports, () => ({
       MODULE_ID: "pneuma-crewtools",
@@ -66,6 +67,9 @@ try {
     ].map((e) => e.querySelector("legend").textContent);
     return {
       groups,
+      firstSetting: document.querySelector(
+        ".pneuma-settings-groups > .form-group input",
+      )?.name,
       rows: document.querySelectorAll(".pneuma-settings-groups .form-group")
         .length,
       discord: document.querySelector(
@@ -80,14 +84,9 @@ try {
       other: document.querySelector("#other").parentElement.tagName,
     };
   }, source);
-  assert.deepEqual(result.groups, [
-    "Module",
-    "Payout",
-    "HUD",
-    "Downtime",
-    "Crafting",
-  ]);
+  assert.deepEqual(result.groups, ["Module", "Payout", "HUD", "Crafting"]);
   assert.equal(result.rows, 13);
+  assert.equal(result.firstSetting, "pneuma-crewtools.multiplyAntibioticBonus");
   assert.equal(result.discord, "Discord Features");
   assert.equal(result.title, "Pneuma's Crew Tools [13]");
   assert.equal(result.value, "unsaved");

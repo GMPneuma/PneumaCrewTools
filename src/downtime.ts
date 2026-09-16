@@ -95,6 +95,11 @@ export function registerDowntime(): void {
     },
   );
   const refreshPage = (page: FoundryJournalPage) => {
+    // Catalog edits refresh the same Other Activity section for open player forms.
+    if (page.getFlag?.(MODULE_ID, "recordKey") === "customActivities") {
+      refreshRoles();
+      return;
+    }
     if (!isCrewPage(page)) return;
     const actorId = page.parent?.getFlag?.(MODULE_ID, "actorId");
     if (

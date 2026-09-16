@@ -126,11 +126,14 @@ try {
           throw Error("Unexpected Journal access");
         },
         settings: {
-          register() {
+          register(_namespace, key) {
+            if (["useSimpleCalendar", "hideCrewHud"].includes(key)) return;
             throw Error("Calendar must not register data settings");
           },
           registerMenu() {},
-          get() {
+          get(_namespace, key) {
+            if (["useSimpleCalendar", "hideCrewHud"].includes(key))
+              return false;
             throw Error("Calendar must not read data settings");
           },
           set() {
@@ -385,6 +388,11 @@ try {
       balanceReads: 0,
     };
     const dependencies = {
+      "./shortcut-display": {
+        registerShortcutDisplay() {},
+        showHudShortcuts: () => true,
+      },
+      "./window-controls": { openGMDashboard: () => hudData.hubOpened++ },
       "./constants": { MODULE_ID: "pneuma-crewtools" },
       "./ui-refresh": window.crewRefresh,
       "./rent": { rentNeedsAttention: () => false },
@@ -443,7 +451,7 @@ try {
     ];
     for (const event of [...journalEvents, ...pageEvents])
       fire(event, ordinary);
-    await Promise.resolve();
+    await new Promise((resolve) => setTimeout(resolve, 100));
     assert(
       hudData.balanceReads === before,
       "unrelated changes cause no HUD balance reads",
@@ -455,7 +463,7 @@ try {
         getFlag: (ns, key) =>
           ns === "pneuma-crewtools" && key === marker ? "character" : undefined,
       });
-      await Promise.resolve();
+      await new Promise((resolve) => setTimeout(resolve, 100));
       assert(
         hudData.balanceReads === count + 1,
         "module Journal event refreshes status",
@@ -495,7 +503,7 @@ try {
       fire("updateJournalEntryPage", {
         getFlag: (_ns, key) => (key === "kind" ? "actorLedger" : undefined),
       });
-      await Promise.resolve();
+      await new Promise((resolve) => setTimeout(resolve, 100));
       assert(
         !hub.classList.contains("has-attention"),
         "indicators clear after acknowledgment and spending",
@@ -505,7 +513,7 @@ try {
       fire("updateJournalEntryPage", {
         getFlag: (_ns, key) => (key === "kind" ? "actorLedger" : undefined),
       });
-      await Promise.resolve();
+      await new Promise((resolve) => setTimeout(resolve, 100));
       assert(
         hub.title.includes("0 unspent downtime"),
         "player does not see another account's balance",
@@ -514,7 +522,7 @@ try {
       fire("updateJournalEntryPage", {
         getFlag: (_ns, key) => (key === "kind" ? "actorLedger" : undefined),
       });
-      await Promise.resolve();
+      await new Promise((resolve) => setTimeout(resolve, 100));
       assert(
         hub.title.includes("unavailable") &&
           !hub.classList.contains("has-attention"),
@@ -526,7 +534,7 @@ try {
       fire("updateJournalEntryPage", {
         getFlag: (_ns, key) => (key === "kind" ? "actorLedger" : undefined),
       });
-      await Promise.resolve();
+      await new Promise((resolve) => setTimeout(resolve, 100));
       const dayLine = root
         .querySelector(".pneuma-calendar-month-day")
         .getBoundingClientRect();

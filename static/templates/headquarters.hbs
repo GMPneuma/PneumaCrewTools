@@ -36,6 +36,16 @@
               src="modules/pneuma-crewtools/images/headquarters.svg"
               alt="New HQ"
             />{{/if}}
+          {{#if hasContainer}}
+            <div class="hq-access-summary">
+              <button type="button" data-hq-access><i
+                  class="fas fa-users"
+                  aria-hidden="true"
+                ></i>
+                Player Access</button>
+              <span>Access: <strong>{{accessSummary}}</strong></span>
+            </div>
+          {{/if}}
         </div>
         <div class="hq-property-fields">
           <label class="hq-field hq-field-wide">Name<input

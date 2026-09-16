@@ -6,6 +6,7 @@ const GROUP_KEYS: Record<string, string[]> = {
   Module: ["actorExclusions", "payoutDataManager", "iconCredits"],
   Payout: ["payoutContainerMenu", "payoutAcknowledgmentsEnabled"],
   "Faction Reputation": ["factions"],
+  Calendar: ["useSimpleCalendar"],
   Headquarters: ["hqImprovements"],
   Teammates: ["loyaltyCheckDie"],
   HUD: [
@@ -16,6 +17,7 @@ const GROUP_KEYS: Record<string, string[]> = {
     "hudAttentionColor",
   ],
   Downtime: [
+    "customDowntimeActivities",
     "privateActivityRolls",
     "multiplyAntibioticBonus",
     "requireFullDowntimeWeek",
@@ -72,6 +74,12 @@ export function groupModuleSettings(root: HTMLElement): void {
     wrapper.className = "pneuma-settings-groups";
     rows.keys().next().value!.before(wrapper);
   }
+  // Detach native rows before rebuilding, including on repeated renders.
+  // This also removes groups that have become empty or single-option groups.
+  for (const row of rows.keys()) row.remove();
+  wrapper.replaceChildren();
+  const standalone = document.createDocumentFragment();
+  const grouped = document.createDocumentFragment();
   const section = (parent: HTMLElement, title: string, key: string) => {
     let group = parent.querySelector<HTMLFieldSetElement>(
       ':scope > [data-crew-settings-group="' + key + '"]',
@@ -97,19 +105,34 @@ export function groupModuleSettings(root: HTMLElement): void {
       return category === title;
     });
     if (!matching.length) continue;
-    const group = section(wrapper, title, title.toLowerCase());
-    wrapper.append(group);
-    for (const [row, key] of matching)
-      if (!DISCORD_KEYS.includes(key)) group.append(row);
+    if (matching.length === 1) {
+      standalone.append(matching[0]![0]);
+      continue;
+    }
     const discordRows = matching.filter(([, key]) =>
       DISCORD_KEYS.includes(key),
     );
-    if (discordRows.length) {
+    // A lone Discord option follows the same standalone rule as other groups.
+    if (discordRows.length === 1) standalone.append(discordRows[0]![0]);
+    const sectionRows = matching.filter(
+      ([, key]) => !DISCORD_KEYS.includes(key) || discordRows.length > 1,
+    );
+    if (sectionRows.length === 1) {
+      standalone.append(sectionRows[0]![0]);
+      continue;
+    }
+    if (!sectionRows.length) continue;
+    const group = section(wrapper, title, title.toLowerCase());
+    grouped.append(group);
+    for (const [row, key] of sectionRows)
+      if (!DISCORD_KEYS.includes(key)) group.append(row);
+    if (discordRows.length > 1) {
       const discord = section(group, "Discord Features", "discord");
       group.append(discord);
       for (const [row] of discordRows) discord.append(row);
     }
   }
+  wrapper.append(standalone, grouped);
 }
 
 export function registerSettingsLayout(): void {

@@ -1,34 +1,78 @@
-<form class="payout-inbox-form hq-catalog">
-  <fieldset class="payout-heading hub-status"><legend>Included Improvements</legend><p
-      class="notes"
+<form class="crew-settings-form hq-catalog-editor">
+  <header class="crew-settings-heading"><h3>Custom HQ Improvements</h3>
+    <button type="button" data-add-improvement title="Add improvement"><i
+        class="fas fa-plus"
+        aria-hidden="true"
+      ></i>
+      Add</button>
+  </header>
+  <p class="crew-settings-hint">Define a name, HQ IP cost per level, and
+    description. Enable level 2 to add an upgrade with its own description.
+    Purchased improvements are kept when a catalog entry is deleted.</p>
+  <div class="hq-editor-list">
+    {{#each custom}}
+      <section class="crew-settings-panel hq-editor-row" data-improvement-row>
+        <div class="hq-editor-fields">
+          <label>Name<input
+              name="name.{{id}}"
+              value="{{name}}"
+              maxlength="100"
+              placeholder="Improvement name"
+              required
+            /></label>
+          <label>HQ IP / level<input
+              type="number"
+              name="cost.{{id}}"
+              value="{{cost}}"
+              min="0"
+              step="1"
+              required
+            /></label>
+          <button
+            type="button"
+            data-delete-improvement="{{id}}"
+            aria-label="Delete improvement {{name}}"
+            title="Delete improvement"
+          ><i class="fas fa-trash" aria-hidden="true"></i></button>
+        </div>
+        <label>Description<textarea
+            name="description.{{id}}"
+            maxlength="200"
+            rows="2"
+          >{{description}}</textarea></label>
+        <label class="hq-editor-level-toggle"><input
+            type="checkbox"
+            name="hasLevel2.{{id}}"
+            data-level-two
+            {{checked hasLevel2}}
+          />
+          Has level 2</label>
+        {{#if hasLevel2}}<label data-level-two-description>Level 2 description<textarea
+              name="level2Description.{{id}}"
+              maxlength="200"
+              rows="2"
+            >{{level2Description}}</textarea></label>{{else}}<label
+            data-level-two-description
+            hidden
+          >Level 2 description<textarea
+              name="level2Description.{{id}}"
+              maxlength="200"
+              rows="2"
+            >{{level2Description}}</textarea></label>{{/if}}
+      </section>
+    {{else}}<p class="crew-settings-panel crew-settings-hint hq-editor-empty">No
+        custom improvements yet. Use Add to create one.</p>{{/each}}
+  </div>
+  <details class="hq-editor-defaults"><summary>Included improvements</summary><p
+      class="crew-settings-hint"
     >40 HQ IP per purchase. Additional benefits are not automated.</p><div
       class="hq-catalog-defaults"
     >{{#each defaults}}<span
           title="{{description}}"
-        >{{name}}</span>{{/each}}</div></fieldset>
-  <fieldset class="payout-heading hub-status"><legend>Custom Improvements</legend>
-    {{#each custom}}<div class="hq-custom-row"><strong>{{name}}</strong><label
-        >HQ IP
-          <input
-            type="number"
-            name="cost.{{id}}"
-            value="{{cost}}"
-            min="0"
-            step="1"
-          /></label><label><input type="checkbox" name="remove.{{id}}" />
-          Remove</label></div>{{else}}<p class="notes">No custom improvements.</p>{{/each}}
-    <div class="form-group"><label>Name</label><input
-        name="name"
-        maxlength="100"
-      /></div><div class="form-group"><label>HQ IP cost</label><input
-        name="cost"
-        type="number"
-        min="0"
-        step="1"
-        value="40"
-      /></div><div class="form-group"><label>Short description</label><input
-        name="description"
-        maxlength="200"
-      /></div>
-    <button type="submit"><i class="fas fa-save"></i>
-      Save Changes</button></fieldset></form>
+        >{{name}}</span>{{/each}}</div></details>
+  <footer class="crew-settings-footer"><button type="submit"><i
+        class="fas fa-save"
+        aria-hidden="true"
+      ></i>
+      Save Changes</button></footer>
+</form>

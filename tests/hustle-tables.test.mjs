@@ -63,6 +63,30 @@ function fixture() {
   };
 }
 
+test("GM custom tables stay untouched even when named like module Hustle tables", async () => {
+  const { load, game } = fixture();
+  const custom = {
+    id: "custom",
+    name: "Hustle - Rockerboy",
+    formula: "2d6",
+    description: "GM custom table",
+    results: [{ text: "Custom outcome" }],
+    getFlag: () => undefined,
+    update: async () => {
+      throw new Error("Custom table must not be changed");
+    },
+  };
+  game.tables.push(custom);
+  const before = JSON.stringify(custom);
+  await load("hustle-tables").ensureHustleTables();
+  await load("hustle-tables").ensureHustleTables();
+  assert.equal(game.tables.length, 11);
+  assert.equal(JSON.stringify(custom), before);
+  const main = fs.readFileSync("src/main.ts", "utf8");
+  assert.match(main, /registerHustleTables\(\)/);
+  assert.match(main, /readyHustleTables\(\)/);
+});
+
 test("all 60 hustle outcomes and earnings match supplied source", () => {
   const { load } = fixture();
   const actual = JSON.parse(

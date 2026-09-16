@@ -103,3 +103,7 @@ HQ rent contributions settle immediately when the current player owns the paying
 ## Module data maintenance
 
 The Module Data manager reads native module documents directly. Versioned JSON backups contain CrewTools Journals, module Actor/Item flags, hustle tables, world settings and required folders. Exports support inspection and manual recovery; no import or restore operation is provided. Destructive operations use the primary GM queue, reject changed previews and report partial failures. See [Module Data maintenance](module-data.md).
+
+## Custom downtime activities
+
+The crew-readable Custom Downtime Activities Journal stores GM definitions under `recordKind`/`recordKey: customActivities`. Existing `spend` events on Downtime Log store a `custom` definition snapshot and cycle ID; zero-day `resource` events retain table results, rolled payout amounts and application status. Progress and available-day changes share one page update. `flags.pneuma-crewtools.customActivityReceipt` on the Actor is a retry witness written atomically with native resources; the Journal remains the authoritative result/history record. Definitions never create inventory Items. Catalog removal does not erase in-progress cycles.

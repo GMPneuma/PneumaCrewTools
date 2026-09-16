@@ -1,3 +1,7 @@
+import {
+  validateCustomEvent,
+  type CustomProgress,
+} from "./custom-downtime-model";
 import { validateNomadProgress } from "./nomad-model";
 import type { ActivityRecord } from "./activity-records";
 import type { ResourceChange } from "./actor-resources";
@@ -17,6 +21,7 @@ export interface DowntimeAccount {
 export interface HustleReward {
   tableId: string;
   resultId: string;
+  resultText?: string;
   roll: number;
   roleName: string;
   rank: number;
@@ -55,6 +60,7 @@ export interface DowntimeEvent {
   roleItemId?: string;
   healing?: HealingResult;
   hustleReward?: HustleReward;
+  custom?: CustomProgress;
   tech?: TechSpec;
   techCheck?: TechCheck;
   techDelivery?: TechDelivery;
@@ -211,6 +217,7 @@ export function validateDowntime(state: DowntimeState): void {
       typeof event.reason !== "string"
     )
       throw new Error("Invalid downtime history row.");
+    validateCustomEvent(event);
     if (event.healing) {
       if (event.kind !== "rest")
         throw new Error("Only rest can record healing.");

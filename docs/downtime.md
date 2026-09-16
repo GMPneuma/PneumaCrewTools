@@ -8,7 +8,7 @@ Open **Crew Tools Player Hub**, then **Spend Downtime**. Payouts and acknowledge
 
 After initial world setup, players use downtime immediately through their Actor ownership and character Journal permissions. No GM needs to be connected and there is no approval queue. This includes free-form spending, healing, hustle allocations and rewards, and TECH project setup, progress, checks and inventory delivery.
 
-A GM loads the updated module once to prepare the character Journals, their owner permissions, and the shared directory. Hustle tables are also created during GM setup. Players do not need permission to create world Journals or Actors. Existing source Items must still be readable for fabrication and owned for upgrades. Upgrade holding containers are automatically prepared by a connected GM only for eligible TECH characters, and are hidden from Crew Tools player lists. This does not create character Journals.
+A GM loads the updated module once to prepare the character Journals, their owner permissions, and the shared directory. Hustle tables are supplied and maintained by the GM. Players do not need permission to create world Journals or Actors. Existing source Items must still be readable for fabrication and owned for upgrades. Upgrade holding containers are automatically prepared by a connected GM only for eligible TECH characters, and are hidden from Crew Tools player lists. This does not create character Journals.
 
 **CrewTools / CrewTools-GM / Downtime Directory** is a technical directory of Actor IDs, names, character Journal IDs and the current session period. Each **Crew Tools — Character Name** Journal owns that Actor’s balances, projects and activity records. Its current character owners have OWNER permission; other players have no access. GMs retain access. Owners can edit their records as they can their character sheet; this is transparent bookkeeping, not an anti-cheating database.
 
@@ -38,7 +38,9 @@ Base daily healing is BODY. Installed Enhanced Antibodies double it. Medbay adds
 - Enabled: **(BODY + Medbay + antibiotic) × antibodies × cryotank**
 - Disabled: **(BODY + Medbay) × antibodies × cryotank + antibiotic**
 
-The calculation uses current Actor and HQ data when the action runs. HP is capped at the current maximum; full HP or no available days prevents spending. Only native **system.derivedStats.hp.value** is changed. Stabilization, critical injuries and other treatment rules are not automated.
+The calculation uses current Actor and HQ data when the action runs. HP is capped at the current maximum. Installed **Skin Weave**, **Subdermal Armor**, and **Heavy Subdermal Plating** recover one lost SP on both head and body per rest day; installed **Sycust Fleshweave** recovers all lost SP. Installed cyberware establishes eligibility; repairs reduce the separate, matching armor Item's native head/body ablation, never its maximum SP, and are not multiplied by HP healing bonuses. Matching uses the listed item names, ignoring case and extra spaces; **FleshWeave** cyberware matches **FleshWeave (Armor)** and receives the Sycust full-SP repair; uninstalled inventory cyberware does not qualify.
+
+A note below the healing calculation appears only for eligible installed cyberware. Full HP still allows a rest day when that cyberware needs repair; no available days, or full HP with no eligible ablation, prevents spending. The Downtime Log records actual HP and armor repairs. Failed final saves roll back HP and armor; an interrupted operation that cannot be rolled back remains marked for review. Stabilization, critical injuries and other treatment rules are not automated.
 
 ## Journals and formatting
 
@@ -119,3 +121,23 @@ The scene-control **Crew Tools GM Dashboard** opens GM actions above outstanding
 ## Collapsible activities
 
 Healing and the available-day header are always expanded. Hustle, patient therapy, Other Activity, projects/repair, provider therapy and the medical workday use native collapsible sections. Their open/closed state survives redraws while the downtime window remains open.
+
+## Custom activities
+
+GM: **Configure Settings → Crew Tools → Downtime → Custom Downtime Activities**. Set a name, optional days and an optional world RollTable. Saving validates the dice formula, available result ranges and Observer access for all current players. The GM must fix any reported problem in Foundry; no RollTable data or permissions are changed.
+
+- Select an activity in **Other Activity**. Blank days gives **Use 1 Day**; a specified requirement gives **Start Activity**, which queues it without spending days. Only started activities and completed activities awaiting a table roll appear in the queue, with **Add Days** to advance progress.
+- Activities use the same available downtime balance and respect reserved Medtech workdays. No inventory Item is created; the activity entry is tracked in the character's Downtime Log.
+- A configured table unlocks **Roll Result** after completion. Its result opens in a purple-bordered box, with a separate payout list, and is saved in the Downtime Log. Choose **Free Form** in the same dropdown to enter a description and day count. Activity management is available only in GM settings.
+- Table text may end with one or more `[Money](100)`, `[Humanity](2d6)`, `[Hitpoints](-2d5)`, or `[Reputation](-1)` tags. All types accept signed whole amounts. Humanity and Hitpoints also accept positive Xd6 and negative Xd5, as specified. Missing or malformed payout endings are ordinary result text and are silently ignored; no partial payout is applied for a malformed trailing block.
+- Money and Reputation use native ledgers. HP/Humanity gains respect maxima; Humanity also updates Empathy. Insufficient money retains the result for **Continue Result** after funds are available. No additional downtime or dice roll is required.
+- Dice payouts have individual **Roll** buttons. Closing the result leaves payouts pending; **Continue Result** reopens the saved outcome without rerolling the table or completed dice. All rewards and losses apply together after the last required roll. Results containing only whole amounts apply immediately. Valid payout tags are hidden from the description and displayed as a payout list.
+- Active activities retain their original definition after catalog edits or removal. Completed activities can be started again if their definition remains in the catalog.
+
+Progress and day charges commit together on the existing Downtime Log. Table results are saved before applying rewards. A small Actor receipt flag commits with the native resource update so a failed final Journal write can retry without applying the same reward twice. Actions serialize within one client, consistent with existing module workflows; simultaneous writes from multiple clients remain a limitation.
+
+RollTable selection checks run at GM setup. Later GM edits or newly added users can change validity or access. If a formula is later removed, selection uses the existing result weights in memory and applies no payout, without invoking Foundry’s table normalization.
+
+### Action results in Downtime Log
+
+The Activity / Result column includes action summaries and saved RollTable result text. New hustle rolls snapshot the returned text, and custom activity rolls show their saved text and payout dice outcomes. Text is recorded even when no valid payout tags are present; logging never changes a RollTable or adds payout requirements. Table edits after a roll do not change its saved outcome. Older records remain readable, but previously unsaved hustle result text cannot be reconstructed reliably.

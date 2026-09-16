@@ -1,3 +1,5 @@
+import { registerHustleTables, readyHustleTables } from "./hustle-tables";
+import { registerCustomDowntime } from "./custom-downtime-settings";
 import { registerIconCredits } from "./icon-credits";
 import { registerTeammateSettings } from "./teammates";
 import { registerRentSettings } from "./rent-form";
@@ -9,7 +11,6 @@ import {
   findRecordJournal,
   refreshRecordTables,
 } from "./journal-records";
-import { registerHustleTables, readyHustleTables } from "./hustle-tables";
 import { registerActorExclusions } from "./actor-exclusions";
 import { registerSettingsLayout } from "./settings-layout";
 import { registerCrewHud, readyCrewHud, refreshCrewHud } from "./crew-hud";
@@ -63,6 +64,7 @@ Hooks.once("init", () => {
   registerCampaignCalendar(refreshCrewHud);
   registerCrewHud();
   registerDowntime();
+  registerCustomDowntime();
   registerHeadquarters();
   registerHustleTables();
   registerDiscordLinks();

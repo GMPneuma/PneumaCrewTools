@@ -581,7 +581,7 @@ test("saving HQ residence settles personal rent automatically while shared HQ re
   )({
     hasActor: true,
     ready: true,
-    bills: [{ hq: true, period: "2078-02", date: "02-06-2078" }],
+    bills: [{ hq: true, period: "2078-02", date: "2-6-2078" }],
   });
   assert.doesNotMatch(html, /Confirm HQ Residence|data-rent-action="rent"/);
   assert.match(html, /Shared HQ\s+rent/);

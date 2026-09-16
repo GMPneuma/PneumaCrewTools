@@ -12,6 +12,129 @@ import {
 let queue: Promise<unknown> = Promise.resolve();
 let ready = false;
 let calendarWindow: FormApplication | undefined;
+export const SIMPLE_CALENDAR_SETTING = "useSimpleCalendar";
+let switchingCalendar = false;
+let confirmedSwitch = false;
+export function usesSimpleCalendar(): boolean {
+  return game.settings.get(MODULE_ID, SIMPLE_CALENDAR_SETTING) === true;
+}
+function simpleCalendarDate(): string {
+  const api = (
+    globalThis as typeof globalThis & {
+      SimpleCalendar?: {
+        api?: {
+          currentDateTime(): {
+            year: number;
+            month: number;
+            day: number;
+          } | null;
+        };
+      };
+    }
+  ).SimpleCalendar?.api;
+  if (
+    !game.modules?.get("foundryvtt-simple-calendar")?.active ||
+    !api?.currentDateTime
+  )
+    throw new Error(
+      "Simple Calendar is unavailable. Enable it or turn off Use Simple Calendar in Crew Tools settings and set a new date.",
+    );
+  const parts = api.currentDateTime();
+  if (
+    !parts ||
+    ![parts.year, parts.month, parts.day].every(Number.isSafeInteger)
+  )
+    throw new Error("Waiting for Simple Calendar to provide a date.");
+  const value = `${String(parts.year).padStart(4, "0")}-${String(parts.month + 1).padStart(2, "0")}-${String(parts.day + 1).padStart(2, "0")}`;
+  parseDate(value);
+  return value;
+}
+export function calendarStatus(): string {
+  if (!usesSimpleCalendar()) return "Using Crew Tools calendar.";
+  try {
+    return (
+      "Using Simple Calendar: " +
+      simpleCalendarDate() +
+      ". Change dates in Simple Calendar."
+    );
+  } catch (error) {
+    return error instanceof Error
+      ? error.message
+      : "Simple Calendar unavailable.";
+  }
+}
+function requireLocalCalendar(): void {
+  if (usesSimpleCalendar() || switchingCalendar)
+    throw new Error(
+      "Change the campaign date in Simple Calendar, or turn off Use Simple Calendar in settings.",
+    );
+}
+function refreshCalendarSource(): void {
+  renderCalendar();
+  if (calendarWindow?.rendered) calendarWindow.render(false);
+  for (const element of document.querySelectorAll<HTMLElement>(
+    "[data-crew-calendar-status]",
+  ))
+    element.textContent = calendarStatus();
+}
+// Called before the setting is written: cancel leaves the source and clock untouched.
+function promptCalendarSwitch(): void {
+  if (switchingCalendar) return;
+  try {
+    requireGM();
+  } catch (error) {
+    report(error);
+    return;
+  }
+  switchingCalendar = true;
+  let current = "";
+  try {
+    current = simpleCalendarDate();
+  } catch {
+    /* Require an explicit date if the module was removed. */
+  }
+  new Dialog({
+    title: "Switch to Crew Tools Calendar",
+    content: `<form><p>Set the campaign date Crew Tools should use.</p><div class="form-group"><label>New date</label><input type="date" name="campaignDate" min="0001-01-01" max="9999-12-31" value="${current}" required></div><p>This sets shared Foundry world time to midnight. Other time-based modules, including Simple Calendar if still active, may also respond.</p></form>`,
+    buttons: {
+      cancel: { label: "Cancel" },
+      switch: {
+        label: "Set Date and Switch",
+        callback: (html) => {
+          const value =
+            html[0]?.querySelector<HTMLInputElement>('[name="campaignDate"]')
+              ?.value ?? "";
+          void serial(async () => {
+            requireGM();
+            parseDate(value);
+            if (!usesSimpleCalendar()) return;
+            const before = game.time.worldTime;
+            try {
+              await changeDate(value);
+              confirmedSwitch = true;
+              await game.settings.set(
+                MODULE_ID,
+                SIMPLE_CALENDAR_SETTING,
+                false,
+              );
+            } catch (error) {
+              if (game.time.worldTime !== before)
+                await game.time.advance(before - game.time.worldTime);
+              throw error;
+            } finally {
+              confirmedSwitch = false;
+              refreshCalendarSource();
+            }
+          }).catch(report);
+        },
+      },
+    },
+    default: "cancel",
+    close: () => {
+      switchingCalendar = false;
+    },
+  }).render(true);
+}
 function requireGM(): void {
   if (!game.user?.isGM)
     throw new Error("Only a GM can change the campaign date.");
@@ -34,6 +157,7 @@ function report(error: unknown): void {
   );
 }
 export function getCampaignDate(): string {
+  if (usesSimpleCalendar()) return simpleCalendarDate();
   return game.time.calendar
     ? nativeDate(game.time.calendar, game.time.worldTime)
     : shimDate(game.time.worldTime);
@@ -41,6 +165,7 @@ export function getCampaignDate(): string {
 export function setCampaignDate(value: string): Promise<void> {
   return serial(async () => {
     requireGM();
+    requireLocalCalendar();
     parseDate(value);
     await changeDate(value);
   });
@@ -62,6 +187,7 @@ export function advanceCampaignDays(days: number): Promise<void> {
     return Promise.reject(new Error("Enter a positive whole number of days."));
   return serial(async () => {
     requireGM();
+    requireLocalCalendar();
     const remainder =
       ((game.time.worldTime % DAY_SECONDS) + DAY_SECONDS) % DAY_SECONDS;
     await changeDate(shiftDate(getCampaignDate(), days), remainder);
@@ -94,10 +220,18 @@ export class CampaignCalendarForm extends CrewToolsForm {
     };
   }
   override getData(): object {
-    const current = getCampaignDate();
+    let current = "";
+    try {
+      current = getCampaignDate();
+    } catch {
+      /* Show source status instead of a false fallback date. */
+    }
     const selected = parseDate(current || "2045-01-01");
     return {
-      currentDate: `${String(selected.getUTCMonth() + 1).padStart(2, "0")}-${String(selected.getUTCDate()).padStart(2, "0")}-${selected.getUTCFullYear()}`,
+      currentDate: current
+        ? `${selected.getUTCMonth() + 1}-${selected.getUTCDate()}-${selected.getUTCFullYear()}`
+        : "Unavailable",
+      calendarStatus: calendarStatus(),
       year: selected.getUTCFullYear(),
       day: selected.getUTCDate(),
       months: [
@@ -120,7 +254,7 @@ export class CampaignCalendarForm extends CrewToolsForm {
       })),
       initialized: Boolean(current),
       canEdit: primaryGM(),
-      readOnly: !primaryGM(),
+      readOnly: !primaryGM() || usesSimpleCalendar(),
     };
   }
   override activateListeners(html: FoundryHtml): void {
@@ -224,6 +358,7 @@ function renderCalendar(): void {
     year = String(date.getUTCFullYear()).padStart(4, "0");
   } catch {
     /* Keep the HUD usable when the date cannot be read. */
+    delete root.dataset.date;
   }
   let label = root.querySelector<HTMLSpanElement>(".pneuma-calendar-date");
   if (!label) {
@@ -243,6 +378,53 @@ function renderCalendar(): void {
 export function registerCampaignCalendar(
   refreshHud: () => void = () => {},
 ): void {
+  game.settings.register(MODULE_ID, SIMPLE_CALENDAR_SETTING, {
+    name: "Use Simple Calendar",
+    hint: "Use Simple Calendar's date and manage date changes there. Turning this off prompts for a new Crew Tools date.",
+    scope: "world",
+    config: true,
+    type: Boolean,
+    default: false,
+    onChange: () => refreshCalendarSource(),
+  });
+  Hooks.on("preUpdateSetting", (setting, changes) => {
+    if (
+      setting.key !== MODULE_ID + "." + SIMPLE_CALENDAR_SETTING ||
+      confirmedSwitch
+    )
+      return;
+    if (
+      (changes.value === false || changes.value === "false") &&
+      usesSimpleCalendar()
+    ) {
+      promptCalendarSwitch();
+      return false;
+    }
+  });
+  Hooks.on("renderSettingsConfig", (_app, html) => {
+    const root = html instanceof HTMLElement ? html : html[0];
+    const row = root
+      ?.querySelector(
+        '[name="' + MODULE_ID + "." + SIMPLE_CALENDAR_SETTING + '"]',
+      )
+      ?.closest(".form-group");
+    if (!row) return;
+    let status = row.querySelector<HTMLElement>("[data-crew-calendar-status]");
+    if (!status) {
+      status = document.createElement("p");
+      status.className = "notes";
+      status.dataset.crewCalendarStatus = "";
+      status.setAttribute("role", "status");
+      row.append(status);
+    }
+    status.textContent = calendarStatus();
+  });
+  Hooks.on("simple-calendar-date-time-change", () => {
+    if (usesSimpleCalendar()) refreshCalendarSource();
+  });
+  Hooks.on("simple-calendar-ready", () => {
+    if (usesSimpleCalendar()) refreshCalendarSource();
+  });
   // Client preference applies immediately and never changes the campaign clock.
   game.settings.register(MODULE_ID, HIDE_HUD_SETTING, {
     name: "Hide Crew Tools HUD",

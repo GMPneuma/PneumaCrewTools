@@ -1,3 +1,4 @@
+import { rollTableReadOnly, tableResultText } from "./table-roll";
 import { serverRoomAvailable } from "./netrunner-system";
 import { requireNomadGarage } from "./nomad-vehicles";
 import { validateNomadEvent, nomadRespecDays } from "./nomad-model";
@@ -38,6 +39,7 @@ import {
   MULTIPLY_ANTIBIOTIC_SETTING,
   defaultHealingOptions,
   healingPreview,
+  hasHealingBenefit,
   healingSummary,
   type HealingOptions,
   type HealingResult,
@@ -291,9 +293,10 @@ async function executeDowntimeCommand(
         game.settings.get(MODULE_ID, MULTIPLY_ANTIBIOTIC_SETTING) !== false,
         request.days,
       );
-      if (!candidate.healing.restored)
-        throw new Error("Character is already at maximum HP.");
-      candidate.reason = healingSummary(candidate.healing);
+      if (!hasHealingBenefit(candidate.healing))
+        throw new Error(
+          "Character is already at maximum HP and has no cyberware ablation to repair.",
+        );
       healActor = actor;
     }
     if (
@@ -315,6 +318,8 @@ async function executeDowntimeCommand(
       recordDowntimeTransaction(state, candidate);
     } else
       applyActivityRequest(state, candidate, actor, requiresFullDowntimeWeek());
+    // Validate the user's reason first; the generated multi-item audit can be longer.
+    if (candidate.healing) candidate.reason = healingSummary(candidate.healing);
     event = candidate;
 
     // Commit healing once. Failed HP/ledger writes retain an attempt marker until resolved.
@@ -329,10 +334,36 @@ async function executeDowntimeCommand(
           "</p>",
       });
       await healActor.update(hpUpdate(event.healing.after));
+      const armorUpdates: {
+        item: FoundryItem;
+        before: Record<string, unknown>;
+        after: Record<string, unknown>;
+      }[] = [];
       try {
+        for (const repair of event.healing.armorRepairs ?? []) {
+          if (repair.before === repair.after) continue;
+          let update = armorUpdates.find((u) => u.item.id === repair.itemId);
+          if (!update) {
+            const item = Array.from(healActor.items ?? []).find(
+              (i) => i.id === repair.itemId,
+            );
+            if (!item?.update)
+              throw new Error(
+                "The matching armor item is missing or cannot be updated.",
+              );
+            update = { item, before: {}, after: {} };
+            armorUpdates.push(update);
+          }
+          update.before[`system.${repair.location}.ablation`] = repair.before;
+          update.after[`system.${repair.location}.ablation`] = repair.after;
+        }
+        for (const update of armorUpdates)
+          await update.item.update!(update.after);
         await save(state);
       } catch (error) {
         try {
+          for (const update of armorUpdates)
+            await update.item.update!(update.before);
           await healActor.update(hpUpdate(event.healing.before));
           await ledgerPage()!.update({
             [`flags.${MODULE_ID}.healingAttempt`]: null,
@@ -340,7 +371,7 @@ async function executeDowntimeCommand(
           });
         } catch {
           throw new Error(
-            "Healing ledger save and HP rollback failed. Stop processing and reconcile this character's HP and request Journal.",
+            "Healing save and rollback failed. Stop processing and reconcile this character's HP, cyberware armor and request Journal.",
           );
         }
         throw error;
@@ -366,24 +397,28 @@ async function executeDowntimeCommand(
         ?.value;
       if (typeof before !== "number" || !Number.isSafeInteger(before))
         throw new Error("Character money is unavailable.");
-      const draw = await tables[0]!.roll({ recursive: false });
+      const draw = await rollTableReadOnly(tables[0]!);
       const result = draw.results.length === 1 ? draw.results[0] : undefined;
       const data = result?.getFlag(MODULE_ID, "hustle") as
         { activity?: unknown; earnings?: unknown; roll?: unknown } | undefined;
       const earnings = data?.earnings;
-      const amount = Array.isArray(earnings)
-        ? earnings[role.rank <= 4 ? 0 : role.rank <= 7 ? 1 : 2]
-        : undefined;
+      const amount = !draw.payoutEnabled
+        ? 0
+        : Array.isArray(earnings)
+          ? earnings[role.rank <= 4 ? 0 : role.rank <= 7 ? 1 : 2]
+          : undefined;
+      const resultRoll = draw.payoutEnabled ? draw.roll.total : data?.roll;
       if (
         !result ||
         typeof data?.activity !== "string" ||
         !Array.isArray(earnings) ||
         earnings.length !== 3 ||
         !earnings.every((n) => Number.isSafeInteger(n) && n >= 0) ||
-        !Number.isInteger(draw.roll.total) ||
-        draw.roll.total < 1 ||
-        draw.roll.total > 6 ||
-        data.roll !== draw.roll.total ||
+        typeof resultRoll !== "number" ||
+        !Number.isInteger(resultRoll) ||
+        resultRoll < 1 ||
+        resultRoll > 6 ||
+        data.roll !== resultRoll ||
         !Number.isSafeInteger(before + amount)
       )
         throw new Error(
@@ -392,7 +427,8 @@ async function executeDowntimeCommand(
       const reward: HustleReward = {
         tableId: tables[0]!.id,
         resultId: result.id,
-        roll: draw.roll.total,
+        resultText: tableResultText(result.text),
+        roll: resultRoll,
         roleName: role.name,
         rank: role.rank,
         activity: data.activity,
@@ -428,7 +464,7 @@ async function executeDowntimeCommand(
           escape(event.reason) +
           ". If interrupted, compare Actor money and this attempt before clearing hustleAttempt.</p>",
       });
-      await actor.update(money.update);
+      if (reward.amount !== 0) await actor.update(money.update);
       try {
         await save(state);
       } catch (error) {

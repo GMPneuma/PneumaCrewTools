@@ -123,12 +123,20 @@ export function getHeadquarters(includeLedger = true): HeadquartersState {
     version: 1,
     transactions: structuredClone(stored?.transactions ?? []),
     headquarters: Array.from(game.actors)
-      .filter(
-        (actor) =>
-          actor.type === "container" &&
-          hqPage(actor.id) &&
-          hqPage(actor.id)?.getFlag?.(MODULE_ID, "inactive") !== true,
-      )
+      .filter((actor) => {
+        const document =
+          actor.type === "container" ? hqPage(actor.id) : undefined;
+        if (!document || document.getFlag?.(MODULE_ID, "inactive") === true)
+          return false;
+        // Every player list and facility check shares this permission boundary.
+        // Use native permission tests so inherited and per-user access both apply.
+        return (
+          !!game.user &&
+          (game.user.isGM ||
+            (actor.testUserPermission(game.user, "OBSERVER") &&
+              document.testUserPermission?.(game.user, "OBSERVER") === true))
+        );
+      })
       .map((actor) => {
         const data = hqProperties(actor.id)!;
         return {
@@ -494,6 +502,18 @@ export async function buyHqImprovement(
               i.name.toLowerCase() === name.trim().toLowerCase()),
         )
       : undefined;
+    const option = catalogId
+      ? getHqCatalog().find((i) => i.id === catalogId)
+      : undefined;
+    const nextLevel = existing ? (existing.level ?? 1) + 1 : 1;
+    if (
+      option?.hasLevel2 !== undefined &&
+      nextLevel > (option.hasLevel2 ? 2 : 1)
+    )
+      throw new Error("This improvement has reached its final level.");
+    if (option?.hasLevel2 !== undefined)
+      notes =
+        nextLevel === 2 ? (option.level2Description ?? "") : option.description;
     if (
       !existing &&
       hq.maxImprovements != null &&
@@ -504,6 +524,7 @@ export async function buyHqImprovement(
       existing.level = (existing.level ?? 1) + 1;
       existing.cost += cost;
       existing.catalogId = catalogId;
+      if (option?.hasLevel2 !== undefined) existing.notes = notes.trim();
     } else
       hq.improvements.push({
         catalogId,
@@ -573,6 +594,92 @@ export async function editHqImprovement(
     await save(state);
   });
 }
+export function headquartersAccess(actorId: string) {
+  const actor = game.actors.get(actorId);
+  const document = hqPage(actorId);
+  const players = Array.from(game.users ?? [])
+    .filter((u) => !u.isGM)
+    .map((u) => ({
+      id: u.id,
+      name: u.name ?? u.id,
+      selected:
+        !!actor?.testUserPermission(u, "OBSERVER") &&
+        document?.testUserPermission?.(u, "OBSERVER") === true,
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+  const pageDefault = document?.ownership?.default ?? -1;
+  const everyone =
+    (actor?.ownership?.default ?? 0) >= 2 &&
+    (pageDefault === -1
+      ? (document?.parent?.ownership?.default ?? 0)
+      : pageDefault) >= 2 &&
+    players.every((p) => p.selected);
+  return {
+    everyone,
+    players,
+    summary: everyone
+      ? "Everyone"
+      : players
+          .filter((p) => p.selected)
+          .map((p) => p.name)
+          .join(", ") || "GM only",
+  };
+}
+
+export function saveHeadquartersAccess(
+  actorId: string,
+  everyone: boolean,
+  selected: string[],
+): Promise<void> {
+  return withDowntimeLock(async () => {
+    if (!game.user?.isGM) throw new Error("Only the GM can change HQ access.");
+    const actor = game.actors.get(actorId),
+      document = hqPage(actorId);
+    if (
+      !actor ||
+      !document ||
+      document.getFlag?.(MODULE_ID, "inactive") === true
+    )
+      throw new Error("Headquarters no longer exists or is inactive.");
+    const players = Array.from(game.users ?? []).filter((u) => !u.isGM);
+    const ids = new Set(selected);
+    if (selected.some((id) => !players.some((u) => u.id === id)))
+      throw new Error(
+        "A selected player no longer exists. Reopen Player Access.",
+      );
+    const before = structuredClone(actor.ownership ?? {});
+    const changes = (ownership: Record<string, number> = {}) => ({
+      "ownership.default": everyone ? Math.max(2, ownership.default ?? 0) : 0,
+      ...Object.fromEntries(
+        players.map((u) => [
+          // Foundry's Default choice removes the per-user override.
+          everyone ? "ownership.-=" + u.id : "ownership." + u.id,
+          everyone
+            ? null
+            : ids.has(u.id)
+              ? Math.max(2, ownership[u.id] ?? ownership.default ?? 0)
+              : 0,
+        ]),
+      ),
+    });
+    await actor.update(changes(before));
+    try {
+      await document.update(changes(document.ownership));
+    } catch (error) {
+      await actor.update(
+        Object.fromEntries(
+          ["default", ...players.map((u) => u.id)].map((id) =>
+            Object.hasOwn(before, id)
+              ? ["ownership." + id, before[id]]
+              : ["ownership.-=" + id, null],
+          ),
+        ),
+      );
+      throw error;
+    }
+  });
+}
+
 // Soft deletion retains the HQ's records and contents for deliberate GM cleanup.
 // Revoke native visibility as well as excluding it from module discovery.
 export function deactivateHeadquarters(actorId: string): Promise<void> {
@@ -725,20 +832,31 @@ export class HeadquartersForm extends CrewToolsForm {
           ),
         })),
       },
-      catalog: getHqCatalog().map((i) => ({
-        ...i,
-        level:
-          (hq?.improvements.find(
-            (h) =>
-              h.catalogId === i.id ||
-              (!h.catalogId && h.name.toLowerCase() === i.name.toLowerCase()),
-          )?.level ??
-            (hq?.improvements.some(
-              (h) => h.name.toLowerCase() === i.name.toLowerCase(),
-            )
-              ? 1
-              : 0)) + 1,
-      })),
+      catalog: getHqCatalog()
+        .map((i) => ({
+          ...i,
+          level:
+            (hq?.improvements.find(
+              (h) =>
+                h.catalogId === i.id ||
+                (!h.catalogId && h.name.toLowerCase() === i.name.toLowerCase()),
+            )?.level ??
+              (hq?.improvements.some(
+                (h) => h.name.toLowerCase() === i.name.toLowerCase(),
+              )
+                ? 1
+                : 0)) + 1,
+        }))
+        .filter(
+          (i) => i.hasLevel2 === undefined || i.level <= (i.hasLevel2 ? 2 : 1),
+        )
+        .map((i) => ({
+          ...i,
+          description:
+            i.level === 2 && i.hasLevel2
+              ? (i.level2Description ?? "")
+              : i.description,
+        })),
       effects: effectOptions(),
       rentAmount:
         rate && rental ? rentCharge(rate, rental.modifier).amount : undefined,
@@ -761,6 +879,7 @@ export class HeadquartersForm extends CrewToolsForm {
           remaining: b.charge.amount - b.paid,
           progress: b.charge.amount ? (100 * b.paid) / b.charge.amount : 100,
         })),
+      accessSummary: actor ? headquartersAccess(actor.id).summary : "Everyone",
       ip: headquartersIp(),
       canManage: isDowntimeGM(),
       canBuy:
@@ -837,6 +956,62 @@ export class HeadquartersForm extends CrewToolsForm {
     root?.querySelector("[data-select-hq]")?.addEventListener("change", () => {
       this.selectedId = value("selectedHq");
       this.render(true);
+    });
+    root?.querySelector("[data-hq-access]")?.addEventListener("click", () => {
+      const actorId = this.selectedId;
+      if (!actorId || !isDowntimeGM()) return;
+      const access = headquartersAccess(actorId);
+      const dialog = new Dialog(
+        {
+          title: "HQ Player Access",
+          content: `<div class="pneuma-crewtools"><div class="hq-access-dialog">
+          <p>Players with access can see this HQ and use its improvements.</p>
+          <label><input type="radio" name="hqAccess" value="everyone" ${access.everyone ? "checked" : ""}> <span>Everyone</span></label>
+          <label><input type="radio" name="hqAccess" value="selected" ${!access.everyone ? "checked" : ""}> <span>Selected players</span></label>
+          <div data-access-players ${access.everyone ? "hidden" : ""}>${access.players.map((p) => `<label><input type="checkbox" data-access-player value="${esc(p.id)}" ${p.selected ? "checked" : ""}> <span>${esc(p.name)}</span></label>`).join("") || "<p>No player users yet.</p>"}</div>
+          </div></div>`,
+          render: (html) => {
+            const root = html[0];
+            root?.querySelectorAll('[name="hqAccess"]').forEach((radio) =>
+              radio.addEventListener("change", () => {
+                const list = root.querySelector<HTMLElement>(
+                  "[data-access-players]",
+                );
+                if (list)
+                  list.hidden =
+                    root.querySelector<HTMLInputElement>(
+                      '[name="hqAccess"]:checked',
+                    )?.value === "everyone";
+                dialog.setPosition({ height: "auto" });
+              }),
+            );
+          },
+          buttons: {
+            save: {
+              label: "Save Access",
+              callback: (html) => {
+                const root = html[0];
+                const everyone =
+                  root?.querySelector<HTMLInputElement>(
+                    '[name="hqAccess"]:checked',
+                  )?.value === "everyone";
+                const selected = Array.from(
+                  root?.querySelectorAll<HTMLInputElement>(
+                    "[data-access-player]:checked",
+                  ) ?? [],
+                ).map((input) => input.value);
+                void this.#perform(() =>
+                  saveHeadquartersAccess(actorId, everyone, selected),
+                );
+              },
+            },
+            cancel: { label: "Cancel" },
+          },
+          default: "cancel",
+        },
+        { width: 420, height: "auto", resizable: true },
+      );
+      dialog.render(true);
     });
     root?.querySelector("[data-new-hq]")?.addEventListener("click", () => {
       this.selectedId = "";

@@ -7,6 +7,17 @@ declare const foundry: {
 
 declare const Hooks: {
   on(
+    event: "preUpdateSetting",
+    callback: (
+      setting: { key: string },
+      changes: { value?: unknown },
+    ) => boolean | void,
+  ): number;
+  on(
+    event: "simple-calendar-date-time-change" | "simple-calendar-ready",
+    callback: () => void,
+  ): number;
+  on(
     event: "createChatMessage",
     callback: (message: FoundryChatMessage) => void,
   ): number;
@@ -334,9 +345,14 @@ declare const ui: {
 };
 
 declare class Roll {
+  static validate(formula: string): boolean;
   constructor(formula: string);
   total: number;
-  evaluate(): Promise<Roll>;
+  evaluate(options?: {
+    minimize?: boolean;
+    maximize?: boolean;
+    allowInteractive?: boolean;
+  }): Promise<Roll>;
 }
 
 interface FoundryChatMessage {
@@ -357,14 +373,18 @@ interface DialogButtonConfig {
 }
 
 declare class Dialog {
-  constructor(config: {
-    title: string;
-    content: string;
-    buttons: Record<string, DialogButtonConfig>;
-    default?: string;
-    render?: (html: FoundryHtml) => void;
-    close?: () => void;
-  });
+  constructor(
+    config: {
+      title: string;
+      content: string;
+      buttons: Record<string, DialogButtonConfig>;
+      default?: string;
+      render?: (html: FoundryHtml) => void;
+      close?: () => void;
+    },
+    options?: ApplicationOptions,
+  );
+  setPosition(position?: ApplicationPosition): ApplicationPosition | void;
   render(force?: boolean): this;
 }
 
@@ -419,14 +439,30 @@ declare const Actor: {
   create(data: Record<string, unknown>): Promise<FoundryActor>;
 };
 
+interface FoundryTableResult {
+  range?: [number, number];
+  id: string;
+  text?: string;
+  weight?: number;
+  drawn?: boolean;
+  getFlag(namespace: string, key: string): unknown;
+}
 interface FoundryRollTable {
+  formula?: string;
+  results?: Iterable<FoundryTableResult>;
+  name: string;
+  testUserPermission?(user: FoundryUser, permission: string): boolean;
   img?: string;
   id: string;
   description: string;
   update(data: Record<string, unknown>): Promise<unknown>;
   roll(options?: { recursive?: boolean }): Promise<{
     roll: { total: number };
-    results: { id: string; getFlag(namespace: string, key: string): unknown }[];
+    results: {
+      id: string;
+      text?: string;
+      getFlag(namespace: string, key: string): unknown;
+    }[];
   }>;
   getFlag(namespace: string, key: string): unknown;
 }

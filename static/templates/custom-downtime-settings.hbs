@@ -1,0 +1,103 @@
+<form class="custom-activity-settings activity-manager">
+  <div class="activity-manager-columns">
+    <section class="activity-management" aria-label="Manage activities">
+      <header class="activity-manager-heading">
+        <h3>Custom downtime Activities</h3>
+        <button
+          type="button"
+          data-activity-add
+          aria-label="Add activity"
+          title="Add activity"
+        ><i class="fas fa-plus" aria-hidden="true"></i></button>
+      </header>
+      <p class="activity-hint">Create activities for players in
+        <strong>Spend Downtime</strong>.</p>
+      <p class="activity-hint">Leave Days blank for a one-day action. Enter a
+        number to track progress. Players can roll the optional RollTable after
+        completing the activity.</p>
+      <div class="activity-list">
+        {{#each activities}}
+          <section class="activity-card" aria-label="Activity">
+            <label class="activity-name">Name<input
+                name="name.{{id}}"
+                value="{{name}}"
+                maxlength="100"
+                placeholder="Activity name"
+                required
+              /></label>
+            <div class="activity-fields">
+              <label
+                title="Optional: leave blank for a one-day action"
+              >Days<input
+                  type="number"
+                  name="days.{{id}}"
+                  value="{{days}}"
+                  min="1"
+                  max="9999"
+                  step="1"
+                  placeholder="1 day"
+                /></label>
+              <label title="Optional completion RollTable">RollTable<select
+                  name="table.{{id}}"
+                ><option value="">None</option>{{#each tables}}{{#if
+                      selected
+                    }}<option
+                        value="{{id}}"
+                        selected
+                      >{{name}}</option>{{else}}<option
+                        value="{{id}}"
+                      >{{name}}</option>{{/if}}{{/each}}</select></label>
+            </div>
+            <button
+              class="activity-delete"
+              type="button"
+              data-activity-delete="{{id}}"
+              aria-label="Delete activity {{name}}"
+              title="Delete activity"
+            ><i class="fas fa-trash" aria-hidden="true"></i></button>
+          </section>
+        {{else}}
+          <p class="activity-empty">No activities yet. Use
+            <strong>+</strong>
+            to add one.</p>
+        {{/each}}
+      </div>
+    </section>
+    <aside class="activity-payouts" aria-label="Optional payout tags">
+      <h3>Optional Payout tags for Roll Table Results</h3>
+      <div class="activity-reference-body">
+        <p>Add tags at the
+          <strong>end of a RollTable result</strong>
+          to apply rewards or losses.</p>
+        <table>
+          <thead><tr><th scope="col">Tag</th><th scope="col">Allowed amounts</th><th
+                scope="col"
+              >Examples</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">Money</th><td>Positive or negative whole number</td><td
+              ><code>[Money](100)</code><br /><code
+                >[Money](-50)</code></td></tr>
+            <tr><th scope="row">Humanity</th><td>Whole number, positive Xd6, or
+                negative Xd5</td><td><code>[Humanity](2d6)</code><br /><code
+                >[Humanity](-2d5)</code></td></tr>
+            <tr><th scope="row">Hitpoints</th><td>Whole number, positive Xd6, or
+                negative Xd5</td><td><code>[Hitpoints](5)</code><br /><code
+                >[Hitpoints](-1d5)</code></td></tr>
+            <tr><th scope="row">Reputation</th><td>Positive or negative whole
+                number</td><td><code>[Reputation](1)</code><br /><code
+                >[Reputation](-1)</code></td></tr>
+          </tbody>
+        </table>
+        <ul class="activity-hint activity-tag-notes">
+          <li>Use the exact capitalization shown.</li>
+          <li>X is the number of dice.</li>
+          <li>Multiple tags are allowed.</li>
+          <li>Missing or invalid tags give no payout.</li>
+        </ul>
+      </div>
+    </aside></div>
+  <footer class="activity-footer">
+    <p class="activity-hint">Existing projects keep their original settings.</p>
+    <button type="submit"><i class="fas fa-save"></i> Save Activities</button>
+  </footer>
+</form>

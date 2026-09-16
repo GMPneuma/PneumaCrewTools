@@ -22,7 +22,7 @@
         >Clear Interrupted Medical Roll…</button>{{/if}}
       {{#if ready}}
         <fieldset class="payout-heading hub-status downtime-heal">
-          <legend><i class="fas fa-heart"></i> Heal</legend>
+          <legend><i class="fas fa-heart"></i> Rest</legend>
           <div class="downtime-heal-layout"><div class="downtime-heal-main">
               {{#if healing}}
                 <div class="downtime-heal-summary">
@@ -79,6 +79,9 @@
             </div>
             {{#if healing}}<div class="downtime-heal-formula">
                 <p>{{healingFormula}}</p>
+                {{#if armorHealingNote}}<p
+                    class="notes"
+                  >{{armorHealingNote}}</p>{{/if}}
                 <small>{{healing.before}}
                   →
                   {{healing.after}}
@@ -272,7 +275,48 @@
         >
           <summary><i class="fas fa-clipboard-list" aria-hidden="true"></i>
             Other Activity</summary>
-          <div class="downtime-other-row">
+          <div class="custom-downtime-row">
+            <select data-custom-choice aria-label="Downtime activity"><option
+                value=""
+              >Choose activity</option><option value="freeform">Free Form</option>{{#each
+                customChoices
+              }}<option
+                  value="{{id}}"
+                  data-tracked="{{tracked}}"
+                  data-can-use="{{canUse}}"
+                >{{name}}</option>{{/each}}</select>
+            <button type="button" data-custom-use disabled>Use 1 Day</button>
+          </div>
+          {{#each customActivities}}<div
+              class="custom-downtime-row"
+              data-custom-activity="{{id}}"
+              data-cycle="{{cycle}}"
+            >
+              <strong>{{name}}</strong>
+              {{#if tracked}}<span>{{progress}}
+                  /
+                  {{required}}
+                  days</span>{{/if}}
+              {{#if canSpend}}
+                {{#if tracked}}<input
+                    type="number"
+                    data-custom-days
+                    value="1"
+                    min="1"
+                    max="{{remaining}}"
+                    step="1"
+                    aria-label="Days for {{name}}"
+                  />{{/if}}
+                <button type="button" data-custom-spend>{{#if tracked}}Add Days{{else}}Use
+                    1 Day{{/if}}</button>
+              {{else if canRoll}}<button type="button" data-custom-roll><i
+                    class="fas fa-dice"
+                  ></i>
+                  {{#if resume}}Continue Result{{else}}Roll Result{{/if}}</button>{{else}}<span
+                  class="notes"
+                >No downtime available</span>{{/if}}
+            </div>{{/each}}
+          <div class="downtime-other-row" data-custom-freeform hidden>
             <label class="downtime-days-label"># of days
               <input
                 type="number"

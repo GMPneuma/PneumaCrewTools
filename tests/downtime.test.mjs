@@ -863,6 +863,181 @@ test("healing records actual HP, spends one day, and cannot replay", async () =>
   assert.equal(f.balance(), 4);
 });
 
+function healingArmor(actor, name, head = 3, body = 2, installed = true) {
+  const item = {
+    id: "armor-" + actor.items.length,
+    name,
+    type: "armor",
+    system: {
+      headLocation: { sp: 11, ablation: head },
+      bodyLocation: { sp: 11, ablation: body },
+    },
+    async update(data) {
+      for (const [path, value] of Object.entries(data)) {
+        const [, location, field] = path.split(".");
+        this.system[location][field] = value;
+      }
+    },
+  };
+  const cyberware = {
+    id: "implant-" + actor.items.length,
+    name,
+    type: "cyberware",
+    system: { isInstalled: installed },
+    async update() {
+      throw Error("Rest must not update the cyberware Item");
+    },
+  };
+  actor.items.push(cyberware);
+  if (!installed) return cyberware;
+  actor.items.push(item);
+  return item;
+}
+
+test("Rest detects installed cyberware and repairs both armor object locations once, ignores inventory and ordinary armor, and records SP", async () => {
+  const f = fixture();
+  await f.award();
+  f.game.user = f.p1;
+  const actor = f.p1.character;
+  const armors = [
+    "Skin Weave",
+    "Subdermal Armor",
+    "Heavy Subdermal Plating",
+    "Sycust Fleshweave",
+  ].map((name) => healingArmor(actor, name));
+  const inventory = healingArmor(actor, "Skin Weave", 4, 4, false);
+  const ordinary = healingArmor(actor, "Light Armorjack", 4, 4);
+  ordinary.type = "armor";
+  await f.api.requestDowntimeUse(1, "rest", "Recover", "tech1", {
+    healing: { medbay: false, antibiotic: true, cryotank: true },
+  });
+  await f.process();
+  await f.process();
+  for (const item of armors.slice(0, 3)) {
+    assert.equal(item.system.headLocation.ablation, 2);
+    assert.equal(item.system.bodyLocation.ablation, 1);
+    assert.equal(item.system.bodyLocation.sp, 11);
+  }
+  assert.equal(armors[3].system.headLocation.ablation, 0);
+  assert.equal(armors[3].system.bodyLocation.ablation, 0);
+  assert.equal(inventory.system.isInstalled, false);
+  assert.equal(ordinary.system.bodyLocation.ablation, 4);
+  assert.equal(f.balance(), 4);
+  assert.match(
+    f.api.getDowntime().events.at(-1).reason,
+    /Skin Weave \(head\): restored 1 SP/,
+  );
+  assert.match(
+    f.api.getDowntime().events.at(-1).reason,
+    /Sycust Fleshweave \(body\): restored 2 SP/,
+  );
+});
+
+test("full-HP Rest repairs armor, caps ablation at zero, and conditionally explains it below healing", async () => {
+  const f = fixture();
+  await f.award();
+  f.game.user = f.p1;
+  const actor = f.p1.character;
+  actor.system.derivedStats.hp.value = 40;
+  const form = new f.api.DowntimeForm();
+  assert.equal(form.getData().armorHealingNote, "");
+  assert.equal(form.getData().canHeal, false);
+  const item = healingArmor(actor, "Skin Weave", 1, 0);
+  const full = healingArmor(actor, "Sycust Fleshweave", 5, 4);
+  assert.equal(form.getData().canHeal, true);
+  assert.match(
+    form.getData().armorHealingNote,
+    /1 lost SP.*both body and head per day/,
+  );
+  assert.match(form.getData().armorHealingNote, /Sycust Fleshweave.*full SP/);
+  await f.api.requestDowntimeUse(1, "rest", "Recover", "tech1");
+  assert.equal(actor.system.derivedStats.hp.value, 40);
+  assert.equal(item.system.headLocation.ablation, 0);
+  assert.equal(item.system.bodyLocation.ablation, 0);
+  assert.equal(full.system.headLocation.ablation, 0);
+  assert.equal(f.balance(), 4);
+  assert.equal(form.getData().canHeal, false);
+  assert.match(form.getData().armorHealingNote, /Skin Weave/);
+  const template = fs.readFileSync(
+    new URL("../static/templates/downtime.hbs", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    template,
+    /\{\{healingFormula\}\}[\s\S]*\{\{#if armorHealingNote\}\}/,
+  );
+});
+
+test("Rest armor audit supports multiple days, old records and rejects corrupt repairs", () => {
+  const f = fixture();
+  const heal = load("downtime-healing", {}, {});
+  healingArmor(f.p1.character, "Skin Weave", 5, 1);
+  const result = heal.healingPreview(
+    f.p1.character,
+    heal.defaultHealingOptions(),
+    f.headquarters,
+    true,
+    3,
+  );
+  assert.equal(result.armorRepairs[0].after, 2);
+  assert.equal(result.armorRepairs[1].after, 0);
+  heal.validateHealingResult(result, 3);
+  const legacy = structuredClone(result);
+  delete legacy.armorRepairs;
+  heal.validateHealingResult(legacy, 3);
+  result.armorRepairs[0].after = 0;
+  assert.throws(() => heal.validateHealingResult(result, 3), /armor record/);
+});
+
+test("failed final Rest save rolls back HP and both armor locations without spending a day", async () => {
+  const f = fixture();
+  await f.award();
+  f.game.user = f.p1;
+  const actor = f.p1.character;
+  const item = healingArmor(actor, "Sycust Fleshweave", 5, 4);
+  const page = f.requests().pages.find((p) => p.name === "Downtime Log");
+  const update = page.update;
+  let writes = 0;
+  page.update = async (data) => {
+    if (++writes === 2) throw Error("final save failed");
+    return update(data);
+  };
+  await assert.rejects(
+    f.api.requestDowntimeUse(1, "rest", "Recover", "tech1"),
+    /final save failed/,
+  );
+  assert.equal(actor.system.derivedStats.hp.value, 10);
+  assert.equal(item.system.headLocation.ablation, 5);
+  assert.equal(item.system.bodyLocation.ablation, 4);
+  assert.equal(f.balance(), 5);
+  assert.ok(!page.getFlag("pneuma-crewtools", "healingAttempt"));
+});
+
+test("uncertain armor write and failed rollback retain the healing marker and block replay", async () => {
+  const f = fixture();
+  await f.award();
+  f.game.user = f.p1;
+  const item = healingArmor(f.p1.character, "Skin Weave");
+  const update = item.update.bind(item);
+  let writes = 0;
+  item.update = async (data) => {
+    writes++;
+    if (writes === 1) await update(data);
+    throw Error("lost armor response");
+  };
+  await assert.rejects(
+    f.api.requestDowntimeUse(1, "rest", "Recover", "tech1"),
+    /rollback failed/,
+  );
+  await f.process();
+  assert.equal(writes, 2);
+  assert.equal(f.balance(), 5);
+  await assert.rejects(
+    f.api.requestDowntimeUse(1, "rest", "Recover", "tech1"),
+    /GM review/,
+  );
+});
+
 test("world antibiotic setting is used during immediate owner processing", async () => {
   const f = fixture();
   await f.award();
@@ -1018,6 +1193,7 @@ function mockHustle(f, role = "Tech", earnings = [100, 200, 500]) {
   let rolls = 0;
   f.game.tables.push({
     id: "table-" + role,
+    formula: "1d6",
     getFlag: () => role,
     handleRollDialog: async () => true,
     roll: async () => {
@@ -1027,6 +1203,7 @@ function mockHustle(f, role = "Tech", earnings = [100, 200, 500]) {
         results: [
           {
             id: "result2",
+            text: "A client hires you to repair their cyberdeck. No payout tags needed.",
             getFlag: () => ({ roll: 2, activity: "Work <test>", earnings }),
           },
         ],
@@ -1066,7 +1243,7 @@ test("hustle spends seven allocated days and pays current role rank to the same 
   );
   assert.equal(
     f.p1.character.system.wealth.transactions[1][1],
-    "Hustle — 02-06-2078 — Tech (rank 5)",
+    "Hustle — 2-6-2078 — Tech (rank 5)",
   );
   assert.equal(model.hustleDays(f.api.getDowntime(), "tech1"), 1);
   assert.equal(f.messages.length, 1);
@@ -1074,6 +1251,15 @@ test("hustle spends seven allocated days and pays current role rank to the same 
   assert.deepEqual(Array.from(f.messages[0].whisper), ["gm", "p1"]);
   const event = f.api.getDowntime().events.find((e) => e.kind === "hustleRoll");
   assert.equal(event.hustleReward.rank, 5);
+  assert.equal(
+    event.hustleReward.resultText,
+    "A client hires you to repair their cyberdeck. No payout tags needed.",
+  );
+  const view = load("downtime-journal-view", {}, {});
+  assert.match(
+    view.resourceTransactionsHtml(f.api.getDowntime()),
+    /A client hires you to repair their cyberdeck/,
+  );
   assert.equal(event.roleItemId, "tech-role");
   await f.process();
   assert.equal(rolls(), 1);
@@ -1908,6 +2094,7 @@ test("failed weekly hustle leaves the seven days unspent", async () => {
   f.game.user = f.p1;
   f.game.tables.push({
     getFlag: () => "Tech",
+    formula: "1d6",
     handleRollDialog: async () => true,
     roll: async () => {
       throw Error("roll unavailable");
@@ -2457,4 +2644,103 @@ test("Ledger validation keeps interleaved respec pools separate without rescanni
   state.events.pop();
   state.events.push(event("b", "nomadRespecDay", 8));
   assert.throws(() => model.validateDowntime(state), /remaining/);
+});
+
+test("downtime log shows custom text without payout tags, escapes HTML, and accepts old events", () => {
+  const view = load("downtime-journal-view", {}, {});
+  const events = [
+    {
+      id: "old",
+      actorId: "a",
+      kind: "spend",
+      days: 1,
+      period: 1,
+      date: "2078-02-06",
+      reason: "Visited a friend",
+    },
+    {
+      id: "custom",
+      actorId: "a",
+      kind: "resource",
+      days: 0,
+      period: 1,
+      date: "2078-02-06",
+      reason: "old combined reason",
+      custom: {
+        definition: { name: "Research" },
+        result: {
+          text: "Found a clue.\n<script>alert(1)</script>",
+          tableTotal: 3,
+          rewards: [],
+        },
+      },
+    },
+    {
+      id: "hustle",
+      actorId: "a",
+      kind: "hustleRoll",
+      days: 0,
+      period: 1,
+      date: "2078-02-06",
+      reason: "Old hustle summary",
+      hustleReward: { before: 0, after: 100 },
+    },
+  ];
+  const html = view.resourceTransactionsHtml({
+    accounts: [],
+    events,
+    period: 1,
+  });
+  assert.match(html, /Visited a friend/);
+  assert.match(html, /Found a clue/);
+  assert.match(html, /&lt;script&gt;/);
+  assert.doesNotMatch(html, /<script>|old combined reason/);
+  assert.match(html, /Old hustle summary/);
+});
+
+test("Rest leaves armor alone without its matching installed cyberware", () => {
+  const f = fixture();
+  const actor = f.p1.character;
+  const heal = load("downtime-healing", {}, {});
+  const armor = healingArmor(actor, "Subdermal Armor", 3, 1);
+  const implant = actor.items.find(
+    (i) => i.name === armor.name && i.type === "cyberware",
+  );
+  const preview = () =>
+    heal.healingPreview(
+      actor,
+      heal.defaultHealingOptions(),
+      f.headquarters,
+      true,
+    );
+  assert.equal(preview().armorRepairs[0].itemId, armor.id);
+  implant.system.isInstalled = false;
+  assert.equal(preview().armorRepairs.length, 0);
+  implant.system.isInstalled = true;
+  implant.name = "Skin Weave";
+  assert.equal(preview().armorRepairs.length, 0);
+  implant.name = " Subdermal  Armor ";
+  assert.equal(preview().armorRepairs.length, 2);
+  actor.items = actor.items.filter((i) => i !== armor);
+  assert.equal(preview().armorRepairs.length, 0);
+});
+
+test("FleshWeave cyberware repairs FleshWeave (Armor) to full SP", async () => {
+  const f = fixture();
+  await f.award();
+  f.game.user = f.p1;
+  const actor = f.p1.character;
+  actor.system.derivedStats.hp.value = 40;
+  const armor = healingArmor(actor, "FleshWeave", 6, 4);
+  armor.name = "FleshWeave (Armor)";
+  const form = new f.api.DowntimeForm();
+  assert.match(
+    form.getData().armorHealingNote,
+    /FleshWeave \(Armor\).*full SP/,
+  );
+  assert.equal(form.getData().canHeal, true);
+  await f.api.requestDowntimeUse(1, "rest", "Recover", "tech1");
+  assert.equal(armor.system.headLocation.ablation, 0);
+  assert.equal(armor.system.bodyLocation.ablation, 0);
+  assert.equal(f.balance(), 4);
 });

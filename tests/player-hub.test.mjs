@@ -56,6 +56,8 @@ function load(name, globals, deps) {
       if (k === "./foundry-form") return load("foundry-form", globals, {});
       if (k === "./date-format") return load("date-format", globals, {});
       if (k === "./nomad-model") return load("nomad-model", globals, {});
+      if (k === "./custom-downtime-model")
+        return load("custom-downtime-model", globals, {});
       if (k === "./tech-project-model")
         return load("tech-project-model", globals, {});
       if (k === "./actor-policy")

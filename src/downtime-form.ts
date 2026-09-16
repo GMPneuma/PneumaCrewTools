@@ -1,3 +1,10 @@
+import { customResultHtml } from "./custom-result-view";
+import {
+  customActivityView,
+  startCustomActivity,
+  spendCustomActivity,
+  rollCustomActivity,
+} from "./custom-downtime";
 import { isNetrunner, netrunnerSkill, netrunnerItem } from "./netrunner-system";
 import { nomadRespecPanel, bindNomadVehicles } from "./nomad-vehicles";
 import { armorRepairDays } from "./repair-settings";
@@ -21,6 +28,8 @@ import {
   defaultHealingOptions,
   findMedbay,
   healingPreview,
+  hasHealingBenefit,
+  armorHealingNote,
   type HealingOptions,
   type HealingResult,
 } from "./downtime-healing";
@@ -361,6 +370,10 @@ export class DowntimeForm extends CrewToolsForm {
     const balance = account ? storedDowntimeBalance(account.actorId) : 0;
     const medicalPage = actor ? activityPage(actor.id) : undefined;
     const available = balance - reservedMedicalDay(medicalPage);
+    const custom =
+      actor && account
+        ? customActivityView(actor.id, available)
+        : { queue: [], choices: [], latestResult: undefined };
     const fullWeek = requiresFullDowntimeWeek();
     const hustle = actor ? hustleDays(state, actor.id) : 0;
     const allProjects = actor ? techProjects(state, actor.id) : [];
@@ -437,11 +450,12 @@ export class DowntimeForm extends CrewToolsForm {
       patientNeedsAddiction: this.patientChoice === "addiction",
       healing,
       healingFormula: healing ? healingFormula(healing) : "",
+      armorHealingNote: healing ? armorHealingNote(healing) : "",
       healingOptions: this.healingOptions,
       healingError,
       medbayAvailable,
       canHeal: Boolean(
-        healing && healing.restored > 0 && account && available > 0,
+        healing && hasHealingBenefit(healing) && account && available > 0,
       ),
       ...medical,
       hasRoleAreas,
@@ -459,6 +473,8 @@ export class DowntimeForm extends CrewToolsForm {
           (roles.find((r) => r.id === this.selectedHustleRoleId) ?? roles[0])
             ?.id,
       })),
+      customActivities: custom.queue,
+      customChoices: custom.choices,
       canCraft,
       canRepair: !!actor && !canCraft,
       workshop,
@@ -569,6 +585,86 @@ export class DowntimeForm extends CrewToolsForm {
         this.#submitting = false;
       }
     };
+    const activityChoice = root?.querySelector<HTMLSelectElement>(
+      "[data-custom-choice]",
+    );
+    const useActivity =
+      root?.querySelector<HTMLButtonElement>("[data-custom-use]");
+    const refreshActivityChoice = () => {
+      const option = activityChoice?.selectedOptions[0];
+      const freeform = option?.value === "freeform";
+      const freeformRow = root?.querySelector<HTMLElement>(
+        "[data-custom-freeform]",
+      );
+      if (freeformRow) {
+        freeformRow.hidden = !freeform;
+        freeformRow
+          .querySelectorAll<HTMLInputElement | HTMLButtonElement>(
+            "input,button",
+          )
+          .forEach((control) => {
+            control.disabled = !freeform;
+          });
+      }
+      if (useActivity) {
+        useActivity.hidden = freeform;
+        useActivity.textContent =
+          option?.dataset.tracked === "true" ? "Start Activity" : "Use 1 Day";
+        useActivity.disabled =
+          !option?.value || option.dataset.canUse !== "true";
+      }
+    };
+    activityChoice?.addEventListener("change", refreshActivityChoice);
+    refreshActivityChoice();
+    useActivity?.addEventListener(
+      "click",
+      () =>
+        void perform(() => {
+          const option = activityChoice?.selectedOptions[0];
+          return option?.dataset.tracked === "true"
+            ? startCustomActivity(field("actorId"), option.value)
+            : spendCustomActivity(field("actorId"), option?.value ?? "", "", 1);
+        }),
+    );
+    root
+      ?.querySelectorAll<HTMLElement>("[data-custom-activity]")
+      .forEach((row) => {
+        row
+          .querySelector("[data-custom-spend]")
+          ?.addEventListener(
+            "click",
+            () =>
+              void perform(() =>
+                spendCustomActivity(
+                  field("actorId"),
+                  row.dataset.customActivity!,
+                  row.dataset.cycle ?? "",
+                  Number(
+                    row.querySelector<HTMLInputElement>("[data-custom-days]")
+                      ?.value ?? 1,
+                  ),
+                ),
+              ),
+          );
+        row.querySelector("[data-custom-roll]")?.addEventListener(
+          "click",
+          () =>
+            void perform(async () => {
+              const actorId = field("actorId"),
+                cycleId = row.dataset.cycle!;
+              try {
+                await rollCustomActivity(actorId, cycleId, { deferDice: true });
+              } finally {
+                // Saved results remain readable even if applying a payout needs a retry.
+                const custom = getDowntime(actorId).events.find(
+                  (e) => e.custom?.cycle === cycleId && e.custom.result,
+                )?.custom;
+                if (custom?.result)
+                  showCustomResult(actorId, cycleId, () => this.render(false));
+              }
+            }),
+        );
+      });
     root?.querySelectorAll<HTMLElement>("[data-tech-slot]").forEach((row) => {
       const slot = Number(row.dataset.techSlot);
       const mode = () =>
@@ -883,4 +979,71 @@ export class DowntimeForm extends CrewToolsForm {
       this.#submitting = false;
     }
   }
+}
+
+function showCustomResult(
+  actorId: string,
+  cycleId: string,
+  changed: () => void,
+): void {
+  const read = () =>
+    getDowntime(actorId).events.find(
+      (e) => e.custom?.cycle === cycleId && e.custom.result,
+    )?.custom;
+  const custom = read();
+  if (!custom?.result) return;
+  new Dialog(
+    {
+      title: custom.definition.name + " — Result",
+      content:
+        '<div class="pneuma-crewtools"><div class="custom-activity-result"></div></div>',
+      render: (html) => {
+        const content = html[0]?.querySelector<HTMLElement>(
+          ".custom-activity-result",
+        );
+        if (!content) return;
+        let busy = false;
+        const refresh = () => {
+          const result = read()?.result;
+          if (!result) return;
+          content.innerHTML =
+            "<p><strong>Table roll: " +
+            escape(result.tableTotal) +
+            "</strong></p>" +
+            customResultHtml(result, true);
+          for (const button of content.querySelectorAll<HTMLButtonElement>(
+            "[data-custom-reward], [data-custom-apply]",
+          ))
+            button.addEventListener("click", () => {
+              if (busy) return;
+              busy = true;
+              for (const b of content.querySelectorAll<HTMLButtonElement>(
+                "button",
+              ))
+                b.disabled = true;
+              void rollCustomActivity(actorId, cycleId, {
+                deferDice: true,
+                ...(button.dataset.customReward !== undefined
+                  ? { rewardIndex: Number(button.dataset.customReward) }
+                  : {}),
+              })
+                .catch((error) =>
+                  ui.notifications.error(
+                    error instanceof Error ? error.message : String(error),
+                  ),
+                )
+                .finally(() => {
+                  busy = false;
+                  refresh();
+                  changed();
+                });
+            });
+        };
+        refresh();
+      },
+      buttons: { close: { label: "Close" } },
+      default: "close",
+    },
+    { width: 600, resizable: true },
+  ).render(true);
 }

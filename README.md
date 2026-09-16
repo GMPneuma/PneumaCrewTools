@@ -7,8 +7,10 @@ payout workflow, journals, and player inbox.
 ## Campaign calendar
 
 A small shared date display provides GM controls to set the campaign date and
-advance days. The date comes directly from Foundry world time; no calendar
-Journal is required or created.
+advance days. The date normally comes from Foundry world time. The optional
+**Use Simple Calendar** checkbox follows Simple Calendar's date and disables
+Crew Tools date controls; turning it off prompts for a replacement date.
+No calendar Journal is required or created.
 See [calendar usage, compatibility, and validation](docs/calendar.md).
 
 ## Development
@@ -59,7 +61,7 @@ See [Actor identity and exclusions](docs/actor-tracking.md) for the module-wide 
 
 ## Hustle tables
 
-Native role tables are created under Rollable Tables → CrewTools. See [Hustle table format and planned integration](docs/hustle-tables.md).
+Crew Tools creates and maintains its own Hustle RollTables. GM-created custom RollTables are read without modification. See [Hustle table format and planned integration](docs/hustle-tables.md).
 
 Netrunners see their inventory cyberdecks in the Player Hub, with native Owned/Carried/Equipped, Manage Programs and Manage Upgrades controls. Their **Netrunner - Projects** downtime section has one project slot, requires an HQ **Server Room II**, and always uses **Electronics/Security Tech**. It supports Fabricate, Upgrade, Invention and Repair.
 
@@ -106,3 +108,7 @@ These icons have been modified in color, styling, and/or geometry from their ori
 ## Manage Module Data
 
 GMs can inspect records, clear selected payout records, and download CrewTools bookkeeping exports from **Module Settings → Module → View or Manage Module Data**. See [export scope and cleanup instructions](docs/module-data.md). Native character resources require a Foundry world backup.
+
+### Custom downtime activities
+
+GMs can configure named activities under **Module Settings → Downtime → Custom Downtime Activities**. They appear in Spend Downtime’s **Other Activity** section, with one-day buttons or tracked day requirements and optional completion RollTables. Table results support Money, Humanity, Hitpoints and Reputation payout tags. See [Downtime](docs/downtime.md#custom-activities) for syntax and behavior.

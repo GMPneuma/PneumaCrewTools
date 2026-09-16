@@ -1,5 +1,10 @@
 import type { ActivityRecord } from "./activity-records";
-import { downtimeBalance, type DowntimeState } from "./downtime-model";
+import { customResultHtml } from "./custom-result-view";
+import {
+  downtimeBalance,
+  type DowntimeEvent,
+  type DowntimeState,
+} from "./downtime-model";
 import { displayDate } from "./date-format";
 import {
   journalTable,
@@ -7,6 +12,25 @@ import {
   readableRecord,
   recordEscape,
 } from "./journal-format";
+
+// Read only the saved outcome, so later table edits cannot rewrite history.
+function actionOutput(event: DowntimeEvent): string {
+  const result = event.custom?.result;
+  const reason =
+    result && event.custom
+      ? event.custom.definition.name + " — table " + result.tableTotal
+      : event.reason || event.kind;
+  const text = result?.text ?? event.hustleReward?.resultText;
+  if (result) return recordEscape(reason) + customResultHtml(result);
+  return (
+    recordEscape(reason) +
+    (text
+      ? '<div style="margin-top:0.35em;white-space:pre-wrap">' +
+        recordEscape(text) +
+        "</div>"
+      : "")
+  );
+}
 
 // Render stored records without fetching or changing Foundry documents.
 export function activityHtml(records: ActivityRecord[]): string {
@@ -70,12 +94,12 @@ export function resourceTransactionsHtml(
     state.period +
     "</p>" +
     journalTable(
-      ["Date", "Activity", "Days", "Resource change"],
+      ["Date", "Activity / Result", "Days", "Resource change"],
       [...events]
         .reverse()
         .map((e) => [
           recordEscape(displayDate(e.date)),
-          recordEscape(e.reason || e.kind),
+          actionOutput(e),
           e.days ? (e.kind === "award" ? "+" : "−") + e.days : "—",
           recordEscape(
             e.resources

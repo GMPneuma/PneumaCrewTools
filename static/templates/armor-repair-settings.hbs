@@ -1,21 +1,37 @@
-<form class="armor-repair-settings">
-  <label><input type="checkbox" name="enabled" {{checked enabled}} />
-    Override Armor Repair Time</label>
-  <label><input type="checkbox" name="techOnly" {{checked techOnly}} />
-    Only override for TECHs</label>
-  <p class="notes">Premium and higher only. Blank entries use normal fabrication
-    time. Overrides apply only to new repair projects.</p>
-  <table><thead><tr><th>Price category</th><th>Repair days</th></tr></thead><tbody
-    >
-      {{#each rows}}<tr><td>{{name}}</td><td><input
-              type="number"
-              name="days{{index}}"
-              value="{{days}}"
-              min="1"
-              step="1"
-              placeholder="Default"
-              aria-label="{{name}} repair days"
-            /></td></tr>{{/each}}
-    </tbody></table><button type="submit"><i class="fas fa-save"></i>
-    Save Repair Times</button>
+<form class="armor-repair-settings crew-settings-form">
+  <header class="crew-settings-heading"><h3>Armor Repair Times</h3></header>
+  <section
+    class="crew-settings-panel crew-settings-options"
+    aria-label="Repair overrides"
+  >
+    <label><input type="checkbox" name="enabled" {{checked enabled}} />
+      Override Armor Repair Time</label>
+    <label><input type="checkbox" name="techOnly" {{checked techOnly}} />
+      Only override for TECHs</label>
+  </section>
+  <p class="crew-settings-hint">Premium and higher only. Blank entries use
+    normal fabrication time. Overrides apply only to new repair projects.</p>
+  <div class="crew-settings-panel crew-settings-table-wrap">
+    <table class="crew-settings-table"><thead><tr><th scope="col">Price category</th><th
+            scope="col"
+            class="crew-settings-number"
+          >Repair days</th></tr></thead><tbody>
+        {{#each rows}}<tr><td>{{name}}</td><td
+              class="crew-settings-number"
+            ><input
+                type="number"
+                name="days{{index}}"
+                value="{{days}}"
+                min="1"
+                step="1"
+                placeholder="Default"
+                aria-label="{{name}} repair days"
+              /></td></tr>{{/each}}
+      </tbody></table>
+  </div>
+  <footer class="crew-settings-footer"><button type="submit"><i
+        class="fas fa-save"
+        aria-hidden="true"
+      ></i>
+      Save Repair Times</button></footer>
 </form>

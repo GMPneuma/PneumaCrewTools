@@ -60,3 +60,7 @@ Settings → Headquarters → Manage Custom Improvements adds short named entrie
 The primary GM can select **Delete HQ** and confirm **Mark Inactive**. This hides the HQ's container and Journal page from players and removes it from HQ choices, new rent billing and facility benefits. Contents, payment history and shared HQ IP are preserved; no IP is refunded.
 
 Inactive HQs remain listed for the GM. To finish removal, manually delete that HQ's page from the shared Headquarters Journal and its container Actor. Keep the Headquarters Journal itself and its Shared HQ IP page. Residents should choose a new active residence. Existing payment records are retained.
+
+## Player visibility and facility access
+
+Players need Observer or Owner access to both the HQ container and its HQ Journal page. Removing access to either hides that HQ from their Crew Tools lists and excludes its Garage, Workshop, Server Room and Medbay benefits. Native inherited and per-user permissions apply. GMs can still see active HQs regardless of player permissions; inactive HQs remain excluded.

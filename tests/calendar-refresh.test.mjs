@@ -47,7 +47,13 @@ test("calendar ignores unrelated hooks and leaves unchanged dates untouched", ()
     },
   );
   exports.registerCampaignCalendar();
-  assert.deepEqual(Object.keys(hooks), ["updateWorldTime"]);
+  assert.deepEqual(Object.keys(hooks), [
+    "preUpdateSetting",
+    "renderSettingsConfig",
+    "simple-calendar-date-time-change",
+    "simple-calendar-ready",
+    "updateWorldTime",
+  ]);
   exports.readyCampaignCalendar();
   assert.equal(writes, 2);
   game.time.worldTime = 6;

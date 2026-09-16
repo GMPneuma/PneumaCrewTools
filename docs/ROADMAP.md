@@ -1,6 +1,6 @@
 # Pneuma's Crew Tools — Roadmap
 
-Updated: September 14, 2026
+Updated: September 16, 2026
 
 Player and crew bookkeeping for Cyberpunk RED on Foundry VTT v12. Foundry v13/v14 support remains pending compatible Cyberpunk RED releases and live verification.
 
@@ -50,6 +50,35 @@ See [Journal specifications](journals.md), [Data model](data-model.md), [Downtim
 - Explicit TECH item skills and corrected Expertise modifiers.
 
 ## Remaining feature work
+
+### Armor repair during downtime rest
+
+- [x] When a character rests using downtime, repair armor items whose own rules specifically say they repair while resting. Apply each item's stated repair conditions and amount; do not repair other armor automatically.
+
+### Custom Downtime Activities
+
+Implemented in Other Activity, with GM management under Downtime settings.
+
+- [x] Allow custom downtime activities with these properties:
+  - **Name**.
+  - **Days required (optional)**:
+    - When specified, create a tracked activity entry that players can add downtime to until it is finished.
+    - When omitted, assume one day and provide a simple activity button.
+  - **RollTable (optional)**:
+    - Offer a list of available RollTables to choose from.
+    - When the activity is completed, provide a button to roll on the selected table.
+- [x] Support optional payout specifications at the end of a RollTable result, using `[type](amount)`:
+
+| Type                   | Supported amount                                                |
+| ---------------------- | --------------------------------------------------------------- |
+| `[Money](amount)`      | Raw positive or negative amount.                                |
+| `[Humanity](amount)`   | Positive or negative amount, positive `Xd6`, or negative `Xd5`. |
+| `[Hitpoints](amount)`  | Positive or negative amount, positive `Xd6`, or negative `Xd5`. |
+| `[Reputation](amount)` | Raw positive or negative amount.                                |
+
+Examples: `[Money](100)`, `[Money](-50)`, `[Humanity](2d6)`, `[Humanity](-2d5)`, `[Hitpoints](-3)`, `[Reputation](1)`.
+
+The negative dice notation above preserves the requested `Xd5` specification.
 
 ### Discord output from historical payouts
 
