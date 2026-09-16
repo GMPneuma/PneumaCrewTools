@@ -49,7 +49,7 @@ export function parseCustomRewards(
       /^[+-]?\d+$/.test(formula) && Number.isSafeInteger(Number(formula));
     const dice =
       (type === "Humanity" || type === "Hitpoints") &&
-      /^(?:\+?[1-9]\d{0,2}d6|-[1-9]\d{0,2}d5)$/.test(formula);
+      /^(?:\+?[1-9]\d{0,2}d6|-[1-9]\d{0,2}d[56])$/.test(formula);
     // An invalid trailing payout block is ordinary text, never a partial payout.
     if (!integer && !dice) return [];
     rewards.push({ type, formula });
@@ -114,7 +114,7 @@ export function validateCustomEvent(event: DowntimeEvent): void {
           (r.amount === null
             ? custom.result!.applied ||
               !["Humanity", "Hitpoints"].includes(r.type) ||
-              !/^(?:\+?[1-9]\d{0,2}d6|-[1-9]\d{0,2}d5)$/.test(r.formula)
+              !/^(?:\+?[1-9]\d{0,2}d6|-[1-9]\d{0,2}d[56])$/.test(r.formula)
             : !Number.isSafeInteger(r.amount)) ||
           typeof r.formula !== "string",
       ))

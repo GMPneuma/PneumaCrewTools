@@ -525,3 +525,34 @@ test("result presentation separates escaped descriptions, payouts, and pending r
   assert.equal(f.model.parseCustomRewards(invalid).length, 0);
   assert.equal(f.model.customResultDescription(invalid), invalid);
 });
+
+test("negative d6 payouts remain pending until rolled and apply Humanity and HP losses", async () => {
+  const f = fixture();
+  f.table("Option 1. Result text [Humanity](-1d6) [Hitpoints](-2d6)");
+  await f.definition(null, "t");
+  await f.api.spendCustomActivity("a", "d", "", 1);
+  await f.api.rollCustomActivity("a", f.cycle(), { deferDice: true });
+  let result = f.model.customCycles(f.state().events)[0].result;
+  assert.equal(result.text, "Option 1. Result text");
+  assert.equal(result.rewards.length, 2);
+  assert.equal(result.rewards[0].amount, null);
+  f.model.validateCustomEvent(f.state().events.at(-1));
+  assert.match(f.view.customResultHtml(result, true), /Roll -1d6/);
+  assert.equal(f.actor.system.derivedStats.humanity.value, 30);
+  await f.api.rollCustomActivity("a", f.cycle(), {
+    deferDice: true,
+    rewardIndex: 0,
+  });
+  assert.equal(f.actor.system.derivedStats.humanity.value, 30);
+  await f.api.rollCustomActivity("a", f.cycle(), {
+    deferDice: true,
+    rewardIndex: 1,
+  });
+  result = f.model.customCycles(f.state().events)[0].result;
+  assert.equal(result.applied, true);
+  assert.equal(f.actor.system.derivedStats.humanity.value, 25);
+  assert.equal(f.actor.system.derivedStats.hp.value, 15);
+  assert.equal(f.counts().rolls, 2);
+  await f.api.rollCustomActivity("a", f.cycle(), { deferDice: true });
+  assert.equal(f.counts().actorWrites, 1);
+});

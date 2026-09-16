@@ -69,16 +69,16 @@ Implemented in Other Activity, with GM management under Downtime settings.
     - When the activity is completed, provide a button to roll on the selected table.
 - [x] Support optional payout specifications at the end of a RollTable result, using `[type](amount)`:
 
-| Type                   | Supported amount                                                |
-| ---------------------- | --------------------------------------------------------------- |
-| `[Money](amount)`      | Raw positive or negative amount.                                |
-| `[Humanity](amount)`   | Positive or negative amount, positive `Xd6`, or negative `Xd5`. |
-| `[Hitpoints](amount)`  | Positive or negative amount, positive `Xd6`, or negative `Xd5`. |
-| `[Reputation](amount)` | Raw positive or negative amount.                                |
+| Type                   | Supported amount                                                         |
+| ---------------------- | ------------------------------------------------------------------------ |
+| `[Money](amount)`      | Raw positive or negative amount.                                         |
+| `[Humanity](amount)`   | Positive or negative amount, positive `Xd6`, or negative `Xd6` or `Xd5`. |
+| `[Hitpoints](amount)`  | Positive or negative amount, positive `Xd6`, or negative `Xd6` or `Xd5`. |
+| `[Reputation](amount)` | Raw positive or negative amount.                                         |
 
 Examples: `[Money](100)`, `[Money](-50)`, `[Humanity](2d6)`, `[Humanity](-2d5)`, `[Hitpoints](-3)`, `[Reputation](1)`.
 
-The negative dice notation above preserves the requested `Xd5` specification.
+Negative dice payouts accept both `Xd6` and `Xd5`.
 
 ### Discord output from historical payouts
 
