@@ -1,3 +1,4 @@
+import { registerCleanupSettings } from "./cleanup-settings";
 import { registerHustleTables, readyHustleTables } from "./hustle-tables";
 import { registerCustomDowntime } from "./custom-downtime-settings";
 import { registerIconCredits } from "./icon-credits";
@@ -39,7 +40,6 @@ import {
 import { registerHumanityPromptHandler } from "./humanity-prompts";
 import { registerPayoutDateSetting } from "./payout-date";
 import { registerPayoutContainerSettings } from "./payout-container";
-import { registerPayoutDataManager } from "./payout-data-manager";
 import { registerPayoutWindowControl } from "./window-controls";
 
 // Foundry v12 requests scene controls before the init hook fires, so this
@@ -72,7 +72,7 @@ Hooks.once("init", () => {
   registerPayoutInboxSettings();
   registerPayoutDateSetting();
   registerPayoutContainerSettings();
-  registerPayoutDataManager();
+  registerCleanupSettings();
 
   const module = game.modules.get(MODULE_ID);
   if (module) module.api = pneumaCrewToolsApi;

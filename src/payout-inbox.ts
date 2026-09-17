@@ -1,3 +1,4 @@
+import { showCyberpsychosisSummary } from "./hub-cyberpsychosis";
 import { netrunnerPanel, bindNetrunner } from "./netrunner-panel";
 import {
   nomadVehiclePanel,
@@ -7,7 +8,7 @@ import {
 import { teammatePanel, bindTeammates } from "./teammates";
 import { activityRollRecipients } from "./roll-visibility";
 import { openRent } from "./rent-form";
-import { rentStatus } from "./rent";
+import { rentStatus, rollHousingEndurance } from "./rent";
 import { PharmaTransferPanel } from "./pharma-transfer";
 import { isCrewPage } from "./ui-refresh";
 import { CrewToolsForm } from "./foundry-form";
@@ -19,7 +20,6 @@ import {
   actorPayoutRecords,
   saveActorPayoutRecords,
 } from "./journal-records";
-import { isActorExcluded } from "./actor-policy";
 import { openHeadquarters } from "./headquarters";
 import { getHubStatus } from "./player-hub-status";
 import { openDowntime } from "./downtime";
@@ -27,7 +27,7 @@ import { MODULE_ID, PAYOUT_ACKNOWLEDGMENTS_ENABLED_SETTING } from "./constants";
 import { createUniqueId } from "./id";
 import {
   clearAllPendingHumanityRolls,
-  getPendingHumanityRolls,
+  getAllPendingHumanityRolls,
   resolvePendingHumanityRoll,
   resolvedContent,
   type PendingHumanityRoll,
@@ -347,6 +347,12 @@ export class PlayerHub extends CrewToolsForm {
             .catch((error) => ui.notifications.error(String(error)));
         });
       });
+    root
+      .querySelector("[data-hub-cyberpsychosis]")
+      ?.addEventListener("click", () => {
+        const status = getHubStatus(this.#selectedActorId);
+        showCyberpsychosisSummary(game.actors.get(status.actorId));
+      });
     const pharmaPanel = root.querySelector<HTMLElement>(
       "[data-hub-pharma-panel]",
     );
@@ -356,6 +362,20 @@ export class PlayerHub extends CrewToolsForm {
       ?.addEventListener("click", () =>
         openRent(getHubStatus(this.#selectedActorId).actorId),
       );
+    root
+      .querySelector<HTMLButtonElement>("[data-hub-endurance]")
+      ?.addEventListener("click", (event) => {
+        const button = event.currentTarget as HTMLButtonElement;
+        button.disabled = true;
+        void rollHousingEndurance(
+          getHubStatus(this.#selectedActorId).actorId,
+          event,
+        )
+          .catch((error) => ui.notifications.error(String(error)))
+          .finally(() => {
+            button.disabled = false;
+          });
+      });
     root.querySelector("[data-hub-downtime]")?.addEventListener("click", () => {
       openDowntime(getHubStatus(this.#selectedActorId).actorId);
     });
@@ -469,7 +489,7 @@ export class PlayerHub extends CrewToolsForm {
       ui.notifications.error("This acknowledgment belongs to another player.");
       return;
     }
-    await acknowledgePayout(user, acknowledgmentId);
+    await acknowledgePayout(user, acknowledgmentId, button.dataset.actorId);
     ui.notifications.info("Payout acknowledged.");
     this.render(true);
   }
@@ -482,7 +502,8 @@ export class PlayerHub extends CrewToolsForm {
         const recipient = Array.from(game.users).find(
           (u) => u.id === receipt.userId,
         );
-        if (recipient) await acknowledgePayout(recipient, receipt.id);
+        if (recipient)
+          await acknowledgePayout(recipient, receipt.id, receipt.actorId);
       }
       const count = pending.length;
       ui.notifications.info(
@@ -601,13 +622,7 @@ function confirmCancelAllRolls(): Promise<boolean> {
 }
 
 function collectPendingRolls(): PendingHumanityRoll[] {
-  return Array.from(game.actors).flatMap((actor) =>
-    getPendingHumanityRolls(actor).filter(
-      ({ userId, actorId }) =>
-        !isActorExcluded(actorId) &&
-        (game.user?.isGM || game.user?.id === userId),
-    ),
-  );
+  return getAllPendingHumanityRolls();
 }
 
 function pendingAcknowledgments(): PayoutAcknowledgment[] {
@@ -882,14 +897,38 @@ async function saveAcknowledgments(
 export async function acknowledgePayout(
   user: FoundryUser,
   id: string,
+  actorId?: string,
 ): Promise<void> {
   if (!game.user?.isGM && game.user?.id !== user.id)
     throw new Error("This receipt belongs to another recipient.");
-  const entries = getAcknowledgments(user);
-  await saveAcknowledgments(
-    user,
+  // Locate without copying history, then read and write only the receipt's character.
+  const candidates = actorId
+    ? recordPage(actorPayoutJournal(actorId), "acknowledgments")?.getFlag?.(
+        MODULE_ID,
+        "data",
+      )
+    : allActorRecords("acknowledgments");
+  const receipt = (Array.isArray(candidates) ? candidates : []).find(
+    (entry): entry is PayoutAcknowledgment =>
+      isAcknowledgment(entry) && entry.id === id && entry.userId === user.id,
+  );
+  if (
+    !receipt ||
+    receipt.acknowledgedAt ||
+    (actorId && receipt.actorId !== actorId)
+  )
+    return;
+  const actor = game.actors.get(receipt.actorId);
+  if (!actor) return;
+  const entries = actorPayoutRecords<PayoutAcknowledgment>(
+    actor.id,
+    "acknowledgments",
+  );
+  await saveActorPayoutRecords(
+    actor,
+    "acknowledgments",
     entries.map((entry) =>
-      entry.id === id
+      entry.id === id && entry.userId === user.id
         ? {
             ...entry,
             acknowledgedAt: entry.acknowledgedAt ?? new Date().toISOString(),

@@ -121,7 +121,7 @@ try {
       }) +
       `</main>`,
   );
-  const pending = page.getByText("Pending Rent Payment: 700 eb", {
+  const pending = page.getByText("Rent Payment Processing: 700 eb", {
     exact: true,
   });
   assert.equal(await pending.count(), 1);

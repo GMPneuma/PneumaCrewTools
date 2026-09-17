@@ -18,7 +18,7 @@ declare const Hooks: {
     callback: () => void,
   ): number;
   on(
-    event: "createChatMessage",
+    event: "createChatMessage" | "updateChatMessage" | "deleteChatMessage",
     callback: (message: FoundryChatMessage) => void,
   ): number;
   on(
@@ -64,6 +64,7 @@ declare const Hooks: {
       | "deleteActor"
       | "updateActor"
       | "updateUser"
+      | "deleteUser"
       | "userConnected",
     callback: () => void,
   ): number;
@@ -208,6 +209,7 @@ interface FoundryActor {
   system: unknown;
   sheet?: {
     render(force?: boolean): unknown;
+    _onRoll?(event: MouseEvent): Promise<unknown>;
     showLedger?(
       property: "wealth" | "improvementPoints" | "reputation",
     ): Promise<unknown>;

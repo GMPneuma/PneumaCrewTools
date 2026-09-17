@@ -63,7 +63,26 @@ export async function deliverItems(
   options: { keepId?: boolean; CPRsplitStack?: boolean } = {},
 ) {
   const created = await actor.createEmbeddedDocuments("Item", items, options);
-  if (!created.length && items.length)
-    throw new Error("Item delivery was incomplete.");
+  if (created.length < items.length) {
+    // Callers cannot track a partial return once this adapter throws.
+    try {
+      if (created.length)
+        await actor.deleteEmbeddedDocuments(
+          "Item",
+          created.map((item) => item.id),
+        );
+    } catch (error) {
+      throw new Error(
+        "Item delivery was incomplete and cleanup failed. Inspect " +
+          actor.name +
+          "'s inventory before retrying. Created Item IDs: " +
+          created.map((item) => item.id).join(", "),
+        { cause: error },
+      );
+    }
+    throw new Error(
+      "Item delivery was incomplete; partial items were removed.",
+    );
+  }
   return created;
 }

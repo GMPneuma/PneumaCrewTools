@@ -16,7 +16,7 @@ A shared current summary of payout participation, keyed by Actor ID. Each applie
 
 **Columns:** Character is a named Actor link; Sessions Played is the count; Last Session Name is the name entered on the latest payout. Excluded Actors are hidden from the summary but retained fields remain readable in the complete-fields section.
 
-**Stored fields:** **actorId**, **actorName**, **sessions**, **lastSession**. The page's **recordKey** is **attendance** and its **data** flag contains the row array. GMs update through payouts or clear through Module Data. This page is authoritative; no settings copy exists.
+**Stored fields:** **actorId**, **actorName**, **sessions**, **lastSession**. The page's **recordKey** is **attendance** and its **data** flag contains the row array. GMs update through payouts or clear through Data & Cleanup. This page is authoritative; no settings copy exists.
 
 ## Factions / Factions
 
@@ -51,7 +51,7 @@ Private to the character's owners and GMs. **recordKey** is **acknowledgments**;
 
 Actor ID identifies the character; User ID identifies the recipient. A blank **acknowledgedAt** means the recipient has not marked the receipt as seen. A timestamp means it has been acknowledged. This is never payment approval: rewards are applied before acknowledgment.
 
-Acknowledgment preserves the Journal receipt and removes it from the active Hub/HUD list. Module Data can explicitly clear receipts. Reading or deleting receipts never pays or undoes an award.
+Acknowledgment preserves the Journal receipt and removes it from the active Hub/HUD list. Data & Cleanup can explicitly clear receipts. Reading or deleting receipts never pays or undoes an award.
 
 ## Crew Tools — Character / Humanity Rolls
 

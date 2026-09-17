@@ -7,8 +7,10 @@ const { chromium } = require("playwright");
 const sources = Object.fromEntries(
   [
     "module-data-model",
+    "cleanup-tree",
     "module-data-service",
-    "payout-data-manager",
+    "cleanup-settings",
+    "record-cleanup",
     "action-coordinator",
   ].map((name) => [
     name,
@@ -24,7 +26,7 @@ const sources = Object.fromEntries(
   ]),
 );
 const template = fs.readFileSync(
-  new URL("../static/templates/payout-data-manager.hbs", import.meta.url),
+  new URL("../static/templates/cleanup.hbs", import.meta.url),
   "utf8",
 );
 const browser = await chromium.launch({ channel: "msedge", headless: true });
@@ -33,7 +35,7 @@ try {
     viewport: { width: 1050, height: 920 },
   });
   await page.setContent(
-    '<main id="pneuma-crewtools-data-manager" style="width:800px;margin:20px auto"></main>',
+    '<main id="pneuma-crewtools-cleanup" style="width:800px;margin:20px auto"></main>',
   );
   await page.addScriptTag({
     path: require.resolve("handlebars/dist/handlebars.js"),
@@ -48,6 +50,19 @@ try {
   });
   const result = await page.evaluate(
     async ({ sources, template }) => {
+      Handlebars.registerHelper("disabled", (value) =>
+        value ? "disabled" : "",
+      );
+      window.Dialog = class {
+        constructor(config) {
+          this.config = config;
+        }
+        render() {
+          window.dialog = this.config;
+          return this;
+        }
+      };
+      window.openedJournal = null;
       const ns = "pneuma-crewtools",
         updates = [];
       const make = (raw, list) => {
@@ -72,7 +87,9 @@ try {
               const keys = key.split(".");
               let t = this.raw;
               for (const part of keys.slice(0, -1)) t = t[part] ??= {};
-              t[keys.at(-1)] = structuredClone(value);
+              const leaf = keys.at(-1);
+              if (leaf.startsWith("-=")) delete t[leaf.slice(2)];
+              else t[leaf] = structuredClone(value);
             }
           },
           async createEmbeddedDocuments(type, rows) {
@@ -83,7 +100,11 @@ try {
           async deleteEmbeddedDocuments(type, ids) {
             this.pages = this.pages.filter((p) => !ids.includes(p.id));
           },
-          sheet: { render() {} },
+          sheet: {
+            render(_force, options) {
+              window.openedJournal = { id: raw._id, ...options };
+            },
+          },
         };
         (raw.pages ?? []).forEach((p) => make(p, d.pages));
         list.push(d);
@@ -142,7 +163,7 @@ try {
           _id: "j1",
           name: "Solo records",
           flags: { [ns]: { recordKind: "character", actorId: "a1" } },
-          ownership: { gm: 3 },
+          ownership: { gm: 3, deletedUser: 2, default: 0 },
           pages: [
             {
               _id: "p1",
@@ -180,7 +201,7 @@ try {
         }
         activateListeners() {}
         render() {
-          const root = document.getElementById(ns + "-data-manager");
+          const root = document.getElementById(ns + "-cleanup");
           root.className = ns;
           root.innerHTML = Handlebars.compile(template)(this.getData());
           this.activateListeners({ 0: root });
@@ -200,6 +221,13 @@ try {
               ),
             storedDetails: () => "",
           };
+        if (name === "pharma-transfer")
+          return {
+            purgePharmaHistory() {
+              throw Error("Unexpected pharma operation");
+            },
+          };
+        if (name === "downtime-journal-view") return { activityHtml: () => "" };
         if (name === "payout-journal-view")
           return { recordSummary: (_key, data) => JSON.stringify(data) };
         if (["downtime", "headquarters", "rent-form"].includes(name))
@@ -211,11 +239,12 @@ try {
         );
         return out;
       };
+      window.fixture = { journal, actor, updates };
       const service = load("module-data-service");
       const saved = service.captureBackup();
       if (!saved.entries.length || updates.length)
         throw Error("Export must read records without writes");
-      load("payout-data-manager").registerPayoutDataManager();
+      load("cleanup-settings").registerCleanupSettings();
       globalThis.manager = new Manager();
       manager.render(true);
       return {
@@ -224,33 +253,111 @@ try {
     },
     { sources, template },
   );
-  await page.locator('details[data-section="cleanup"] > summary').click();
-  await page.locator('[name="cleanup"]').selectOption("receipts");
-  assert(
+
+  assert.match(await page.locator("h2").innerText(), /Data & Cleanup/);
+  for (const id of [
+    "group:JournalEntry",
+    "JournalEntry.j1",
+    "JournalEntry.j1.JournalEntryPage.p1",
+  ])
     await page
-      .locator('details[data-section="cleanup"]')
-      .evaluate((e) => e.open),
-  );
-  assert.match(
-    await page.locator('details[data-section="cleanup"]').innerText(),
-    /1 records selected/,
-  );
-  await page.locator('details[data-section="exports"] > summary').click();
+      .locator('[data-cleanup-category="' + id + '"] > summary')
+      .click();
+  await page.locator('[data-open-journal][data-page="p1"]').click();
+  assert.deepEqual(await page.evaluate(() => openedJournal), {
+    id: "j1",
+    pageId: "p1",
+  });
+  const downloadEvent = page.waitForEvent("download");
+  await page.locator("[data-export-all]").click();
+  const download = await downloadEvent;
+  assert.match(download.suggestedFilename(), /crewtools-records/);
+  const exported = JSON.parse(fs.readFileSync(await download.path(), "utf8"));
+  assert.equal(exported.format, "pneuma-crewtools-record-snapshot");
   assert.equal(
-    await page
-      .locator(
-        'input[type="file"], [data-action="restore"], [data-action="pre-backup"]',
-      )
-      .count(),
+    exported.entries.find((e) => e.kind === "actor").data.system,
+    undefined,
+  );
+  const exportEvent = page.waitForEvent("download");
+  await page.locator('[data-export-row="j1:p1"]').click();
+  const single = JSON.parse(
+    fs.readFileSync(await (await exportEvent).path(), "utf8"),
+  );
+  assert.equal(single.pageId, "p1");
+  assert.equal(single.record.flags["pneuma-crewtools"].data.length, 2);
+  assert.equal(await page.evaluate(() => fixture.updates.length), 0);
+  await page.locator("[data-reset-section] > summary").click();
+  await page.waitForFunction(
+    () =>
+      document.querySelector("[data-reset-review]") &&
+      !document.querySelector("[data-reset-review]").disabled,
+  );
+  assert.equal(await page.locator("[data-reset-kind] option").count(), 4);
+  assert.equal(
+    await page.locator('[data-reset-kind] option[value="receipts"]').count(),
     0,
   );
-  const downloadEvent = page.waitForEvent("download");
-  await page.locator('[data-action="backup"]').click();
-  const download = await downloadEvent;
-  assert.match(download.suggestedFilename(), /crewtools-backup/);
-  const exportEvent = page.waitForEvent("download");
-  await page.locator('[data-action="export"]').click();
-  assert.match((await exportEvent).suggestedFilename(), /selected-records/);
+  await page.locator("[data-reset-actor]").selectOption("a1");
+  assert.ok(await page.locator("[data-reset-section]").evaluate((e) => e.open));
+  await page.locator("[data-reset-review]").click();
+  assert.match(
+    await page.evaluate(() => dialog.content),
+    /Awarded resources remain unchanged/,
+  );
+  await page.evaluate(() => dialog.buttons.cancel.callback());
+  await page.waitForFunction(
+    () => !document.querySelector("[data-reset-review]").disabled,
+  );
+  assert.equal(await page.evaluate(() => fixture.updates.length), 0);
+  await page.locator("[data-reset-review]").click();
+  await page.evaluate(() => dialog.buttons.purge.callback());
+  await page.waitForFunction(() => fixture.updates.length === 1);
+  assert.equal(
+    await page.evaluate(
+      () => fixture.journal.pages[0].raw.flags["pneuma-crewtools"].data[0].id,
+    ),
+    "r2",
+  );
+  assert.equal(await page.evaluate(() => fixture.actor.raw.system.money), 500);
+  assert.match(await page.locator(".cleanup-report").innerText(), /Completed:/);
+  assert.equal(await page.locator('input[type="file"]').count(), 0);
+  await page.locator('[data-cleanup-category="group:User"] > summary').click();
+  await page
+    .locator('[data-cleanup-category="User.deletedUser"] > summary')
+    .click();
+  await page.locator('[data-clean-missing-user="deletedUser"]').click();
+  assert.match(
+    await page.evaluate(() => dialog.content),
+    /1 obsolete permission entries/,
+  );
+  assert.match(
+    await page.evaluate(() => dialog.content),
+    /Character Records|Solo Records|Solo records/,
+  );
+  await page.evaluate(() => dialog.buttons.cancel.callback());
+  await page.waitForFunction(() => !manager.busy);
+  assert.equal(
+    await page.evaluate(() => fixture.journal.raw.ownership.deletedUser),
+    2,
+  );
+  await page.locator('[data-clean-missing-user="deletedUser"]').click();
+  await page.evaluate(() => dialog.buttons.purge.callback());
+  await page.waitForFunction(
+    () => !("deletedUser" in fixture.journal.raw.ownership),
+  );
+  await page.waitForFunction(
+    () => !document.querySelector('[data-cleanup-category="User.deletedUser"]'),
+  );
+  assert.deepEqual(await page.evaluate(() => fixture.journal.raw.ownership), {
+    gm: 3,
+    default: 0,
+  });
+  assert.equal(
+    await page.evaluate(
+      () => fixture.journal.pages[0].raw.flags["pneuma-crewtools"].data[0].id,
+    ),
+    "r2",
+  );
   const overflow = await page.evaluate(
     () => document.documentElement.scrollWidth > innerWidth,
   );

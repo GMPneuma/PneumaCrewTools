@@ -42,7 +42,7 @@ plus payout templates, preview generation, Journal renderers and execution paths
 ## Prototype resets
 
 No migrations or preservation copies were added. Reset old **Attendance** using
-**Module Data** before applying new payouts; old User-based rows produce a specific
+**Data & Cleanup** before applying new payouts; old User-based rows produce a specific
 reset message. Re-enter **Discord Links** against character Actors.
 The earlier downtime User-to-Actor reset remains as documented in downtime.md.
 

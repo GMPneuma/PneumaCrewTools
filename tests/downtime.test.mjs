@@ -2143,7 +2143,7 @@ test("absent payout awards are Actor-based, touch no native resources, and roll 
   };
   f.game.actors.push(away);
   f.p2.character = away;
-  const plan = f.plan(3);
+  const plan = f.plan(0);
   plan.absentDowntime = [
     {
       actor: away,
@@ -2154,7 +2154,7 @@ test("absent payout awards are Actor-based, touch no native resources, and roll 
   const undo = await f.api.withDowntimeLock(() =>
     f.api.applyDowntimeAwards(plan, "with-absence"),
   );
-  assert.equal(f.balance(), 3);
+  assert.equal(f.balance(), 0);
   assert.equal(model.downtimeBalance(f.api.getDowntime(), "away"), 5);
   assert.equal(
     f.api.getDowntime().events.find((e) => e.actorId === "away").payoutId,
@@ -2743,4 +2743,40 @@ test("FleshWeave cyberware repairs FleshWeave (Armor) to full SP", async () => {
   assert.equal(armor.system.headLocation.ablation, 0);
   assert.equal(armor.system.bodyLocation.ablation, 0);
   assert.equal(f.balance(), 4);
+});
+
+test("GM corrections preserve other directory accounts and their Journal records", async () => {
+  const f = fixture();
+  await f.award(5);
+  const other = { ...f.p1.character, id: "second", name: "Second" };
+  f.game.actors.push(other);
+  const plan = f.plan(7);
+  plan.actors = [{ ...plan.actors[0], actor: other }];
+  await f.api.withDowntimeLock(() =>
+    f.api.applyDowntimeAwards(plan, "second-award"),
+  );
+  const before = structuredClone(f.api.getDowntime());
+  const account = before.accounts.find((a) => a.actorId === other.id);
+  const journal = f.game.journal.get(account.characterJournalId);
+  const pagesBefore = JSON.stringify(Array.from(journal.pages));
+  const directory = Array.from(f.game.journal)
+    .find((j) => j.getFlag("pneuma-crewtools", "downtime") === "ledger")
+    .pages.find((p) => p.getFlag("pneuma-crewtools", "kind") === "ledger");
+
+  for (const amount of [3, -2]) {
+    await f.api.adjustPlayerDowntime(f.p1.character.id, amount, "Correction");
+    const after = structuredClone(f.api.getDowntime());
+    assert.deepEqual(after.accounts, before.accounts);
+    assert.deepEqual(
+      after.events.filter((e) => e.actorId === other.id),
+      before.events.filter((e) => e.actorId === other.id),
+    );
+    assert.equal(JSON.stringify(Array.from(journal.pages)), pagesBefore);
+    assert.match(directory.text.content, /Second/);
+    assert.match(
+      directory.text.content,
+      new RegExp(account.characterJournalId),
+    );
+  }
+  assert.equal(f.balance(), 6);
 });

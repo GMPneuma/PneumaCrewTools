@@ -1,0 +1,131 @@
+<form class="crew-cleanup">
+  <header class="cleanup-intro">
+    <div><h2>Data &amp; Cleanup</h2><p>Browse Foundry objects to see what Crew Tools
+        stores or references. Expand an object for its data and cleanup options. Nothing
+        is purged automatically.</p></div>
+    <button type="button" data-export-all {{disabled busy}}>Export all records</button>
+    <button type="button" data-cleanup-refresh {{disabled busy}}><i
+        class="fas fa-sync"
+        aria-hidden="true"
+      ></i>
+      Refresh</button>
+  </header>
+  <div class="cleanup-summary"><strong>{{totalRecords}}</strong>
+    records &middot;
+    <strong>{{totalSize}}</strong>
+    estimated stored size</div>
+  <details class="cleanup-help"><summary>About counts, exports and retention</summary>
+    <p class="notes">Sizes estimate saved module JSON, including Journal text. Static
+      Hustle tables, native document contents and reference-only objects are excluded from
+      totals. Client preferences are listed for this browser.</p>
+    <p class="notes">Keep limits apply to each cleanup control. Recommended values are
+      history defaults. Exports are reference copies with no import or restore; use a
+      Foundry world backup for recovery.</p>
+  </details>
+  {{#if othersOnline}}<p class="cleanup-notice">Other users are connected. You can review
+      sizes now; have them disconnect before purging to avoid conflicting saves.</p>{{/if}}
+  <div class="cleanup-records">
+    {{#*inline "cleanupNode"}}
+      <details class="cleanup-category cleanup-node" data-cleanup-category="{{id}}">
+        <summary><strong>{{name}}</strong><span>{{typeLabel}}{{#if missing}}
+              · Missing{{/if}}{{#if size}} · {{count}} records · {{size}}{{/if}}{{#if
+              children
+            }} · Contents: {{children.length}}{{/if}}</span></summary>
+        <div class="cleanup-node-body">
+          {{#if type}}<details class="cleanup-storage"><summary>Location &amp; stored
+                fields</summary><p class="cleanup-location">{{location}}<br /><code
+                >{{id}}</code></p>{{#if fields}}<p class="notes"><strong>Module flags:</strong>
+                  {{fields}}</p>{{/if}}</details>{{/if}}
+          {{#unless rows}}{{#if note}}<p class="notes">{{note}}</p>{{/if}}{{/unless}}
+
+          {{#unless missing}}{{#if uuid}}<div class="cleanup-row-links">{{#if
+                  journalId
+                }}<button
+                    type="button"
+                    data-open-journal="{{journalId}}"
+                    data-page="{{pageId}}"
+                  >Open {{typeLabel}}</button>{{else}}{{#unless missing}}<button
+                      type="button"
+                      data-open-object="{{uuid}}"
+                    >Open {{typeLabel}}</button>{{/unless}}{{/if}}</div>{{/if}}{{/unless}}
+          {{#if references}}<details class="cleanup-references"><summary>Referenced by
+                {{references.length}}
+                locations</summary><ul>{{#each references}}<li
+                  >{{this}}</li>{{/each}}</ul></details>{{/if}}
+          {{#if missingUserId}}
+            <section class="cleanup-controls">
+              {{#if stalePermissions}}
+                <div class="cleanup-record-description"><strong>{{stalePermissions}} obsolete permission entries</strong><p class="notes">These access entries belong to a deleted User account. They can be removed without deleting character data or saved history.</p></div>
+                <button type="button" data-clean-missing-user="{{missingUserId}}">Clean up permissions</button>
+              {{else}}<p class="notes">This deleted User is referenced in saved data. Removing the account does not make its character or history disposable. Use the cleanup controls at the referenced location to remove eligible history.</p>{{/if}}
+            </section>
+          {{/if}}
+          {{#each rows}}
+            <section class="cleanup-controls" data-record-controls>
+              <div class="cleanup-record-description"><strong>{{count}}
+                  records ·
+                  {{size}}</strong><p class="notes">{{note}}</p><small>{{eligible}}
+                  purgeable ·
+                  {{protectedCount}}
+                  protected</small>{{#each warnings}}<p
+                    class="cleanup-warning"
+                  >{{this}}</p>{{/each}}</div>
+              {{#if canPurge}}<label>Keep records<input
+                    type="number"
+                    min="0"
+                    step="1"
+                    required
+                    value="{{keep}}"
+                    data-keep="{{id}}"
+                    aria-label="Keep records for {{name}}"
+                    {{disabled busy}}
+                  /><small>Recommended: {{recommended}}</small></label><button
+                  type="button"
+                  data-purge="{{id}}"
+                  {{disabled purgeDisabled}}
+                >Purge</button>{{else}}<span class="notes">Keep all</span>{{/if}}
+              <button
+                type="button"
+                data-export-row="{{id}}"
+                {{disabled busy}}
+              >Export</button>
+            </section>
+          {{/each}}
+          {{#each children}}{{> cleanupNode}}{{/each}}
+        </div>
+      </details>
+    {{/inline}}
+    {{#each tree}}{{> cleanupNode}}{{/each}}
+  </div>
+  <details class="cleanup-advanced" data-reset-section>
+    <summary>Advanced: cancel or reset records</summary>
+    <p>These actions change pending obligations or current records. They are separate from
+      completed-history cleanup.</p>
+    <div class="cleanup-reset-fields">
+      <label>Character<select data-reset-actor {{disabled busy}}><option value="">All
+            characters</option>{{#each actors}}{{#if selected}}<option
+                value="{{id}}"
+                selected
+              >{{name}}</option>{{else}}<option
+                value="{{id}}"
+              >{{name}}</option>{{/if}}{{/each}}</select></label>
+      <label>Action<select data-reset-kind {{disabled busy}}>{{#each resetActions}}{{#if
+              selected
+            }}<option value="{{id}}" selected>{{label}}</option>{{else}}<option
+                value="{{id}}"
+              >{{label}}</option>{{/if}}{{/each}}</select></label>
+    </div>
+    <p class="cleanup-warning">{{resetConsequence}}</p>
+    <p><strong>{{resetCount}}</strong> records selected.</p>
+    {{#if resetTargets}}<ul>{{#each resetTargets}}<li>{{name}}
+            —
+            {{count}}</li>{{/each}}</ul>{{/if}}
+    <button type="button" data-reset-review {{disabled resetDisabled}}>Review cancellation
+      or reset</button>
+    {{#if report}}<section class="cleanup-report"><strong>Operation results</strong>{{#each
+          report.completed
+        }}<p>Completed: {{this}}</p>{{/each}}{{#each report.skipped}}<p>Skipped:
+            {{this}}</p>{{/each}}{{#each report.failed}}<p class="cleanup-warning">Failed:
+            {{this}}</p>{{/each}}</section>{{/if}}
+  </details>
+</form>

@@ -1,3 +1,6 @@
 dist
 node_modules
 pnpm-lock.yaml
+
+# Prettier does not parse Handlebars inline partials (used for the recursive object tree).
+static/templates/cleanup.hbs

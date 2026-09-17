@@ -58,10 +58,10 @@ function fixture() {
   const docs = journalWorld(game),
     cache = new Map();
   const hqs = [{ id: "hq", actorId: hq.id, name: "Home", improvements: [] }];
-  function load(name) {
-    if (cache.has(name)) return cache.get(name);
+  function load(name, clientGame = game, clientCache = cache) {
+    if (clientCache.has(name)) return clientCache.get(name);
     const out = {};
-    cache.set(name, out);
+    clientCache.set(name, out);
     const source = ts.transpileModule(
       fs.readFileSync("src/" + name + ".ts", "utf8"),
       {
@@ -78,8 +78,8 @@ function fixture() {
           ? { getCampaignDate: () => date }
           : key === "./headquarters"
             ? { getHeadquarters: () => ({ headquarters: hqs }) }
-            : load(key.slice(2)),
-      game,
+            : load(key.slice(2), clientGame, clientCache),
+      game: clientGame,
       ...docs,
       structuredClone,
       console,
@@ -131,6 +131,7 @@ function fixture() {
     b,
     hq,
     api,
+    client: (user) => load("rent", { ...game, user }, new Map()),
     store,
     load,
     prepare,
@@ -719,4 +720,121 @@ test("owners can clear legacy markers with confirmation without changing money o
   }
   await f.api.payPersonalRent("A", "2078-02", "lifestyle");
   assert.equal(f.a.system.wealth.value, 3900);
+});
+
+test("multiple offline owners leave shared rent pending until a single writer settles", async () => {
+  const f = fixture();
+  await f.prepare();
+  await f.api.issueRent();
+  f.load("hq-records").hqPage("HQ").ownership = { default: 3 };
+  f.gm.active = false;
+  f.one.active = true;
+  f.two.active = true;
+  f.game.user = f.one;
+  await f.api.contributeRent("A", "HQ", "2078-02", 700);
+  f.game.user = f.two;
+  await f.api.contributeRent("B", "HQ", "2078-02", 700);
+  assert.equal(f.api.hqRent(f.hq).bills[0].paid, 0);
+  assert.equal(f.api.characterRent("A").contributions[0].status, "pending");
+  assert.equal(f.api.characterRent("B").contributions[0].status, "pending");
+  f.gm.active = true;
+  f.game.user = f.gm;
+  await f.api.reconcileRent();
+  await f.api.reconcileRent();
+  const bill = f.api.hqRent(f.hq).bills[0];
+  assert.equal(bill.paid, 1000);
+  assert.equal(bill.contributions.length, 2);
+  assert.equal(f.a.system.wealth.value + f.b.system.wealth.value, 9000);
+  assert.equal(f.api.characterRent("B").contributions[0].refunded, 400);
+});
+
+test("an HQ owner defers shared bill writes to the active primary GM", async () => {
+  const f = fixture();
+  await f.prepare();
+  await f.api.issueRent();
+  f.load("hq-records").hqPage("HQ").ownership = { default: 3 };
+  f.one.active = true;
+  f.game.user = f.one;
+  await f.api.contributeRent("A", "HQ", "2078-02", 500);
+  assert.equal(f.api.hqRent(f.hq).bills[0].paid, 0);
+  f.game.user = f.gm;
+  await f.api.reconcileRent();
+  assert.equal(f.api.hqRent(f.hq).bills[0].paid, 500);
+});
+
+test("independent player clients cannot overwrite simultaneous HQ contributions", async () => {
+  const f = fixture();
+  await f.prepare();
+  await f.api.issueRent();
+  f.load("hq-records").hqPage("HQ").ownership = { default: 3 };
+  f.one.active = true;
+  f.two.active = true;
+  const one = f.client(f.one),
+    two = f.client(f.two);
+  await Promise.all([
+    one.contributeRent("A", "HQ", "2078-02", 500),
+    two.contributeRent("B", "HQ", "2078-02", 500),
+  ]);
+  assert.equal(f.api.hqRent(f.hq).bills[0].paid, 0);
+  await f.api.reconcileRent();
+  await f.api.reconcileRent();
+  const bill = f.api.hqRent(f.hq).bills[0];
+  assert.equal(bill.paid, 1000);
+  assert.equal(bill.contributions.length, 2);
+  assert.equal(f.a.system.wealth.value, 4500);
+  assert.equal(f.b.system.wealth.value, 4500);
+  assert.equal(f.api.characterRent("A").contributions[0].status, "confirmed");
+  assert.equal(f.api.characterRent("B").contributions[0].status, "confirmed");
+});
+
+test("homeless Endurance shortcut uses the selected owned character's native roll", async () => {
+  const f = fixture();
+  await f.prepare();
+  await f.api.saveRentRates(
+    [
+      { id: "street", name: "Living on The Street", cost: 0 },
+      { id: "apt", name: "Apartment", cost: 1000 },
+    ],
+    [{ id: "food", name: "Food", cost: 100 }],
+  );
+  await f.api.saveResidence("A", {
+    residence: "street",
+    modifier: 0,
+    lifestyle: "food",
+  });
+  assert.equal(f.api.rentStatus("A").homeless, true);
+  f.a.items = [{ id: "endurance", name: "Endurance", type: "skill" }];
+  let rolled = 0;
+  const event = {
+    currentTarget: { dataset: {} },
+    type: "click",
+    ctrlKey: false,
+    metaKey: false,
+  };
+  f.a.sheet = {
+    async _onRoll(e) {
+      assert.equal(this, f.a.sheet);
+      assert.equal(e, event);
+      assert.equal(e.currentTarget.dataset.itemId, "endurance");
+      assert.equal(e.currentTarget.dataset.rollType, "skill");
+      rolled++;
+    },
+  };
+  f.game.user = f.one;
+  await f.api.rollHousingEndurance("A", event);
+  assert.equal(rolled, 1);
+  f.game.user = f.two;
+  await assert.rejects(f.api.rollHousingEndurance("A", event), /owned crew/);
+  f.game.user = f.one;
+  await f.api.saveResidence("A", {
+    residence: "apt",
+    modifier: 0,
+    lifestyle: "food",
+  });
+  assert.equal(f.api.rentStatus("A").homeless, false);
+  await assert.rejects(
+    f.api.rollHousingEndurance("A", event),
+    /Living on The Street/,
+  );
+  assert.equal(rolled, 1);
 });

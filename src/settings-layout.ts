@@ -2,13 +2,9 @@ import { MODULE_ID } from "./constants";
 
 // Categorize visible native controls; hidden data settings never produce a row.
 const GROUP_KEYS: Record<string, string[]> = {
-  // Keep public credits alongside the module-wide settings.
-  Module: ["actorExclusions", "payoutDataManager", "iconCredits"],
-  Payout: ["payoutContainerMenu", "payoutAcknowledgmentsEnabled"],
-  "Faction Reputation": ["factions"],
-  Calendar: ["useSimpleCalendar"],
-  Headquarters: ["hqImprovements"],
-  Teammates: ["loyaltyCheckDie"],
+  Payout: ["payoutAcknowledgmentsEnabled", "payoutContainerMenu", "factions"],
+  Lifestyle: ["rentSettings", "hqImprovements"],
+  "Role Tweaks": ["loyaltyCheckDie"],
   HUD: [
     "hideCrewHud",
     "shortcutDisplay",
@@ -22,13 +18,19 @@ const GROUP_KEYS: Record<string, string[]> = {
     "multiplyAntibioticBonus",
     "requireFullDowntimeWeek",
   ],
-  "Rent & Lifestyle": ["rentSettings"],
   Crafting: [
     "techCraftingMonthDays",
     "techMultipleWithoutWorkshop",
     "armorRepair",
   ],
+  Advanced: ["useSimpleCalendar", "payoutDataManager", "iconCredits"],
 };
+const NAMED_GROUPS = new Set([
+  "Payout",
+  "Lifestyle",
+  "Role Tweaks",
+  "Advanced",
+]);
 const DISCORD_KEYS = ["discordMarkdownEnabled", "discordLinksMenu"];
 
 // Correct stale category labels without replacing native counters, icons or click handlers.
@@ -75,11 +77,17 @@ export function groupModuleSettings(root: HTMLElement): void {
     rows.keys().next().value!.before(wrapper);
   }
   // Detach native rows before rebuilding, including on repeated renders.
-  // This also removes groups that have become empty or single-option groups.
+  // Preserve explicitly requested groups even when only one visible option remains.
   for (const row of rows.keys()) row.remove();
   wrapper.replaceChildren();
   const standalone = document.createDocumentFragment();
   const grouped = document.createDocumentFragment();
+  for (const [row, key] of rows) {
+    if (key === "actorExclusions") {
+      standalone.append(row);
+      rows.delete(row);
+    }
+  }
   const section = (parent: HTMLElement, title: string, key: string) => {
     let group = parent.querySelector<HTMLFieldSetElement>(
       ':scope > [data-crew-settings-group="' + key + '"]',
@@ -101,31 +109,28 @@ export function groupModuleSettings(root: HTMLElement): void {
       const category =
         Object.entries(GROUP_KEYS).find(([, keys]) =>
           keys.includes(key),
-        )?.[0] ?? "Module";
+        )?.[0] ?? "Advanced";
       return category === title;
     });
+    const order = GROUP_KEYS[title]!;
+    matching.sort(
+      (a, b) =>
+        (order.includes(a[1]) ? order.indexOf(a[1]) : order.length) -
+        (order.includes(b[1]) ? order.indexOf(b[1]) : order.length),
+    );
     if (!matching.length) continue;
-    if (matching.length === 1) {
+    if (matching.length === 1 && !NAMED_GROUPS.has(title)) {
       standalone.append(matching[0]![0]);
       continue;
     }
     const discordRows = matching.filter(([, key]) =>
       DISCORD_KEYS.includes(key),
     );
-    // A lone Discord option follows the same standalone rule as other groups.
-    if (discordRows.length === 1) standalone.append(discordRows[0]![0]);
-    const sectionRows = matching.filter(
-      ([, key]) => !DISCORD_KEYS.includes(key) || discordRows.length > 1,
-    );
-    if (sectionRows.length === 1) {
-      standalone.append(sectionRows[0]![0]);
-      continue;
-    }
-    if (!sectionRows.length) continue;
     const group = section(wrapper, title, title.toLowerCase());
     grouped.append(group);
-    for (const [row, key] of sectionRows)
-      if (!DISCORD_KEYS.includes(key)) group.append(row);
+    for (const [row, key] of matching)
+      if (!DISCORD_KEYS.includes(key) || discordRows.length === 1)
+        group.append(row);
     if (discordRows.length > 1) {
       const discord = section(group, "Discord Features", "discord");
       group.append(discord);

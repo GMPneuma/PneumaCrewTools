@@ -1,16 +1,16 @@
 # Pneuma's Crew Tools — Roadmap
 
-Updated: September 16, 2026
+Updated: September 17, 2026
 
 Player and crew bookkeeping for Cyberpunk RED on Foundry VTT v12. Foundry v13/v14 support remains pending compatible Cyberpunk RED releases and live verification.
 
-**Status:** Implemented means present in the module, not verified in every live-world scenario. Deferred mechanics and live verification are tracked separately below.
+**Status:** Package and manifest version **0.8.5**. Implemented features and automated checks are listed below; live-world verification remains pending where noted.
 
 ## Project rules
 
 - Compact, mostly native Foundry UI, with the payout forms as the styling reference. The corner date/HUD display is the deliberate styling exception.
 - Track characters by Actor ID, with readable names. Shared owners use the same character records. One selected character per player is sufficient for payouts.
-- Store character bookkeeping and shared HQ IP in standard Journals. Each HQ is a native Container Actor, with its properties, improvements and rent metadata on that Actor. Native money, HP, Humanity, Reputation and inventory remain authoritative on Actors/Items.
+- Store character bookkeeping and shared HQ IP in standard Journals. Each HQ is a native Container Actor for name, image and inventory, with properties, improvements and rent bookkeeping on its linked Headquarters Journal page. Native money, HP, Humanity, Reputation and inventory remain authoritative on Actors/Items.
 - Player-facing Journals belong in **CrewTools**; private/technical records belong in **CrewTools/CrewTools-GM**. Use matching Actor folders for module containers.
 - Create character Journals when needed. Excluded Actors and upgrade-storage containers must not clutter character selectors.
 - Keep Journal summaries compact and readable. Editing rendered text does not update structured records.
@@ -26,19 +26,21 @@ Player and crew bookkeeping for Cyberpunk RED on Foundry VTT v12. Foundry v13/v1
 | Faction reputation  | Known-faction dropdown with Add new; settings to add, rename or hide factions; stable faction IDs; current scores on each character's Faction Reputation Journal page. Normal Reputation still updates the sheet.                                                                                                                                                                                                                |
 | Player Hub          | Current resources, native Money/IP/Reputation ledger buttons, residence and lifestyle, shared HQ IP, top two factions and days to next hustle. Resource actions sit below their respective boxes. Payout acknowledgments and inline Administer Pharma remain accessible here.                                                                                                                                                    |
 | GM Hub              | GM Action, Downtime and Headquarters sections. Initiate Payout, Modify GameTime Date, Mark Rent Due, Show Player Hub, expire/manage downtime, signed player downtime adjustments with reasons logged, Adjust Shared HQ IP and Manage Headquarters. Outstanding acknowledgments and rolls below the actions.                                                                                                                      |
-| Calendar and HUD    | Foundry game-time date with a two-line month/day and year display, configurable colors and a single attention icon. Icon opens the GM Hub for GMs and Player Hub for players. Date changes alone do not award downtime. Calendar controls are on the GM Hub, not in settings.                                                                                                                                                    |
-| Downtime            | Character Journal balances, payout awards, free-form spending, healing, activity allocation and GM expiration of unallocated days. Downtime Log and Active Projects pages. Owner actions work without a connected GM after required setup.                                                                                                                                                                                       |
-| Healing             | BODY-based healing, Enhanced Antibodies, available HQ medbay, antibiotics and cryotank options; HP updates; setting controlling antibiotic multiplication.                                                                                                                                                                                                                                                                       |
+| Calendar and HUD    | Foundry game-time date with configurable HUD, personal visibility/Token Controls choices and attention icon. Optional Simple Calendar integration with status and an explicit replacement date prompt when disabled. Date changes alone do not award downtime.                                                                                                                                                                   |
+| Downtime            | Character Journal balances, payout awards, spending, Rest, custom activities, activity allocation and GM expiration of unallocated days. Separate Downtime Log and Active Projects pages. Owner actions work without a connected GM after setup.                                                                                                                                                                                 |
+| Healing             | Rest restores HP using BODY, Enhanced Antibodies, available HQ medbay, antibiotics and cryotank options. Installed Skin Weave, Subdermal Armor and Heavy Subdermal Plating repair one lost SP per location on matching armor Items; FleshWeave restores full SP. Armor repair can use a rest day at full HP, with preview and log details.                                                                                       |
 | Hustle              | Role RollTables with role icons, rank-based rewards, x/7 progress, Use 1 Day / Use X Days controls, role selection and native money-ledger payout. Optional whole-week spending.                                                                                                                                                                                                                                                 |
 | TECH projects       | Fabrication, notes-only upgrades and inventions; three project slots with Workshop/setting restrictions; downtime progress, native skill dialogs, failure costs and inventory delivery. Crafting month configurable from 28–31 days.                                                                                                                                                                                             |
 | Medtech therapy     | Patient and provider courses; therapy types, costs, material costs and DVs; PC treatment option; Humanity recovery; optional whole-week spending. Patient money is spent at therapy start; cancellation does not refund allocated downtime.                                                                                                                                                                                      |
 | Medtech workday     | Surgery and pharmaceutical task lists, native role checks with modifiers, sixteen-hour limit, pharmaceutical costs and dose delivery. Crafted pharmaceuticals increment the first matching inventory stack. Spend one day at any point while a day is available; unfinished tasks and unused hours are discarded.                                                                                                                |
 | Administer Pharma   | Compact Medtech-only section with recipient selection, inventory quantities and one-dose Administer actions. Recipient chooses Use Now or Reject; Use Now adds the dose to inventory and invokes native consumption. No Keep option or selectable dose count. Journal-backed offers/responses work without a connected GM after required setup, with one Administer Pharma table per character.                                  |
-| Headquarters        | Each HQ is its Container Actor, using its native name and image. Actor metadata stores description/location, bedrooms, maximum improvements, improvements and rent configuration. Clickable image opens the container; new HQs receive a default image. Shared HQ IP stays in a Journal.                                                                                                                                         |
-| HQ improvements     | No Place Like Home catalog with short descriptions and 40 HQ IP default costs; settings support custom improvements with individual costs. Current improvements and levels appear beside purchasing controls. Existing Medbay/Workshop integration only; other effects remain deferred.                                                                                                                                          |
+| Headquarters        | Native Container Actors provide names, images and inventory. Headquarters Journal pages store properties, improvements and rent; shared HQ IP has its own Journal ledger. Everyone access clears explicit player overrides. GM deletion deactivates the HQ and hides player access while preserving records and contents.                                                                                                        |
+| HQ improvements     | No Place Like Home catalog and custom Add/Delete list, individual costs and optional level 2 descriptions. Workshop, Medbay, Garage and Server Room II gates are implemented; additional mechanical effects remain deferred.                                                                                                                                                                                                     |
 | Rent and lifestyle  | Supplied housing/lifestyle choices, character Journal selections and GM-customizable percentage modifiers. Mark Rent Due creates personal self-tasks and HQ rent bills. Players select and pay their current personal choices, while crew contributions settle shared HQ bills. Contributions settle automatically without GM approval; unfinished processing and excess refunds reconcile automatically for authorized clients. |
-| Settings            | Grouped Module/Discord, Payout, Faction Reputation, HUD, Downtime, Crafting and Headquarters controls; Actor exclusions, appearance preferences and custom improvement management. Discord controls are GM-only.                                                                                                                                                                                                                 |
-| Storage/performance | Consolidated character Journals, stored downtime balances, selective record access and module-specific refresh handling. Native resource changes retain relevant Journal records.                                                                                                                                                                                                                                                |
+| Settings            | Hide Player Actors first; Payout with acknowledgment first and Factions included; Lifestyle for rent and HQ improvements; Role Tweaks for Loyalty die; HUD, Downtime and Crafting groups. Advanced is last and contains Simple Calendar, Data & Cleanup, credits and GM-only Discord tools.                                                                                                                                      |
+| Storage/performance | Character Journals, stored downtime/Hustle/HQ IP status values, selective access and targeted refresh handling. Version 0.8.5 fixes preserve unrelated directory accounts and cache pharma chat responses across renders.                                                                                                                                                                                                        |
+| Netrunner           | Native cyberdeck controls on Player Hub and one independent crafting slot for Fabricate, Upgrade, Invention and Repair, gated by Server Room II and Electronics/Security Tech.                                                                                                                                                                                                                                                   |
+| Data & Cleanup      | One GM window with a Foundry-object tree, nested folders/documents, counts, size estimates, document links, diagnostics and reference exports. Settings have a static branch; static Hustle tables are shown but excluded from history totals. Manual Keep X retention for supported completed histories; separate advanced cancellation/reset actions. No import/restore.                                                       |
 
 See [Journal specifications](journals.md), [Data model](data-model.md), [Downtime](downtime.md), [TECH projects](tech-projects.md), [Medtech](medtech.md), [Headquarters](headquarters.md), [Rent & Lifestyle](rent.md) and [Calendar](calendar.md) for implementation details.
 
@@ -49,7 +51,39 @@ See [Journal specifications](journals.md), [Data model](data-model.md), [Downtim
 - Personal HUD/Token Controls preference, improved forms, and Mark Rent Due confirmation.
 - Explicit TECH item skills and corrected Expertise modifiers.
 
-## Remaining feature work
+## Included in 0.8.5
+
+- [x] Preserve other characters in the shared downtime directory when a GM adjusts one character.
+- [x] Cache pharmaceutical chat response lookups and invalidate them when relevant messages or ownership change.
+- [x] Replace automatic pharmaceutical purging with explicit GM retention controls. Keep pending/interrupted transfers; prune settled transfers and associated old cards only after confirmation.
+- [x] Consolidate Manage Module Data and Cleanup into Data & Cleanup, with Journal links, exports, improved diagnostics and separate cancellation/reset tools.
+- [x] Organize data by Foundry object with nested pages/Items, references and per-document cleanup; keep static Hustle tables outside history totals.
+- [x] Apply the latest settings order and groups, including first-position Hide Player Actors and last-position Advanced.
+
+- [x] Allow explicit absent-player downtime when primary downtime is zero or absent, including the one-day GameTime default. Preserve opt-in, recipient validation, Journal balances and rollback.
+- [x] Refresh and pass all four previously outdated browser fixtures, including additional stale Hub selectors reached after the original failures.
+
+- [x] Endurance shortcut for characters Living on The Street; removed the awaiting-GM-setup downtime notice.
+- [x] Low-EMP status button with current EMP, roleplaying summary and all nine Hare traits. Dramatic Hub effects are deferred for a 1.0 Easter egg.
+
+## September 16 review fixes (0.8.5)
+
+- [x] Store Humanity attempts before resource changes; preserve the roll, roll back a failed completion receipt, and block replay after uncertain writes. Local competing requests are serialized.
+- [x] Limit shared HQ rent settlement to the primary connected GM, or a sole connected player with permission. Other clients keep pending contributions for automatic later settlement.
+- [x] Reject stale resource previews before payout writes.
+- [x] Reject partial item delivery and remove created Items; report remaining IDs if cleanup fails.
+
+These fixes have automated failure and concurrency coverage. Live Foundry verification remains pending. They do not provide a server-side transaction across native documents or protect against every connection change during an in-flight write.
+
+## Cleanup limitations and proposals
+
+- [ ] Add safe compaction for balance-dependent downtime/HQ IP and billing history if broader retention is required. These records are currently protected; ordinary deletion would break calculations or retry protection.
+- [ ] Evaluate coordination between cleanup and ordinary saves so users would not need to disconnect. Current cleanup deliberately requires the GM to be the only connected user; no cross-client replacement has been implemented or approved yet.
+- [ ] Decide whether and how unfinished handoffs should expire. Current retention keeps pending work. Neither age-based nor quantity-based expiration is implemented; cancellation must account for withdrawn doses and incomplete refunds.
+
+These are limitations and design decisions, not claims that the current manual purge already handles them.
+
+## Completed feature detail
 
 ### Armor repair during downtime rest
 
@@ -90,8 +124,8 @@ The current optional post-payout summary is already implemented.
 
 ### Netrunner
 
-- [ ] Show the Netrunner's cyberdecks on the Player Hub.
-- [ ] Add Netrunner crafting tracking, available when the HQ has a Server Room at level 2.
+- [x] Show the Netrunner's cyberdecks on the Player Hub (released in 0.7.0).
+- [x] Add Netrunner crafting tracking, available when the HQ has a Server Room at level 2 (released in 0.7.0).
 
 ## Deferred mechanics
 
@@ -99,10 +133,10 @@ These require a separate rules/design discussion before implementation.
 
 ### Headquarters
 
-- [ ] Define and implement improvement requirements and effects beyond existing Workshop/Medbay integration.
+- [ ] Define and implement improvement requirements and effects beyond existing Workshop, Medbay, Garage and Server Room II integration.
 - [ ] Extend project interactions for additional improvements where approved.
 
-The catalog, costs, custom options, levels and Actor storage are implemented. The module uses a shared crew HQ IP pool; separate per-HQ pools are not assumed.
+The catalog, costs, custom options, levels and Journal storage are implemented. The module uses a shared crew HQ IP pool; separate per-HQ pools are not assumed.
 
 ### TECH upgrades
 
@@ -114,7 +148,7 @@ Fabrication, invention, project progress, skill checks and inventory delivery ar
 
 - [ ] Consider Endurance-check and fatigue automation for applicable residence conditions, if requested.
 
-Residence status is informational; automatic checks and penalties remain outside the implemented scope. Personal rent/lifestyle are self-tasks, not fixed bills. HQs generate outstanding bills when the GM marks rent due. No automatic monthly charges are implemented.
+Characters Living on The Street have an Endurance shortcut below Rent & Lifestyle that opens their native skill roll. Automatic checks and penalties remain outside the implemented scope. Personal rent/lifestyle are self-tasks, not fixed bills. HQs generate outstanding bills when the GM marks rent due. No automatic monthly charges are implemented.
 
 ## Future Foundry versions
 
@@ -125,9 +159,13 @@ Residence status is informational; automatic checks and penalties remain outside
 ## Payment recovery
 
 - [ ] Prevent HQ contributions from being deducted when the player cannot settle them because of missing Journal permissions.
-- [ ] Add recovery for missing HQ/bill references and interrupted money/Journal writes without duplicate charges. Normal payments do not require GM approval.
+- [ ] Complete recovery for missing HQ/bill references and interrupted money/Journal writes without duplicate charges. Payment-marker clearing and Resolve Payment Issue already exist; they do not solve lost shared receipts or every missing-reference case. Normal payments do not require GM approval.
 
 ## Verification and release
+
+Version 0.8.5 validation: all 351 unit tests passed. Both Data & Cleanup browser fixtures have passed. The Player Hub, Headquarters, rent and nonparticipant downtime fixtures also passed after the absent-player fix. TypeScript checking passed. Browser fixtures mock Foundry services; they do not replace a live multi-user world pass.
+
+- [x] Updated and passed all four browser fixtures previously flagged in the project review. The nonparticipant test now covers independent opt-in and one-day advancement defaults.
 
 - [ ] Run an integrated live-world pass as both GM and player, including owner actions without a connected GM.
 - [ ] Verify payouts, game-time advancement, acknowledgments, faction reputation, downtime, TECH, Medtech and HQ workflows together.
@@ -136,7 +174,8 @@ Residence status is informational; automatic checks and penalties remain outside
 - [ ] Verify personal rent/lifestyle tasks, HQ billing, pending contributions, GM reconciliation and excess refunds in a live world.
 - [ ] Check cross-document inventory/resource operations for interruption and repeated-action behavior.
 - [ ] Confirm Journals remain understandable with the module disabled, and routine use does not produce unnecessary records or background work.
-- [ ] Align remaining documentation, changelog, manifest and package contents before the next requested release.
+- [x] Update the 0.8.5 changelog and package documentation.
+- Release target: 0.8.5, with matching package/manifest versions and runtime assets.
 
 Live verification is a separate gate from implemented features. Deferred mechanics are not required to complete the currently agreed Pharma scope.
 

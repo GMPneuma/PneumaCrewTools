@@ -559,3 +559,192 @@ test("Journal setup skips unchanged metadata and history writes omit unchanged p
   await api.writeRecord(j, "testHistory", "History", [{ id: 1 }], "", "second");
   assert.deepEqual(Object.keys(writes[0]), ["text.content"]);
 });
+
+test("failed Humanity completion rolls back resources and retry applies once", async () => {
+  const f = fixture();
+  await f.load("payout-execution").executePayoutPlan(f.plan);
+  const api = f.load("humanity-prompts"),
+    store = f.load("journal-records");
+  const prompt = api.getPendingHumanityRolls(f.actor)[0];
+  const page = store.recordPage(
+    store.actorPayoutJournal(f.actor.id),
+    "humanity",
+  );
+  const update = page.update.bind(page);
+  let writes = 0;
+  page.update = async (data) => {
+    if (++writes === 2) throw Error("receipt failure");
+    return update(data);
+  };
+  await assert.rejects(
+    api.resolvePendingHumanityRoll(f.actor.id, prompt.id),
+    /receipt failure/,
+  );
+  assert.equal(f.actor.system.derivedStats.humanity.value, 40);
+  assert.equal(f.actor.system.stats.emp.value, 4);
+  await api.resolvePendingHumanityRoll(f.actor.id, prompt.id);
+  assert.equal(f.actor.system.derivedStats.humanity.value, 47);
+  assert.equal(api.getPendingHumanityRolls(f.actor).length, 0);
+});
+
+test("uncertain Humanity write retains a durable record and blocks automatic replay", async () => {
+  const f = fixture();
+  await f.load("payout-execution").executePayoutPlan(f.plan);
+  const api = f.load("humanity-prompts"),
+    store = f.load("journal-records");
+  const prompt = api.getPendingHumanityRolls(f.actor)[0];
+  const update = f.actor.update.bind(f.actor);
+  f.actor.update = async (data) => {
+    await update(data);
+    throw Error("response lost");
+  };
+  await assert.rejects(
+    api.resolvePendingHumanityRoll(f.actor.id, prompt.id),
+    /response lost/,
+  );
+  assert.equal(f.actor.system.derivedStats.humanity.value, 47);
+  assert.ok(store.actorPayoutRecords(f.actor.id, "humanity")[0].attempt);
+  f.actor.update = update;
+  await assert.rejects(
+    api.resolvePendingHumanityRoll(f.actor.id, prompt.id),
+    /interrupted/,
+  );
+  assert.equal(f.actor.system.derivedStats.humanity.value, 47);
+});
+
+test("concurrent local Humanity requests resolve only once", async () => {
+  const f = fixture();
+  await f.load("payout-execution").executePayoutPlan(f.plan);
+  const api = f.load("humanity-prompts");
+  const prompt = api.getPendingHumanityRolls(f.actor)[0];
+  const results = await Promise.allSettled([
+    api.resolvePendingHumanityRoll(f.actor.id, prompt.id),
+    api.resolvePendingHumanityRoll(f.actor.id, prompt.id),
+  ]);
+  assert.equal(results.filter((r) => r.status === "fulfilled").length, 1);
+  assert.equal(f.actor.system.derivedStats.humanity.value, 47);
+});
+
+test("failed Humanity rollback retains the attempt and original roll", async () => {
+  const f = fixture();
+  await f.load("payout-execution").executePayoutPlan(f.plan);
+  const api = f.load("humanity-prompts"),
+    store = f.load("journal-records");
+  const prompt = api.getPendingHumanityRolls(f.actor)[0];
+  const page = store.recordPage(
+    store.actorPayoutJournal(f.actor.id),
+    "humanity",
+  );
+  const write = page.update.bind(page);
+  let writes = 0;
+  page.update = async (data) => {
+    if (++writes === 2) throw Error("receipt failure");
+    return write(data);
+  };
+  const update = f.actor.update.bind(f.actor);
+  let updates = 0;
+  f.actor.update = async (data) => {
+    if (++updates === 2) throw Error("rollback failure");
+    return update(data);
+  };
+  await assert.rejects(
+    api.resolvePendingHumanityRoll(f.actor.id, prompt.id),
+    /rollback incomplete/,
+  );
+  const saved = store.actorPayoutRecords(f.actor.id, "humanity")[0];
+  assert.equal(saved.attempt.rollTotal, 7);
+  assert.equal(f.actor.system.derivedStats.humanity.value, 47);
+  await assert.rejects(
+    api.resolvePendingHumanityRoll(f.actor.id, prompt.id),
+    /interrupted/,
+  );
+});
+
+test("pending Humanity collection uses bounded Journal passes and returns detached visible rolls", async () => {
+  const f = fixture(),
+    api = f.load("humanity-prompts"),
+    store = f.load("journal-records");
+  const pending = api.createPendingHumanityRoll(
+    f.plan.humanityPrompts[0],
+    "payout",
+  );
+  await store.saveActorPayoutRecords(f.actor, "humanity", [
+    ...Array.from({ length: 1000 }, (_, i) => ({
+      ...pending,
+      id: "old" + i,
+      resolvedAt: "done",
+    })),
+    pending,
+    { ...pending, id: "other", userId: f.stranger.id },
+    { broken: true },
+  ]);
+  for (let i = 0; i < 100; i++)
+    f.game.actors.push({ id: "unused" + i, type: "character" });
+  let passes = 0;
+  const iterate = f.game.journal[Symbol.iterator].bind(f.game.journal);
+  f.game.journal[Symbol.iterator] = function* () {
+    passes++;
+    yield* iterate();
+  };
+  f.game.user = f.owner;
+  const rows = api.getAllPendingHumanityRolls();
+  assert.equal(passes, 2); // Exclusions once, Humanity records once.
+  assert.equal(rows.length, 1);
+  rows[0].description = "mutated";
+  assert.notEqual(
+    store.actorPayoutRecords(f.actor.id, "humanity").at(-3).description,
+    "mutated",
+  );
+  f.game.user = f.gm;
+  assert.equal(api.getAllPendingHumanityRolls().length, 2);
+  f.game.settings.get = () => [f.actor.id];
+  assert.equal(api.getAllPendingHumanityRolls().length, 0);
+});
+
+test("acknowledgment touches only the specified character and preserves other owners' receipts", async () => {
+  const f = fixture(),
+    inbox = f.load("payout-inbox"),
+    store = f.load("journal-records");
+  await inbox.createPayoutAcknowledgments("payout", f.plan);
+  const receipt = inbox.getAcknowledgments(f.owner)[0];
+  const shared = { ...receipt, id: "shared", userId: f.stranger.id };
+  await store.saveActorPayoutRecords(f.actor, "acknowledgments", [
+    receipt,
+    shared,
+  ]);
+  const other = { ...f.actor, id: "other", name: "Other" };
+  f.game.actors.push(other);
+  await store.saveActorPayoutRecords(other, "acknowledgments", [
+    { ...receipt, id: "elsewhere", actorId: "other" },
+  ]);
+  const otherPage = store.recordPage(
+    store.actorPayoutJournal("other"),
+    "acknowledgments",
+  );
+  const otherRead = otherPage.getFlag.bind(otherPage);
+  let reads = 0,
+    writes = 0;
+  otherPage.getFlag = (...args) => {
+    reads++;
+    return otherRead(...args);
+  };
+  otherPage.update = async () => {
+    writes++;
+    throw Error("Unrelated receipt write");
+  };
+  f.game.user = f.owner;
+  await inbox.acknowledgePayout(f.owner, receipt.id, f.actor.id);
+  assert.equal(reads, 0);
+  assert.equal(writes, 0);
+  const saved = store.actorPayoutRecords(f.actor.id, "acknowledgments");
+  assert.ok(saved[0].acknowledgedAt);
+  assert.equal(saved[1].acknowledgedAt, null);
+  await inbox.acknowledgePayout(f.owner, "missing", f.actor.id);
+  await inbox.acknowledgePayout(f.owner, "shared", f.actor.id);
+  assert.equal(
+    store.actorPayoutRecords(f.actor.id, "acknowledgments")[1].acknowledgedAt,
+    null,
+  );
+  await inbox.acknowledgePayout(f.owner, receipt.id); // Legacy API remains supported.
+  assert.equal(writes, 0);
+});

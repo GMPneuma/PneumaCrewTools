@@ -18,6 +18,8 @@ function load(name, globals, deps) {
   vm.runInNewContext(code, {
     exports,
     require: (k) => {
+      if (k === "./hub-cyberpsychosis")
+        return load("hub-cyberpsychosis", globals, {});
       if (k === "./netrunner-panel" || k === "./netrunner-system")
         return load(k.slice(2), globals, {});
       if (k === "./nomad-vehicles")
@@ -222,7 +224,7 @@ function fixture() {
       "./headquarters": { openHeadquarters: () => {} },
       "./downtime": { openDowntime: () => {} },
       "./player-hub-status": status,
-      "./humanity-prompts": { getPendingHumanityRolls: () => [] },
+      "./humanity-prompts": { getAllPendingHumanityRolls: () => [] },
     },
   );
   return {
@@ -282,7 +284,7 @@ test("missing or inaccessible character and missing downtime are shown as unavai
   const data = f.status.getHubStatus();
   assert.equal(data.ip, "—");
   assert.equal(data.downtime, "—");
-  assert.match(data.downtimeNote, /GM setup/);
+  assert.equal(data.downtimeNote, "");
 });
 test("hub template escapes names and activities and keeps the dashboard when no payouts await", () => {
   const f = fixture();
@@ -483,4 +485,83 @@ test("Hub skips roster reads while closed or for unrelated changes and refreshes
   f.renders[0].app.rendered = false;
   update({ id: "vehicle" }, { img: "changed.webp" });
   assert.equal(f.nomadReadCount(), 1);
+});
+
+test("Endurance shortcut appears only for homeless housing", () => {
+  const f = fixture(),
+    data = new f.inbox.PlayerHub().getData();
+  assert.doesNotMatch(template(data), /data-hub-endurance/);
+  data.rent.homeless = true;
+  assert.match(template(data), /data-hub-endurance/);
+  assert.ok(
+    template(data).indexOf("data-hub-endurance") >
+      template(data).indexOf("data-hub-rent"),
+  );
+});
+
+test("Cyberpsychosis follows current Humanity thresholds and recovery", () => {
+  const { cyberpsychosisState } = load("hub-cyberpsychosis", {}, {});
+  const actor = {
+    system: {
+      derivedStats: { humanity: { value: 30 } },
+      stats: { emp: { value: 8 } },
+    },
+  };
+  for (const [humanity, emp, label] of [
+    [30, null, null],
+    [29, 2, "Dissociative"],
+    [20, 2, "Dissociative"],
+    [19, 1, "Psychopathy"],
+    [10, 1, "Psychopathy"],
+    [9, 0, "CYBERPYSCHO"],
+    [0, 0, "CYBERPYSCHO"],
+    [-1, 0, "CYBERPYSCHO"],
+    [40, null, null],
+  ]) {
+    actor.system.derivedStats.humanity.value = humanity;
+    const state = cyberpsychosisState(actor);
+    assert.equal(state?.emp ?? null, emp);
+    assert.equal(state?.label ?? null, label);
+    assert.equal(actor.system.derivedStats.humanity.value, humanity);
+  }
+  assert.equal(cyberpsychosisState(), null);
+  for (const value of [undefined, NaN, Infinity, "20"]) {
+    actor.system.derivedStats.humanity.value = value;
+    assert.equal(cyberpsychosisState(actor), null);
+  }
+});
+
+test("Cyberpsychosis summary explains each stage and includes all nine traits", () => {
+  const dialogs = [];
+  const api = load(
+    "hub-cyberpsychosis",
+    {
+      Dialog: class {
+        constructor(config) {
+          dialogs.push(config);
+        }
+        render() {}
+      },
+    },
+    {},
+  );
+  const actor = (value) => ({
+    system: { derivedStats: { humanity: { value } } },
+  });
+  for (const [value, guidance] of [
+    [20, /borderline dissociative disorder/],
+    [10, /at least three/],
+    [0, /at least five/],
+    [-1, /Hand control to the GM/],
+  ]) {
+    api.showCyberpsychosisSummary(actor(value));
+    const dialog = dialogs.at(-1);
+    assert.match(dialog.content, guidance);
+    assert.match(dialog.content, /Current EMP:/);
+    assert.equal((dialog.content.match(/<li>/g) ?? []).length, 9);
+    for (const trait of api.HARE_TRAITS)
+      assert.ok(dialog.content.includes(trait));
+  }
+  api.showCyberpsychosisSummary(actor(30));
+  assert.equal(dialogs.length, 4);
 });

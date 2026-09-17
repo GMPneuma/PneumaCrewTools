@@ -678,10 +678,18 @@ export function contributeRent(
 export function reconcileRent(): Promise<void> {
   return queueAction(() => reconcileRentPayments());
 }
-// Run inside the existing local queue; owners can settle their own payments directly.
+// One shared-bill writer across clients. Without a GM, only a sole connected user settles.
+function canSettleRent(): boolean {
+  if (!game.user) return false;
+  const active = Array.from(game.users).filter(
+    (u) => u.active || u.id === game.user!.id,
+  );
+  if (active.some((u) => u.isGM)) return isPrimaryGM();
+  return active.length === 1 && active[0]?.id === game.user.id;
+}
+// Run inside the existing local queue. Other clients retain pending contributions.
 async function reconcileRentPayments(actorId?: string): Promise<void> {
-  if (game.user?.isGM && !isPrimaryGM()) return;
-  if (!game.user) return;
+  if (!canSettleRent() || !game.user) return;
   for (const actor of game.actors) {
     if (actorId && actor.id !== actorId) continue;
     if (!game.user.isGM && !actor.testUserPermission(game.user, "OWNER"))
@@ -726,8 +734,10 @@ async function reconcileRentPayments(actorId?: string): Promise<void> {
         };
         bill.contributions.push(receipt);
         bill.paid += applied;
+        if (!canSettleRent()) return;
         await saveHqRent(hq, state);
       }
+      if (!canSettleRent()) return;
       if (
         receipt.actorId !== actor.id ||
         receipt.amount + receipt.refund !== pending.amount
@@ -788,9 +798,34 @@ export function rentStatus(actorId: string) {
     lifestyle:
       rentConfig().lifestyles.find((rate) => rate.id === data.choice.lifestyle)
         ?.name ?? "Not selected",
+    homeless: data.choice.residence === "street",
     housingReminder: housingReminder(data.choice),
   };
 }
+export async function rollHousingEndurance(
+  actorId: string,
+  event: MouseEvent,
+): Promise<void> {
+  const actor = owner(actorId);
+  if (rentSnapshot(actorId).choice.residence !== "street")
+    throw new Error(
+      "The Endurance shortcut is available for Living on The Street.",
+    );
+  const skill = Array.from(actor.items ?? []).find(
+    (item) =>
+      item.type === "skill" && item.name.trim().toLowerCase() === "endurance",
+  );
+  if (!skill || !actor.sheet?._onRoll)
+    throw new Error(
+      "This character's native Endurance skill roll is unavailable.",
+    );
+  const button = event.currentTarget as HTMLButtonElement;
+  button.dataset.rollType = "skill";
+  button.dataset.itemId = skill.id;
+  button.dataset.rollTitle = skill.name;
+  await actor.sheet._onRoll(event);
+}
+
 export function rentNeedsAttention(): boolean {
   const actors = new Set(accessibleCrewActors().map((actor) => actor.id));
   if (!actors.size) return false;
@@ -813,7 +848,7 @@ export function rentNeedsAttention(): boolean {
 }
 export function registerRentReconciliation(): void {
   const reconcile = () => {
-    if (game.user && (!game.user.isGM || isPrimaryGM()))
+    if (canSettleRent())
       void reconcileRent().catch((error) =>
         ui.notifications.error(String(error)),
       );

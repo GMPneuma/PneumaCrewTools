@@ -29,7 +29,12 @@ try {
       "payoutDataManager",
       "payoutContainerMenu",
       "payoutAcknowledgmentsEnabled",
-      "campaignCalendar",
+      "useSimpleCalendar",
+      "hqImprovements",
+      "rentSettings",
+      "loyaltyCheckDie",
+      "factions",
+      "iconCredits",
       "calendarFontColor",
       "hudIconColor",
       "hudAttentionColor",
@@ -40,7 +45,7 @@ try {
       "discordLinksMenu",
     ];
     document.body.innerHTML =
-      '<nav><a data-tab="pneuma-crewtools">PneumaCrewTools <span>[13]</span></a></nav><form><section data-tab="pneuma-crewtools">' +
+      '<nav><a data-tab="pneuma-crewtools">PneumaCrewTools <span>[18]</span></a></nav><form><section data-tab="pneuma-crewtools">' +
       keys
         .map(
           (key) =>
@@ -67,13 +72,28 @@ try {
     ].map((e) => e.querySelector("legend").textContent);
     return {
       groups,
+      payoutOrder: [
+        ...document.querySelectorAll(
+          '[data-crew-settings-group="payout"] input',
+        ),
+      ].map((e) => e.name.split(".")[1]),
+      lifestyleOrder: [
+        ...document.querySelectorAll(
+          '[data-crew-settings-group="lifestyle"] input',
+        ),
+      ].map((e) => e.name.split(".")[1]),
+      simpleCalendarGroup: document
+        .querySelector('[name="pneuma-crewtools.useSimpleCalendar"]')
+        .closest("fieldset").dataset.crewSettingsGroup,
+      lastGroup: document.querySelector(".pneuma-settings-groups")
+        .lastElementChild.dataset.crewSettingsGroup,
       firstSetting: document.querySelector(
         ".pneuma-settings-groups > .form-group input",
       )?.name,
       rows: document.querySelectorAll(".pneuma-settings-groups .form-group")
         .length,
       discord: document.querySelector(
-        '[data-crew-settings-group="module"] > [data-crew-settings-group="discord"] > legend',
+        '[data-crew-settings-group="advanced"] > [data-crew-settings-group="discord"] > legend',
       ).textContent,
       value: input.value,
       same:
@@ -84,11 +104,26 @@ try {
       other: document.querySelector("#other").parentElement.tagName,
     };
   }, source);
-  assert.deepEqual(result.groups, ["Module", "Payout", "HUD", "Crafting"]);
-  assert.equal(result.rows, 13);
-  assert.equal(result.firstSetting, "pneuma-crewtools.multiplyAntibioticBonus");
+  assert.deepEqual(result.groups, [
+    "Payout",
+    "Lifestyle",
+    "Role Tweaks",
+    "HUD",
+    "Crafting",
+    "Advanced",
+  ]);
+  assert.deepEqual(result.payoutOrder, [
+    "payoutAcknowledgmentsEnabled",
+    "payoutContainerMenu",
+    "factions",
+  ]);
+  assert.deepEqual(result.lifestyleOrder, ["rentSettings", "hqImprovements"]);
+  assert.equal(result.simpleCalendarGroup, "advanced");
+  assert.equal(result.lastGroup, "advanced");
+  assert.equal(result.rows, 18);
+  assert.equal(result.firstSetting, "pneuma-crewtools.actorExclusions");
   assert.equal(result.discord, "Discord Features");
-  assert.equal(result.title, "Pneuma's Crew Tools [13]");
+  assert.equal(result.title, "Pneuma's Crew Tools [18]");
   assert.equal(result.value, "unsaved");
   assert.equal(result.same, true);
   assert.equal(result.calls, 1);

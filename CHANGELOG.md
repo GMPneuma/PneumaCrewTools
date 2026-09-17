@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.8.5 - 2026-09-17
+
+- Added a red low-EMP Player Hub status button with current EMP, summarized Cyberpsychosis roleplaying guidance, and the nine Hare traits.
+
+- Added an Endurance skill-roll shortcut below Rent & Lifestyle for characters Living on The Street. Removed the awaiting-GM-setup downtime notice.
+
+- Build pharma recipient exclusions once per list, read only a transfer status when rendering chat cards, and limit a receipt acknowledgment to its character Journal.
+
+- Reuse cached pharma chat responses in the Medtech panel, collect pending Humanity in bounded Journal passes, and reuse Cleanup display snapshots. Backup capture skips full Actor/Item serialization; destructive actions retain fresh validation.
+
+- Fixed shared HQ rent settlement races by selecting one settlement writer; multiple players without a GM retain Processing payments until safe settlement is available.
+- Added durable Humanity attempts, original-roll retention, rollback on completion-save failure, and replay blocking for uncertain writes.
+- Reject stale payout resource previews before applying any rewards.
+- Reject partial item delivery, remove partially created Items, and report remaining IDs if cleanup fails.
+
+- Added confirmed cleanup of obsolete permission entries for deleted Foundry Users directly from the data tree. Existing permissions, character data and historical attribution are preserved.
+
+- Reorganized Data & Cleanup into a Foundry-object tree with nested folders, Journals/pages and Actors/Items. Documents appear once with their stored fields, references, sizes and applicable retention controls; static Hustle tables remain outside history totals.
+
+- Fixed explicit absent-player downtime awards being discarded or rejected when primary/group downtime is zero. One-day time advancement can now award the selected absent characters one day while primary downtime remains zero.
+- Updated Player Hub, Headquarters, rent and absent-player browser fixtures to current controls, labels and layouts. Added independent-award validation and rollback regressions.
+
 ## 0.8.2 - 2026-09-16
 
 - Fixed the Modify GameTime Date window stretching its status text and pushing date controls below the visible area.

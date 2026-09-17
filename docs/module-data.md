@@ -1,44 +1,36 @@
-# Manage Module Data
+# Data & Cleanup
 
-GMs open **Module Settings → Pneuma's Crew Tools → Module → View or Manage Module Data**.
+GMs open **Module Settings → Pneuma's Crew Tools → Advanced → Manage Data & Cleanup**. This replaces the separate Manage Module Data and Cleanup windows.
 
-## Inspect
+## Inspect and export
 
-Records are grouped into Payouts, Characters, Factions, Headquarters, and Configuration. Character Journals keep their associated faction scores, downtime, projects, receipts, rent, teammates, vehicles, and pharmaceutical records together. Shared faction definitions appear under Factions. Entries show counts and pending/completed totals where records have those states. Open Journal links provide the native editable record, including item transfers and interruption details. Missing Actor/User references and interrupted operations are flagged. Raw JSON is under Technical details.
+The inventory is a collapsible tree of Foundry objects: Journals and their folders/pages, Actors and embedded Items, world Items, RollTables and results, Chat Messages, Users, settings and saved compendium references. Each document appears once, even when several records reference it. Categories and objects retain their open/closed state while the window is used.
 
-Use the normal Downtime, Headquarters, Rent, and settings screens to manage active work and configuration. This screen does not edit native resources or offer a bulk configuration reset.
+Each object shows its native name and type, with its exact UUID and sidebar location under **Location & stored fields**. Module data and references are distinguished, and **Referenced by** identifies the source locations. The tree follows saved Crew Tools flags, Journal UUID links and known document-ID fields; it does not enumerate every unrelated world document, load compendium packs, or reconstruct unmarked historical chat cards. Missing world references are marked; compendium availability is checked only when opened.
 
-## Targeted cleanup
+Cleanup controls sit inside the document or page that holds the history. Parent totals aggregate those records without recounting referenced Actors or Items. Static module Hustle tables are shown as module-maintained reference content, excluded from growing-record counts and sizes. Custom RollTables are reference-only. Client preferences are identified as local to this browser; world settings have their own static configuration branch. Existing missing-reference and interrupted-operation warnings remain beside the relevant records.
 
-Choose a character or All characters, then one record type:
+Export downloads one row. Export all records downloads module Journals, Crew Tools Actor/Item flags, module Hustle tables, world settings, and folder metadata. Files are reference snapshots for inspection and manual recovery. There is no import or restore function. The all-records export excludes native Actor resources and inventory, chat messages, client settings, world time, compendiums, and asset files. The Chat messages collection export contains the tracked offer/response and Humanity-prompt messages. Use Foundry world backups for full recovery.
 
-- Unacknowledged receipts or acknowledged receipt history.
-- Pending Humanity obligations or completed Humanity history.
-- Attendance or current faction reputation scores.
-- Shared payout history (All characters only, because one payout can include several characters).
+## Completed-history cleanup
 
-The preview lists affected Journal pages and records. Export selected cleanup records before confirming if desired. These exports are inspection snapshots. Full bookkeeping exports are available separately.
+Choose Keep records for a row, then Purge. The confirmation identifies the location and number to remove. Defaults recommend 50 completed receipts, Humanity rolls, projects or pharmaceutical transfers, and 100 payout pages or roster changes. Keep 0 removes eligible completed history. Pending work, current roster slots, and balance/billing dependencies stay protected. Retention does not run automatically.
 
-Cleanup preserves Journal containers and unrelated pages. Active projects, downtime, pending rent contributions and pharmaceutical transfers have no general clear operation. Clearing history never reverses awarded resources. Clearing faction reputation removes current module faction scores; clearing pending Humanity cancels those obligations without rolling them.
+Pharmaceutical cleanup removes matching old chat cards before transfer receipts and preserves evidence on the counterpart's retained record. Other users must disconnect before destructive operations; changed confirmations are rejected. Failed operations report errors and can leave some earlier writes completed.
 
-Only the primary active GM may apply changes. Other users must disconnect for destructive operations. Writes are serialized on that GM's client, with one update per affected page. Changed previews are rejected. Operations stop at the first failure and report completed, skipped, and failed records; they are not atomic transactions.
+## Advanced cancellation and resets
 
-## Full backup
+The collapsed **Advanced: cancel or reset records** section is separate from retention. Select a character or All characters and an action:
 
-**Download full backup** produces JSON with the creation time, world ID, CrewTools version and backup schema version. It includes:
+- Dismiss unacknowledged payout receipts without reversing awards.
+- Cancel pending Humanity rolls without applying them.
+- Reset attendance records.
+- Reset current faction reputation scores.
 
-- Module-owned Journals, their pages, IDs, names, permissions and module flags.
-- CrewTools flags on world Actors, embedded Actor Items and world Items.
-- Native hustle RollTables and results.
-- Registered CrewTools world settings.
-- Ancestor folders needed to recreate Journal/table organization.
+The preview lists affected record locations and counts, describes the consequence, and requires a separate confirmation. It does not offer duplicate completed-history clearing controls. Operation results show completed, skipped and failed locations.
 
-Other modules' flags, native Actor/Item resources and inventory, client preferences, world time, chat, compendiums and asset files are not included. Images and other media retain their paths; the files themselves require a Foundry world/data backup. Backups may contain private campaign information and should be stored accordingly.
+## Deleted User accounts
 
-## Recovery
+Missing User nodes distinguish obsolete document permission entries from saved historical references. **Clean up permissions** previews the affected Crew Tools documents and pages, then removes only the deleted User's ownership keys after confirmation. Default permissions, existing Users, Actors, Journal pages, balances, pending obligations and historical attribution remain intact. A node disappears when no references remain; historical references can keep it visible until eligible history is purged at its source.
 
-CrewTools has no import or restore function. JSON exports are reference copies for inspection and manual recovery. Use a Foundry world backup to recover bookkeeping and native character resources together.
-
-## Validation
-
-Automated tests cover cleanup selection, shared receipt pages, stale previews, missing references, permissions, failure reporting and export scope. A headless browser check verifies cleanup previews, backup downloads, selected exports and the absence of import controls. Live Foundry world validation remains separate.
+The action rejects existing accounts and stale previews, rechecks between writes, and reports completed, failed and skipped locations if interrupted. Ordinary documents outside the module's ownership scope are not changed.

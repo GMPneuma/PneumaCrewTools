@@ -17,6 +17,8 @@ import {
 
 // Native v12 document APIs are isolated here; backup files never receive a live Document.
 interface DataDocument {
+  _source?: JsonObject;
+  flags?: JsonObject;
   id: string;
   name: string;
   pages?: Iterable<DataDocument>;
@@ -43,6 +45,7 @@ interface DataWorld {
   actors: Iterable<DataDocument>;
   items?: Iterable<DataDocument>;
   tables: Iterable<DataDocument>;
+  messages?: Iterable<DataDocument>;
   folders: Iterable<DataDocument>;
   settings: typeof game.settings & {
     settings: Map<
@@ -97,12 +100,17 @@ export function captureBackup(): ModuleBackup {
     doc: DataDocument,
     parentId?: string,
   ) => {
-    const raw = doc.toObject();
-    if (!Object.keys(moduleFlags(raw)).length) return;
-    if (kind === "table" && !moduleFlags(raw).hustleRole) return;
-    const data = ["actor", "item"].includes(kind)
-      ? { flags: ownData(raw).flags }
-      : ownData(raw);
+    // Native documents expose flags without serializing their embedded inventory.
+    const flags = moduleFlags(
+      doc._source ??
+        (doc.flags !== undefined ? { flags: doc.flags } : doc.toObject()),
+    );
+    if (!Object.keys(flags).length) return;
+    if (kind === "table" && !flags.hustleRole) return;
+    const raw = ["actor", "item"].includes(kind)
+      ? { flags: { [NAMESPACE]: clone(flags) } }
+      : doc.toObject();
+    const data = ownData(raw);
     // Preserve ordinary page content in a module Journal, but not other modules' flags.
     if (kind === "journal") data.pages = (raw.pages ?? []).map(ownData);
     if (kind === "table") data.results = (raw.results ?? []).map(ownData);
@@ -325,9 +333,16 @@ export function inspectEntries(backup: ModuleBackup) {
           (r.acknowledgedAt === null ||
             (r.reward && !r.resolvedAt) ||
             r.status === "active" ||
-            ["pending", "offered", "withdrawing", "delivering"].includes(
-              r.status,
-            )),
+            [
+              "pending",
+              "offered",
+              "withdrawing",
+              "delivering",
+              "receiving",
+              "returning",
+              "refunding",
+              "interrupted",
+            ].includes(r.status)),
       ).length;
       const completed = rows.filter(
         (r) =>
@@ -344,19 +359,7 @@ export function inspectEntries(backup: ModuleBackup) {
               "failed",
             ].includes(r.status)),
       ).length;
-      const warnings = missingReferences(e.data, actors, users);
-      const serialized = JSON.stringify(e.data);
-      if (
-        /"(?:hustleAttempt|techAttempt|healingAttempt|medicalAttempt|attempt)":(?!null)/.test(
-          serialized,
-        ) ||
-        /"status":"(?:interrupted|withdrawing|delivering|refunding)"/.test(
-          serialized,
-        )
-      )
-        warnings.push(
-          "Interrupted operation: inspect the Journal before retrying.",
-        );
+      const warnings = recordWarnings(e.data, actors, users);
       return {
         ...e,
         journalId: e.kind === "journal" ? e.id : "",
@@ -371,4 +374,151 @@ export function inspectEntries(backup: ModuleBackup) {
         settingValue: e.kind === "setting" ? JSON.stringify(e.data.value) : "",
       };
     });
+}
+
+// Shared diagnostics for the consolidated row inventory and exported-data inspection.
+export function recordWarnings(
+  data: unknown,
+  actors: Set<string>,
+  users: Set<string>,
+): string[] {
+  const warnings = missingReferences(data, actors, users);
+  let interrupted = false;
+  const visit = (value: unknown): void => {
+    if (!value || typeof value !== "object") return;
+    for (const [key, child] of Object.entries(value)) {
+      if (
+        [
+          "hustleAttempt",
+          "techAttempt",
+          "healingAttempt",
+          "medicalAttempt",
+          "attempt",
+        ].includes(key) &&
+        child != null &&
+        child !== false
+      )
+        interrupted = true;
+      if (
+        key === "status" &&
+        [
+          "interrupted",
+          "withdrawing",
+          "delivering",
+          "receiving",
+          "returning",
+          "refunding",
+        ].includes(String(child))
+      )
+        interrupted = true;
+      visit(child);
+    }
+  };
+  visit(data);
+  if (interrupted)
+    warnings.push(
+      "Interrupted or unfinished operation: inspect the Journal before retrying.",
+    );
+  return warnings;
+}
+
+export interface MissingUserCleanupTarget {
+  uuid: string;
+  name: string;
+  before: string;
+}
+
+// Match the tree's ownership scope: module documents and pages/results inside
+// module documents. A reference to an ordinary Actor does not claim its data.
+function modulePermissionDocuments() {
+  const found: Array<{ uuid: string; name: string; doc: DataDocument }> = [];
+  const visit = (
+    type: string,
+    doc: DataDocument,
+    parent = "",
+    path = "",
+    inherited = false,
+  ) => {
+    const uuid = parent ? `${parent}.${type}.${doc.id}` : `${type}.${doc.id}`;
+    const name = path ? `${path} → ${doc.name}` : `${type} → ${doc.name}`;
+    const owned = Object.keys(moduleFlags(doc.toObject())).length > 0;
+    if (owned || inherited) found.push({ uuid, name, doc });
+    for (const page of doc.pages ?? [])
+      visit("JournalEntryPage", page, uuid, name, owned);
+    for (const item of doc.items ?? []) visit("Item", item, uuid, name);
+    for (const result of doc.results ?? [])
+      visit("TableResult", result, uuid, name, owned);
+  };
+  for (const [kind, type] of [
+    ["journal", "JournalEntry"],
+    ["actor", "Actor"],
+    ["item", "Item"],
+    ["table", "RollTable"],
+    ["folder", "Folder"],
+  ] as const)
+    for (const doc of documents(kind)) visit(type, doc);
+  for (const doc of world().messages ?? []) visit("ChatMessage", doc);
+  return found;
+}
+function requireMissingUser(userId: string): void {
+  requireGM();
+  if (!/^[A-Za-z0-9_-]+$/.test(userId) || userId === "default")
+    throw new Error("Choose a missing Foundry User account.");
+  if ([...game.users].some((u) => u.id === userId))
+    throw new Error(
+      "This User account exists. Its permissions cannot be cleaned up as obsolete.",
+    );
+}
+export function previewMissingUserCleanup(
+  userId: string,
+): MissingUserCleanupTarget[] {
+  requireMissingUser(userId);
+  return modulePermissionDocuments().flatMap(({ uuid, name, doc }) => {
+    const ownership = doc.toObject().ownership ?? {};
+    return Object.hasOwn(ownership, userId)
+      ? [{ uuid, name, before: JSON.stringify(ownership) }]
+      : [];
+  });
+}
+export async function applyMissingUserCleanup(
+  userId: string,
+  expected: MissingUserCleanupTarget[],
+): Promise<OperationReport> {
+  return withGMAction(async () => {
+    const check = () => {
+      requireMissingUser(userId);
+      if ([...game.users].some((u) => u.active && u.id !== game.user!.id))
+        throw new Error(
+          "Have all other users disconnect before clearing records.",
+        );
+    };
+    check();
+    const current = previewMissingUserCleanup(userId);
+    if (JSON.stringify(current) !== JSON.stringify(expected))
+      throw new Error("Permissions changed. Preview the cleanup again.");
+    const report: OperationReport = { completed: [], skipped: [], failed: [] };
+    for (const target of current) {
+      if (report.failed.length) {
+        report.skipped.push(target.name);
+        continue;
+      }
+      try {
+        check();
+        const entry = modulePermissionDocuments().find(
+          (d) => d.uuid === target.uuid,
+        );
+        if (
+          !entry ||
+          JSON.stringify(entry.doc.toObject().ownership ?? {}) !== target.before
+        )
+          throw new Error("Permissions changed. Preview the cleanup again.");
+        // Native key deletion preserves default and every remaining User's access.
+        await entry.doc.update({ [`ownership.-=${userId}`]: null });
+        report.completed.push(target.name);
+      } catch (error) {
+        report.failed.push(`${target.name}: ${String(error)}`);
+      }
+    }
+    return report;
+  });
 }

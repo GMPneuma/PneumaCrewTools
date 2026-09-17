@@ -47,14 +47,15 @@ try {
     root.addEventListener("input", () =>
       exports.syncAbsentDowntimeControl(root),
     );
+    window.populateTimeDowntime = () => exports.populateTimeDowntime(root);
     exports.syncAbsentDowntimeControl(root);
   }, source);
   const main = page.locator('[name="groupDowntime"]'),
     grant = page.locator('[name="grantAbsentDowntime"]'),
     absent = page.locator('[name="absentDowntime"]');
   assert.equal(await absent.isDisabled(), true);
-  assert.equal(await grant.isDisabled(), true);
-  await main.fill("3");
+  assert.equal(await grant.isEnabled(), true);
+  await main.fill("0");
   assert.equal(await grant.isEnabled(), true);
   assert.equal(await absent.isDisabled(), true);
   await grant.check();
@@ -67,22 +68,33 @@ try {
     .boundingBox();
   assert.ok(d.x >= m.x + m.width, "description follows the primary amount");
   assert.ok(Math.abs(d.y - m.y) < 5, "description shares the primary row");
-  assert.ok(a.y >= m.y + m.height, "optional award is on the next row");
+  const time = await page.locator(".payout-time-section").boundingBox();
+  assert.ok(
+    a.y >= time.y && a.y + a.height <= time.y + time.height,
+    "nonparticipant award belongs to GameTime & Downtime",
+  );
   await grant.uncheck();
   assert.equal(await absent.isDisabled(), true);
   await grant.check();
   await main.fill("0");
-  assert.equal(await absent.isDisabled(), true);
+  assert.equal(await absent.isEnabled(), true);
   await main.fill("-1");
-  assert.equal(await absent.isDisabled(), true);
+  assert.equal(await absent.isEnabled(), true);
   await main.fill("2.5");
-  assert.equal(await absent.isDisabled(), true);
+  assert.equal(await absent.isEnabled(), true);
   await main.fill("7");
   assert.equal(await absent.isEnabled(), true);
   assert.equal(await absent.inputValue(), "5");
   assert.equal(await page.locator("[data-preview-absent-section]").count(), 1);
+  await page.locator('[name="advanceDays"]').fill("1");
+  await page.evaluate(() => populateTimeDowntime());
+  assert.equal(await main.inputValue(), "0");
+  assert.equal(await absent.inputValue(), "1");
+  assert.equal(await absent.isEnabled(), true);
+  await grant.uncheck();
+  assert.equal(await absent.isDisabled(), true);
   console.log(
-    "PASS description shares the downtime row; optional awards sit below and require opt-in plus positive whole-day awards.",
+    "PASS primary description shares the rewards row; nonparticipant controls are in GameTime & Downtime and require opt-in independently of primary downtime; one-day advancement defaults to 0 primary and 1 absent day.",
   );
 } finally {
   await browser.close();

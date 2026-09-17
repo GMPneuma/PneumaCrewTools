@@ -1,14 +1,19 @@
 import { rollCard } from "./roll-card";
 import { MODULE_ID } from "./constants";
-import { isCrewActor, accessibleCrewActors } from "./actor-policy";
+import {
+  isCrewActor,
+  accessibleCrewActors,
+  excludedActorIds,
+} from "./actor-policy";
 import { medtechRole } from "./medtech-system";
 import { pharmaceuticalInventory, isPharmaceutical } from "./pharmaceuticals";
 import {
   actorPayoutJournal,
   actorPayoutRecords,
+  recordPage,
   writeRecord,
 } from "./journal-records";
-import { queueAction } from "./action-coordinator";
+import { queueAction, isPrimaryGM } from "./action-coordinator";
 import { getCampaignDate } from "./calendar";
 
 interface PharmaTransfer {
@@ -32,6 +37,8 @@ interface PharmaTransfer {
     | "returning"
     | "returned";
   direction: "sent" | "received";
+  // Both Journal outcomes have been verified; survives pruning the other side.
+  settled?: boolean;
 }
 const KEY = "pharmaTransfers";
 function records(actorId: string): PharmaTransfer[] {
@@ -65,9 +72,32 @@ function owner(actor: FoundryActor) {
     throw new Error("You do not own this character.");
 }
 function targets(sourceId: string) {
-  return Array.from(game.actors)
-    .filter((a) => a.id !== sourceId && isCrewActor(a))
+  const actors = Array.from(game.actors);
+  const excluded = excludedActorIds(actors);
+  const players = Array.from(game.users).filter((user) => !user.isGM);
+  return actors
+    .filter(
+      (actor) =>
+        actor.id !== sourceId &&
+        actor.type === "character" &&
+        !excluded.has(actor.id) &&
+        players.some((user) => actor.testUserPermission(user, "OWNER")),
+    )
     .sort((a, b) => a.name.localeCompare(b.name));
+}
+// Chat display needs only one status, not a detached copy of every saved Item payload.
+function transferStatus(
+  actorId: string,
+  id: string,
+): Pick<PharmaTransfer, "status"> | undefined {
+  const rows = recordPage(actorPayoutJournal(actorId), KEY)?.getFlag?.(
+    MODULE_ID,
+    "data",
+  );
+  const transfer = Array.isArray(rows)
+    ? rows.find((row: PharmaTransfer) => row.id === id)
+    : undefined;
+  return transfer ? { status: transfer.status } : undefined;
 }
 type PharmaChoice = "reject" | "consume";
 // Build once per operation, preserving the first valid owner response for each transfer.
@@ -103,8 +133,152 @@ function responseLookup(offers?: Map<string, FoundryChatMessage[]>) {
   }
   return answers;
 }
+// Rendering reuses this index; inventory/receipt operations still read fresh history.
+let renderAnswers: Map<string, PharmaChoice> | undefined;
+function invalidateRenderAnswers(): void {
+  renderAnswers = undefined;
+}
+function renderResponseLookup() {
+  return (renderAnswers ??= responseLookup());
+}
 function response(t: PharmaTransfer, answers = responseLookup()) {
   return answers.get(t.targetId + ":" + t.id);
+}
+// Maintenance waits for a sole GM so no other client can rewrite these shared arrays.
+function canPurgePharma(): boolean {
+  return (
+    isPrimaryGM() &&
+    !Array.from(game.users).some((u) => u.active && u.id !== game.user!.id)
+  );
+}
+function transferKey(
+  t: Pick<PharmaTransfer, "sourceId" | "targetId" | "id">,
+): string {
+  return t.sourceId + ":" + t.targetId + ":" + t.id;
+}
+function completedTransfer(t: PharmaTransfer): boolean {
+  return t.direction === "sent"
+    ? t.status === "consumed" || t.status === "returned"
+    : t.status === "consumed" || t.status === "rejected";
+}
+export function purgePharmaHistory(
+  keep: number,
+  actorId = "",
+  verify?: () => void,
+): Promise<void> {
+  return queueAction(() => {
+    verify?.();
+    return purgeCompletedPharma(keep, actorId);
+  });
+}
+async function purgeCompletedPharma(
+  keep: number,
+  actorId: string,
+): Promise<void> {
+  if (!Number.isSafeInteger(keep) || keep < 0)
+    throw new Error("Keep records must be a non-negative whole number.");
+  if (!canPurgePharma())
+    throw new Error(
+      "Only the primary GM can purge; have other users disconnect first.",
+    );
+  const ledgers = Array.from(game.actors)
+    .filter(
+      (actor) => actor.type === "character" && actorPayoutJournal(actor.id),
+    )
+    .map((actor) => ({ actor, rows: records(actor.id) }));
+  const sent = new Map<string, PharmaTransfer>();
+  const received = new Map<string, PharmaTransfer>();
+  for (const { actor, rows } of ledgers)
+    for (const t of rows) {
+      if (t.direction === "sent" && t.sourceId === actor.id)
+        sent.set(transferKey(t), t);
+      if (t.direction === "received" && t.targetId === actor.id)
+        received.set(transferKey(t), t);
+    }
+  const settled = new Set<string>();
+  for (const [key, source] of sent) {
+    const target = received.get(key);
+    if (
+      target &&
+      source.itemId === target.itemId &&
+      source.amount === target.amount &&
+      ((source.status === "consumed" && target.status === "consumed") ||
+        (source.status === "returned" && target.status === "rejected"))
+    )
+      settled.add(key);
+  }
+  // Persist proof on both sides before deleting anything. An offline/missing peer
+  // or interrupted outcome never qualifies just because one row says completed.
+  for (const { actor, rows } of ledgers) {
+    let changed = false;
+    for (const t of rows)
+      if (!t.settled && settled.has(transferKey(t))) {
+        t.settled = true;
+        changed = true;
+      }
+    if (changed) {
+      if (!canPurgePharma())
+        throw new Error(
+          "Cleanup stopped because another user connected. Refresh and retry.",
+        );
+      await save(actor, rows);
+    }
+  }
+  const purge = new Set<string>();
+  for (const { actor, rows } of ledgers) {
+    if (actorId && actor.id !== actorId) continue;
+    const completed = rows.filter((t) => t.settled && completedTransfer(t));
+    for (const t of completed.slice(0, Math.max(0, completed.length - keep)))
+      purge.add(transferKey(t));
+  }
+  if (!purge.size) return;
+  const responseKeys = new Set<string>();
+  for (const { rows } of ledgers)
+    for (const t of rows)
+      if (purge.has(transferKey(t))) responseKeys.add(t.targetId + ":" + t.id);
+  // Remove every copy of an old offer before removing its anti-repeat receipt.
+  // A failed deletion leaves the Journals intact for a later maintenance pass.
+  for (const message of Array.from(game.messages)) {
+    const offer = message.getFlag(MODULE_ID, "pharmaOffer") as
+      PharmaTransfer | undefined;
+    const response = message.getFlag(MODULE_ID, "pharmaResponse") as
+      { id: string; targetId: string } | undefined;
+    if (
+      (offer && purge.has(transferKey(offer))) ||
+      (response && responseKeys.has(response.targetId + ":" + response.id))
+    ) {
+      if (!canPurgePharma())
+        throw new Error(
+          "Cleanup stopped because another user connected. Refresh and retry.",
+        );
+      await message.delete();
+      invalidateRenderAnswers();
+    }
+  }
+  for (const { actor } of ledgers) {
+    if (actorId && actor.id !== actorId) continue;
+    if (!canPurgePharma())
+      throw new Error(
+        "Cleanup stopped because another user connected. Refresh and retry.",
+      );
+    const rows = records(actor.id);
+    let remainingCompleted = rows.filter(
+      (t) => t.settled && completedTransfer(t),
+    ).length;
+    const remaining = rows.filter((t) => {
+      if (
+        remainingCompleted > keep &&
+        t.settled &&
+        completedTransfer(t) &&
+        purge.has(transferKey(t))
+      ) {
+        remainingCompleted--;
+        return false;
+      }
+      return true;
+    });
+    if (remaining.length !== rows.length) await save(actor, remaining);
+  }
 }
 // Each owner updates only their own inventory and Journal; rejected doses wait safely while offline.
 export function reconcilePharmaResponses() {
@@ -308,6 +482,8 @@ export function respondToPharma(
   choice: PharmaChoice = "consume",
 ) {
   return queueAction(async () => {
+    if (!Array.from(game.messages).includes(message))
+      throw new Error("This pharmaceutical offer is no longer available.");
     if (!["reject", "consume"].includes(choice))
       throw new Error("Choose Use Now or Reject.");
     const offer = message.getFlag(MODULE_ID, "pharmaOffer") as
@@ -413,7 +589,7 @@ export class PharmaTransferPanel {
     const actor = accessibleCrewActors().find((a) => a.id === this.actorId);
     if (!actor || !medtechRole(actor))
       return { pharma: [], recipients: [], pending: [] };
-    const answers = responseLookup();
+    const answers = renderResponseLookup();
     return {
       actorName: actor.name,
       pharma: pharmaceuticalInventory(actor),
@@ -475,7 +651,34 @@ export class PharmaTransferPanel {
   }
 }
 export function registerPharmaTransfers(): void {
+  invalidateRenderAnswers();
+  // Any chat mutation may add, edit or remove a response (including its author).
+  for (const hook of [
+    "createChatMessage",
+    "updateChatMessage",
+    "deleteChatMessage",
+  ] as const)
+    Hooks.on(hook, invalidateRenderAnswers);
+  // Valid responses depend on the author's current ownership/GM role.
+  Hooks.on("updateActor", (_actor, changes) => {
+    if (
+      Object.keys(changes).some(
+        (key) => key === "ownership" || key.startsWith("ownership."),
+      )
+    )
+      invalidateRenderAnswers();
+  });
+  Hooks.on("createActor", invalidateRenderAnswers);
+  Hooks.on("deleteActor", invalidateRenderAnswers);
+  Hooks.on("updateUser", invalidateRenderAnswers);
+  Hooks.on("deleteUser", invalidateRenderAnswers);
+  Hooks.on("userConnected", () => {
+    void reconcilePharmaResponses().catch((e) =>
+      ui.notifications.error(String(e)),
+    );
+  });
   Hooks.once("ready", () => {
+    invalidateRenderAnswers();
     void reconcilePharmaResponses().catch((e) =>
       ui.notifications.error(String(e)),
     );
@@ -507,9 +710,9 @@ export function registerPharmaTransfers(): void {
     const canAccept =
       !!target && !!game.user && target.testUserPermission(game.user, "OWNER");
     const existing = canAccept
-      ? records(offer.targetId).find((r) => r.id === offer.id)
+      ? transferStatus(offer.targetId, offer.id)
       : undefined;
-    const answered = response(offer);
+    const answered = response(offer, renderResponseLookup());
     for (const button of buttons) {
       const previous =
         existing?.status === "rejected"

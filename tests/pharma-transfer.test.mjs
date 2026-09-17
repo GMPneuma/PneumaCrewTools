@@ -81,11 +81,20 @@ function fixture() {
     messages: [],
     settings: { get: () => [] },
   };
+  const hooks = new Map();
   const globals = {
     game,
     ...journalWorld(game),
     FormApplication: class {},
-    Hooks: { on() {}, once() {} },
+    Hooks: {
+      on(name, fn) {
+        const callbacks = hooks.get(name) ?? [];
+        callbacks.push(fn);
+        hooks.set(name, callbacks);
+      },
+      once() {},
+    },
+    document: { createElement: () => ({ textContent: "" }) },
     foundry: {
       utils: { randomID: () => String(++sequence).padStart(16, "a") },
     },
@@ -95,6 +104,10 @@ function fixture() {
         const message = {
           ...structuredClone(data),
           author: game.user,
+          async delete() {
+            const index = game.messages.indexOf(this);
+            if (index >= 0) game.messages.splice(index, 1);
+          },
           async update(changes) {
             if ("flags.pneuma-crewtools.pharmaOffer.-=item" in changes)
               delete this.flags["pneuma-crewtools"].pharmaOffer.item;
@@ -160,6 +173,7 @@ function fixture() {
     stranger,
     load,
     setup,
+    emit: (name, ...args) => hooks.get(name)?.forEach((fn) => fn(...args)),
     api: load("pharma-transfer"),
     offer: () =>
       game.messages.find((m) => m.getFlag("pneuma-crewtools", "pharmaOffer")),
@@ -403,4 +417,354 @@ test("completed Pharma receipts discard snapshots; pending transfers retain them
   f.game.user = f.recipient;
   await f.api.respondToPharma(f.offer(), "consume");
   assert.equal(f.target.consumed, 1);
+});
+
+function renderOffer(f, id = "offer") {
+  const button = {
+    dataset: { pharmaChoice: "consume" },
+    addEventListener() {},
+  };
+  f.emit(
+    "renderChatMessage",
+    {
+      getFlag: () => ({ id, targetId: "target" }),
+    },
+    [{ querySelectorAll: () => [button], querySelector: () => null }],
+  );
+  return button.disabled;
+}
+
+test("pharma chat renders share one history scan until messages change", () => {
+  const f = fixture();
+  f.api.registerPharmaTransfers();
+  f.game.user = f.recipient;
+  let reads = 0;
+  f.game.messages = Array.from({ length: 1000 }, () => ({
+    getFlag() {
+      reads++;
+    },
+  }));
+  for (let n = 0; n < 100; n++) assert.equal(renderOffer(f), false);
+  assert.equal(reads, 1000);
+  f.emit("updateChatMessage", f.game.messages[0]);
+  for (let n = 0; n < 100; n++) renderOffer(f);
+  assert.equal(reads, 2000);
+});
+
+test("pharma render cache follows response creation, edits, removal and ownership", async () => {
+  const f = fixture();
+  f.api.registerPharmaTransfers();
+  f.game.user = f.recipient;
+  assert.equal(renderOffer(f), false);
+  let receipt = { id: "offer", targetId: "target", choice: "consume" };
+  const message = { author: f.recipient, getFlag: () => receipt };
+  f.game.messages.push(message);
+  f.emit("createChatMessage", message);
+  await f.load("action-coordinator").queueAction(async () => {});
+  assert.equal(renderOffer(f), true);
+  receipt = { ...receipt, id: "different" };
+  f.emit("updateChatMessage", message);
+  assert.equal(renderOffer(f), false);
+  receipt.id = "offer";
+  f.emit("updateChatMessage", message);
+  assert.equal(renderOffer(f), true);
+  f.game.messages.length = 0;
+  f.emit("deleteChatMessage", message);
+  assert.equal(renderOffer(f), false);
+  f.game.messages.push(message);
+  f.emit("updateChatMessage", message);
+  assert.equal(renderOffer(f), true);
+  f.game.user = { id: "gm", isGM: true };
+  f.target.testUserPermission = (u) => u.isGM;
+  f.emit("updateActor", f.target, { ownership: { recipient: 0 } });
+  assert.equal(renderOffer(f), false);
+  message.author.isGM = true;
+  f.emit("updateUser", message.author);
+  assert.equal(renderOffer(f), true);
+});
+
+async function cleanupFixture(count = 52) {
+  const f = fixture();
+  await f.setup();
+  f.game.user = { id: "gm", isGM: true };
+  const store = f.load("journal-records");
+  const rows = (id) => store.actorPayoutRecords(id, "pharmaTransfers");
+  const write = (actor, data) =>
+    store.writeRecord(
+      store.actorPayoutJournal(actor.id),
+      "pharmaTransfers",
+      "Administer Pharma",
+      data,
+      "",
+    );
+  const sent = Array.from({ length: count }, (_, n) => ({
+    id: String(n).padStart(16, "a"),
+    sourceId: "source",
+    sourceName: "source",
+    targetId: "target",
+    targetName: "target",
+    senderId: "sender",
+    itemId: "drug",
+    itemName: "Antibiotic",
+    amount: 1,
+    date: "2078-02-06",
+    status: n % 2 ? "returned" : "consumed",
+    direction: "sent",
+  }));
+  const received = sent.map((t) => ({
+    ...t,
+    direction: "received",
+    status: t.status === "returned" ? "rejected" : "consumed",
+  }));
+  await write(f.source, sent);
+  await write(f.target, received);
+  for (const t of sent) {
+    for (const flags of [
+      { pharmaOffer: { ...t, status: "offered" } },
+      {
+        pharmaResponse: {
+          id: t.id,
+          targetId: t.targetId,
+          choice: t.status === "returned" ? "reject" : "consume",
+        },
+      },
+    ]) {
+      f.game.messages.push({
+        author: flags.pharmaOffer ? f.sender : f.recipient,
+        getFlag: (_ns, key) => flags[key],
+        async delete() {
+          f.game.messages.splice(f.game.messages.indexOf(this), 1);
+        },
+      });
+    }
+  }
+  const gm = { id: "gm", isGM: true, active: true };
+  f.game.users.forEach((u) => {
+    u.active = false;
+  });
+  f.game.users.push(gm);
+  f.game.user = gm;
+  return { ...f, rows, write, sent, received, gm };
+}
+
+test("manual pharma cleanup retains 50 settled transfers per character and removes only their older cards", async () => {
+  const f = await cleanupFixture();
+  const oldOffer = f.game.messages[0];
+  const unresolved = ["withdrawing", "offered", "returning"].map(
+    (status, i) => ({ ...f.sent[0], id: "pending" + i, status }),
+  );
+  await f.write(f.source, [...f.sent, ...unresolved]);
+  await f.write(f.target, [
+    ...f.received,
+    { ...f.received[0], id: "receiving", status: "receiving" },
+  ]);
+  const unrelated = { getFlag: () => undefined };
+  f.game.messages.push(unrelated);
+  await f.api.purgePharmaHistory(50);
+  assert.equal(f.rows("source").length, 53);
+  assert.equal(f.rows("target").length, 51);
+  assert.equal(f.rows("source")[0].id, f.sent[2].id);
+  assert.equal(f.rows("target")[0].id, f.sent[2].id);
+  assert.equal(f.game.messages.length, 101);
+  assert.ok(f.game.messages.includes(unrelated));
+  assert.equal(f.source.items.find((i) => i.id === "drug").system.amount, 5);
+  assert.equal(f.target.items.length, 0);
+  f.game.user = f.recipient;
+  await assert.rejects(f.api.respondToPharma(oldOffer), /no longer available/);
+});
+
+test("pharma cleanup waits for a sole GM and both sides to settle", async () => {
+  const f = await cleanupFixture();
+  f.recipient.active = true;
+  await assert.rejects(f.api.purgePharmaHistory(50), /disconnect/);
+  assert.equal(f.rows("source").length, 52);
+  assert.equal(f.game.messages.length, 104);
+  f.recipient.active = false;
+  const received = f.received.map((t, n) =>
+    n < 2 ? { ...t, status: "receiving" } : t,
+  );
+  await f.write(f.target, received);
+  await f.api.purgePharmaHistory(50);
+  assert.equal(f.rows("source").length, 52);
+  assert.equal(f.rows("target").length, 52);
+  assert.equal(f.rows("source").filter((t) => t.settled).length, 50);
+  assert.equal(f.game.messages.length, 104);
+});
+
+test("failed pharma chat deletion retains receipts and cleanup can retry", async () => {
+  const f = await cleanupFixture();
+  const message = f.game.messages[1];
+  const remove = message.delete;
+  message.delete = async () => {
+    throw Error("Deletion failed");
+  };
+  await assert.rejects(f.api.purgePharmaHistory(50), /Deletion failed/);
+  assert.equal(f.rows("source").length, 52);
+  assert.equal(f.rows("target").length, 52);
+  message.delete = remove;
+  await f.api.purgePharmaHistory(50);
+  assert.equal(f.rows("source").length, 50);
+  assert.equal(f.rows("target").length, 50);
+  assert.equal(f.game.messages.length, 100);
+});
+
+test("pharma cleanup retries partial Journal pruning without needing the removed counterpart", async () => {
+  const f = await cleanupFixture();
+  const page = f
+    .load("journal-records")
+    .recordPage(
+      f.load("journal-records").actorPayoutJournal("target"),
+      "pharmaTransfers",
+    );
+  const update = page.update;
+  page.update = async (changes) => {
+    if (changes["flags.pneuma-crewtools.data"]?.length === 50)
+      throw Error("Prune failed");
+    return update.call(page, changes);
+  };
+  await assert.rejects(f.api.purgePharmaHistory(50), /Prune failed/);
+  assert.equal(f.rows("source").length, 50);
+  assert.equal(f.rows("target").length, 52);
+  page.update = update;
+  await f.api.purgePharmaHistory(50);
+  assert.equal(f.rows("target").length, 50);
+});
+
+test("a user connecting during pharma maintenance stops pruning", async () => {
+  const f = await cleanupFixture();
+  const message = f.game.messages[0];
+  const remove = message.delete;
+  message.delete = async function () {
+    await remove.call(this);
+    f.recipient.active = true;
+  };
+  await assert.rejects(f.api.purgePharmaHistory(50), /another user connected/);
+  assert.equal(f.rows("source").length, 52);
+  assert.equal(f.rows("target").length, 52);
+});
+
+test("connection hooks never purge pharma history", async () => {
+  const f = await cleanupFixture();
+  f.api.registerPharmaTransfers();
+  f.recipient.active = true;
+  f.emit("userConnected");
+  await f.load("action-coordinator").queueAction(async () => {});
+  assert.equal(f.rows("source").length, 52);
+  f.recipient.active = false;
+  f.emit("userConnected");
+  await f.load("action-coordinator").queueAction(async () => {});
+  assert.equal(f.rows("source").length, 52);
+  assert.equal(f.rows("target").length, 52);
+  await f.api.purgePharmaHistory(10);
+  assert.equal(f.rows("source").length, 10);
+  assert.equal(f.rows("target").length, 10);
+});
+
+test("manual pharma retention applies only to the selected character, including keep zero", async () => {
+  const f = await cleanupFixture();
+  await f.api.purgePharmaHistory(50, "source");
+  assert.equal(f.rows("source").length, 50);
+  assert.equal(f.rows("target").length, 52);
+  await f.api.purgePharmaHistory(0, "target");
+  assert.equal(f.rows("source").length, 50);
+  assert.equal(f.rows("target").length, 0);
+  assert.equal(f.game.messages.length, 0);
+  await f.api.purgePharmaHistory(0, "source");
+  assert.equal(f.rows("source").length, 0);
+});
+
+test("Medtech panel refreshes reuse chat responses and invalidate on response changes", async () => {
+  const f = fixture();
+  await f.setup();
+  f.api.registerPharmaTransfers();
+  let reads = 0;
+  f.game.messages = Array.from({ length: 1000 }, () => ({
+    getFlag() {
+      reads++;
+    },
+  }));
+  const panel = new f.api.PharmaTransferPanel();
+  for (let i = 0; i < 100; i++) panel.getData("source");
+  assert.equal(reads, 1000);
+  f.emit("updateChatMessage", f.game.messages[0]);
+  panel.getData("source");
+  assert.equal(reads, 2000);
+});
+
+test("recipient lists build exclusions a fixed number of times as the roster grows", async () => {
+  const f = fixture();
+  await f.setup();
+  let reads = 0,
+    excluded = [];
+  f.game.settings.get = (_ns, key) => {
+    if (key === "excludedActorIds") {
+      reads++;
+      return excluded;
+    }
+    return [];
+  };
+  const panel = new f.api.PharmaTransferPanel();
+  panel.getData("source");
+  const baseline = reads;
+  for (let i = 0; i < 100; i++)
+    f.game.actors.push({
+      id: "extra" + i,
+      name: "Extra" + i,
+      type: "character",
+      testUserPermission: (u) => u.id === f.recipient.id,
+    });
+  f.game.actors.push({
+    id: "gmOnly",
+    name: "GM",
+    type: "character",
+    testUserPermission: (u) => u.isGM,
+  });
+  reads = 0;
+  excluded = ["target"];
+  const data = panel.getData("source");
+  assert.equal(reads, baseline);
+  assert.equal(reads, 2);
+  assert.equal(
+    data.recipients.some((a) => ["source", "target", "gmOnly"].includes(a.id)),
+    false,
+  );
+  assert.equal(
+    data.recipients.filter((a) => a.id.startsWith("extra")).length,
+    100,
+  );
+});
+
+test("chat rendering reads fresh transfer status without copying Item payloads", async () => {
+  const f = fixture();
+  await f.setup();
+  f.api.registerPharmaTransfers();
+  f.game.user = f.recipient;
+  const store = f.load("journal-records"),
+    journal = store.actorPayoutJournal("target");
+  await store.writeRecord(journal, "pharmaTransfers", "Transfers", [], "");
+  const page = store.recordPage(journal, "pharmaTransfers");
+  let payloadReads = 0;
+  const rows = Array.from({ length: 1000 }, (_, i) => ({
+    id: "old" + i,
+    status: "consumed",
+    get item() {
+      payloadReads++;
+      return { large: "payload" };
+    },
+  }));
+  const receipt = {
+    id: "offer",
+    status: "receiving",
+    get item() {
+      payloadReads++;
+      return { large: "payload" };
+    },
+  };
+  rows.push(receipt);
+  page.flags["pneuma-crewtools"].data = rows;
+  f.game.user = f.recipient;
+  for (let i = 0; i < 100; i++) assert.equal(renderOffer(f), true);
+  assert.equal(payloadReads, 0);
+  page.flags["pneuma-crewtools"].data = [];
+  assert.equal(renderOffer(f), false);
 });

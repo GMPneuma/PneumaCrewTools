@@ -262,3 +262,141 @@ test("GameTime defaults populate primary and nonparticipant downtime independent
   api.populateTimeDowntime(root);
   assert.equal(fields.groupDowntime.value, "0");
 });
+
+test("independent absent award survives planning and execution with one-day time advance and zero primary downtime", async () => {
+  for (const failure of [false, true]) {
+    const f = fixture(failure);
+    f.plan.actors[0].participant.userId = "present";
+    f.plan.actors[0].entries = [
+      { reward: "downtime", amount: 0, scope: "group", description: "Days" },
+    ];
+    const away = { id: "away", name: "Away", type: "character" };
+    const { buildPayoutPlan } = load("payout-plan", {});
+    const plan = buildPayoutPlan(
+      {
+        ...f.plan,
+        advanceDays: 1,
+        absentDowntime: [
+          { actor: away, participant: { userId: "absent" }, days: 1 },
+        ],
+      },
+      { attendance: [], factionReputations: [] },
+    );
+    assert.equal(plan.absentDowntime.length, 1);
+    assert.equal(plan.changes.find((c) => c.targetId === "away").amount, 1);
+    if (failure) {
+      await assert.rejects(f.api.executePayoutPlan(plan), /ledger failure/);
+      assert.ok(f.events.includes("undo downtime"));
+      assert.equal(f.game.time.worldTime, 1234);
+    } else {
+      await f.api.executePayoutPlan(plan);
+      assert.ok(f.events.includes("downtime"));
+      assert.ok(f.events.includes("ledger"));
+      assert.equal(f.game.time.worldTime, 1234 + 86400);
+    }
+    assert.equal(f.actor.system.wealth.value, 100);
+  }
+});
+
+test("independent absent awards still reject invalid amounts and duplicate or ineligible recipients before writing", async () => {
+  const f = fixture();
+  f.plan.actors[0].participant.userId = "present";
+  const award = {
+    actor: { id: "away", name: "Away", type: "character" },
+    participant: { userId: "absent" },
+    days: 1,
+  };
+  for (const days of [0, -1, 1.5, NaN]) {
+    f.plan.absentDowntime = [{ ...award, days }];
+    await assert.rejects(
+      f.api.executePayoutPlan(f.plan),
+      /positive whole number/,
+    );
+  }
+  for (const awards of [
+    [award, award],
+    [{ ...award, actor: { ...award.actor, id: f.actor.id } }],
+    [{ ...award, participant: { userId: "present" } }],
+    [{ ...award, actor: { ...award.actor, type: "container" } }],
+  ]) {
+    f.plan.absentDowntime = awards;
+    await assert.rejects(
+      f.api.executePayoutPlan(f.plan),
+      /Invalid or duplicate/,
+    );
+  }
+  f.game.settings.get = () => ["away"];
+  f.plan.absentDowntime = [award];
+  await assert.rejects(f.api.executePayoutPlan(f.plan), /Invalid or duplicate/);
+  assert.deepEqual(f.events, []);
+});
+
+test("stale IP and Humanity previews reject before writes and a fresh preview succeeds", async () => {
+  for (const reward of ["ip", "humanityGain"]) {
+    const f = fixture();
+    f.plan.actors[0].entries = [
+      { reward, amount: 5, scope: "individual", description: "Reward" },
+    ];
+    f.plan.changes = f.api.planActorChanges(f.plan.actors[0]);
+    const resource =
+      reward === "ip"
+        ? f.actor.system.improvementPoints
+        : f.actor.system.derivedStats.humanity;
+    resource.value = reward === "ip" ? 20 : 40;
+    await assert.rejects(
+      f.api.executePayoutPlan(f.plan),
+      /resources changed.*Preview/,
+    );
+    assert.deepEqual(f.events, []);
+    f.plan.changes = f.api.planActorChanges(f.plan.actors[0]);
+    await f.api.executePayoutPlan(f.plan);
+    assert.equal(resource.value, reward === "ip" ? 25 : 45);
+  }
+});
+
+test("partial payout delivery removes created Items and restores money before retry", async () => {
+  const f = fixture();
+  const inventory = new Map();
+  let partial = true;
+  f.actor.createEmbeddedDocuments = async (_type, rows) => {
+    const created = (partial ? rows.slice(0, 1) : rows).map((row, i) => ({
+      ...row,
+      id: "item" + i,
+    }));
+    created.forEach((item) => inventory.set(item.id, item));
+    return created;
+  };
+  f.actor.deleteEmbeddedDocuments = async (_type, ids) =>
+    ids.forEach((id) => inventory.delete(id));
+  f.plan.actors[0].items = [
+    { quantity: 2, source: { name: "Weapon", system: {} } },
+  ];
+  await assert.rejects(
+    f.api.executePayoutPlan(f.plan),
+    /delivery was incomplete/,
+  );
+  assert.equal(inventory.size, 0);
+  assert.equal(f.actor.system.wealth.value, 100);
+  assert.equal(f.events.includes("ledger"), false);
+  partial = false;
+  await f.api.executePayoutPlan(f.plan);
+  assert.equal(inventory.size, 2);
+  assert.equal(f.actor.system.wealth.value, 125);
+});
+
+test("partial delivery cleanup failure identifies remaining Items", async () => {
+  const adapter = load("actor-resources", {});
+  await assert.rejects(
+    adapter.deliverItems(
+      {
+        name: "Character",
+        createEmbeddedDocuments: async () => [{ id: "leftover" }],
+        deleteEmbeddedDocuments: async () => {
+          throw Error("denied");
+        },
+      },
+      [{}, {}],
+    ),
+    /cleanup failed.*leftover/,
+  );
+});

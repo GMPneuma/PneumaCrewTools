@@ -1,3 +1,4 @@
+import { cyberpsychosisState } from "./hub-cyberpsychosis";
 import { headquartersIp } from "./headquarters";
 import { actorPayoutRecords } from "./journal-records";
 import type { FactionReputationRecord } from "./payout-journal";
@@ -34,11 +35,12 @@ export function getHubStatus(selectedActorId?: string) {
       daysToHustle = Math.max(0, 7 - storedHustleDays(account.actorId));
       downtimeReady = true;
       downtime = String(storedDowntimeBalance(account.actorId));
-    } else downtimeNote = "Downtime is awaiting GM setup.";
+    }
   } catch {
     downtimeNote = "Downtime records need GM attention.";
   }
   return {
+    cyberpsychosis: cyberpsychosisState(actor),
     actorId: actor?.id ?? "",
     actorName: actor?.name ?? "No eligible characters",
     hasActor: Boolean(actor),

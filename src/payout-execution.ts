@@ -7,6 +7,7 @@ import {
   valueAt,
   type ActorSnapshot,
 } from "./payout-system";
+import { planActorChanges } from "./payout-plan";
 export { planActorChanges } from "./payout-plan";
 import { deliverItems } from "./actor-resources";
 import { isActorExcluded } from "./actor-policy";
@@ -116,17 +117,9 @@ async function executeLockedPayout(plan: PayoutPlan): Promise<void> {
     actorIds.add(actor.id);
   }
   for (const award of plan.absentDowntime ?? []) {
-    if (
-      !Number.isSafeInteger(award.days) ||
-      award.days < 1 ||
-      !plan.actors.some((a) =>
-        a.entries.some(
-          (e) => e.reward === "downtime" && e.scope === "group" && e.amount > 0,
-        ),
-      )
-    )
+    if (!Number.isSafeInteger(award.days) || award.days < 1)
       throw new Error(
-        "Absent-character downtime requires a positive primary downtime award.",
+        "Absent-character downtime must be a positive whole number.",
       );
     if (
       isActorExcluded(award.actor.id) ||
@@ -139,6 +132,35 @@ async function executeLockedPayout(plan: PayoutPlan): Promise<void> {
   }
   if (plan.payoutContainer && isActorExcluded(plan.payoutContainer.actor.id))
     throw new Error("The payout container is excluded from Crew Tools.");
+  // Reject changed previews before any resource or Journal write.
+  for (const input of plan.actors) {
+    const current = planActorChanges(input);
+    const preview = plan.changes.filter(
+      (change) =>
+        change.targetId === input.actor.id &&
+        [
+          "money",
+          "ip",
+          "humanityGain",
+          "humanityLoss",
+          "reputation",
+          "downtime",
+        ].includes(change.reward) &&
+        change.details?.scope !== "absent",
+    );
+    const values = (changes: PayoutChange[]) =>
+      changes.map(({ reward, amount, previousValue, newValue }) => ({
+        reward,
+        amount,
+        previousValue,
+        newValue,
+      }));
+    if (JSON.stringify(values(current)) !== JSON.stringify(values(preview)))
+      throw new Error(
+        input.actor.name +
+          "'s resources changed. Preview the payout again before applying it.",
+      );
+  }
   const record = createPayoutRecord({
     createdByUserId: game.user.id,
     createdByUserName: game.user.name,

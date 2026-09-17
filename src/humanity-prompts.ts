@@ -1,8 +1,13 @@
+import { queueAction } from "./action-coordinator";
 import { activityRollRecipients } from "./roll-visibility";
 import { recordEscape as escapeHtml } from "./journal-format";
 import { humanityUpdate } from "./actor-resources";
-import { actorPayoutRecords, saveActorPayoutRecords } from "./journal-records";
-import { isActorExcluded } from "./actor-policy";
+import {
+  actorPayoutRecords,
+  saveActorPayoutRecords,
+  allActorRecords,
+} from "./journal-records";
+import { isActorExcluded, excludedActorIds } from "./actor-policy";
 import { MODULE_ID } from "./constants";
 import { createUniqueId } from "./id";
 
@@ -20,6 +25,11 @@ export interface PendingHumanityRoll extends HumanityPrompt {
   payoutRecordId: string;
   createdAt: string;
   resolvedAt?: string;
+  attempt?: {
+    rollTotal: number;
+    previousHumanity: number;
+    newHumanity: number;
+  };
   rollTotal?: number;
   previousHumanity?: number;
   newHumanity?: number;
@@ -47,6 +57,20 @@ export function getPendingHumanityRolls(
         .filter((entry) => !entry.resolvedAt)
         .map((entry) => structuredClone(entry))
     : [];
+}
+
+// Display queries traverse character Journals once and copy only pending rolls.
+export function getAllPendingHumanityRolls(): PendingHumanityRoll[] {
+  const excluded = excludedActorIds();
+  return allActorRecords("humanity")
+    .filter(isPromptFlags)
+    .filter(
+      (entry) =>
+        !entry.resolvedAt &&
+        !excluded.has(entry.actorId) &&
+        (game.user?.isGM || game.user?.id === entry.userId),
+    )
+    .map((entry) => structuredClone(entry));
 }
 
 export async function clearAllPendingHumanityRolls(): Promise<number> {
@@ -164,6 +188,13 @@ export async function resolvePendingHumanityRoll(
   actorId: string,
   rollId: string,
 ): Promise<HumanityRollResult> {
+  return queueAction(() => resolveHumanityLocked(actorId, rollId));
+}
+
+async function resolveHumanityLocked(
+  actorId: string,
+  rollId: string,
+): Promise<HumanityRollResult> {
   const actor = game.actors.get(actorId);
   if (!actor) throw new Error("The payout Actor no longer exists.");
   const pendingRolls = getPendingHumanityRolls(actor);
@@ -171,27 +202,74 @@ export async function resolvePendingHumanityRoll(
   if (!prompt) throw new Error("This Humanity roll has already been resolved.");
   if (!game.user?.isGM && game.user?.id !== prompt.userId)
     throw new Error("This Humanity roll belongs to another player.");
-  const roll = await new Roll(prompt.formula).evaluate();
+  if (prompt.attempt)
+    throw new Error(
+      "This Humanity roll was interrupted. Ask the GM to inspect the character's Humanity and Humanity Rolls Journal before retrying.",
+    );
+  const roll =
+    prompt.rollTotal === undefined
+      ? await new Roll(prompt.formula).evaluate()
+      : { total: prompt.rollTotal };
   const humanity = readHumanity(actor);
   const signed = prompt.reward === "humanityGain" ? roll.total : -roll.total;
   const newValue = Math.min(humanity.max, humanity.value + signed);
-  await actor.update(humanityUpdate(newValue));
+  const attempt = {
+    rollTotal: roll.total,
+    previousHumanity: humanity.value,
+    newHumanity: newValue,
+  };
+  const replace = (value: PendingHumanityRoll) =>
+    actorPayoutRecords<PendingHumanityRoll>(actor.id, "humanity").map(
+      (entry) => (entry.id === rollId ? value : entry),
+    );
   await saveActorPayoutRecords(
     actor,
     "humanity",
-    actorPayoutRecords<PendingHumanityRoll>(actor.id, "humanity").map(
-      (entry) =>
-        entry.id === rollId
-          ? {
-              ...entry,
-              resolvedAt: new Date().toISOString(),
-              rollTotal: roll.total,
-              previousHumanity: humanity.value,
-              newHumanity: newValue,
-            }
-          : entry,
-    ),
+    replace({ ...prompt, rollTotal: roll.total, attempt }),
   );
+  const previousEmpathy = (actor.system as any).stats.emp.value;
+  let applied = false;
+  try {
+    await actor.update(humanityUpdate(newValue));
+    applied = true;
+    await saveActorPayoutRecords(
+      actor,
+      "humanity",
+      actorPayoutRecords<PendingHumanityRoll>(actor.id, "humanity").map(
+        (entry) =>
+          entry.id === rollId
+            ? {
+                ...prompt,
+                resolvedAt: new Date().toISOString(),
+                rollTotal: roll.total,
+                previousHumanity: humanity.value,
+                newHumanity: newValue,
+              }
+            : entry,
+      ),
+    );
+  } catch (error) {
+    if (applied) {
+      try {
+        await actor.update({
+          ...humanityUpdate(humanity.value),
+          "system.stats.emp.value": previousEmpathy,
+        });
+        await saveActorPayoutRecords(
+          actor,
+          "humanity",
+          replace({ ...prompt, rollTotal: roll.total }),
+        );
+      } catch (rollback) {
+        throw new Error(
+          "Humanity rollback incomplete. Inspect the character and Humanity Rolls Journal before retrying.",
+          { cause: rollback },
+        );
+      }
+    }
+    // An uncertain Actor write retains the durable attempt and blocks replay.
+    throw error;
+  }
   return {
     prompt,
     rollTotal: roll.total,

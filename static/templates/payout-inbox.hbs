@@ -136,6 +136,15 @@
           View HQ</button>
         <button type="button" data-hub-reputation><i class="fas fa-flag"></i>
           Faction Reputation</button>
+        {{#if rent.homeless}}<button type="button" data-hub-endurance><i
+              class="fas fa-dice-d10"
+            ></i>
+            Endurance</button>{{/if}}
+        {{#if status.cyberpsychosis}}<button
+            type="button"
+            data-hub-cyberpsychosis
+            title="Current EMP and roleplaying guidance"
+          >{{status.cyberpsychosis.label}}</button>{{/if}}
 
       </div>
       {{#if rent.housingReminder}}<p class="hub-housing-reminder"><i
@@ -447,6 +456,7 @@
               type="button"
               data-player-inbox-action
               data-ack-id="{{acknowledgmentId}}"
+              data-actor-id="{{actorId}}"
               data-user-id="{{userId}}"
             >
               <i class="fas fa-check"></i>

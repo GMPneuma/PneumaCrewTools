@@ -239,8 +239,8 @@ try {
           dv: 21,
         },
       },
-      { slot: 1, number: 2, enabled: false },
-      { slot: 2, number: 3, enabled: false },
+      { slot: 1, number: 2, enabled: false, requiredWorkshop: "Workshop I" },
+      { slot: 2, number: 3, enabled: false, requiredWorkshop: "Workshop II" },
     ],
     projects: [
       {
@@ -364,11 +364,16 @@ try {
       actorId: "a1",
       balance: 7,
       canCraft: false,
+      hasRoleAreas: true,
       hustleDays: 2,
       hustleProgress: 200 / 7,
     }),
   );
-  assert.equal(await page.locator(".downtime-tech").count(), 0);
+  assert.equal(
+    await page.locator('[data-downtime-section="tech"] > summary').innerText(),
+    "Repair Gear",
+  );
+  assert.equal(await page.locator("[data-tech-mode]").count(), 0);
 
   assert.equal(
     await page.locator('[data-medical-action="patientStart"]').count(),
@@ -476,6 +481,9 @@ try {
     .evaluate((el) => (el.style.height = "640px"));
 
   assert.equal(await page.locator('[name="surgeryItem"] option').count(), 2);
+  await page
+    .locator(".downtime-roles details")
+    .evaluateAll((nodes) => nodes.forEach((node) => (node.open = true)));
   const setup = await page.locator(".medical-workday-setup").boundingBox();
   const actions = await page.locator(".medical-workday-actions").boundingBox();
   assert.ok(actions.x >= setup.x + setup.width);
@@ -508,7 +516,11 @@ try {
       .count(),
     1,
   );
-  assert.equal(await page.locator(".downtime-tech").count(), 0);
+  assert.equal(
+    await page.locator('[data-downtime-section="tech"] > summary').innerText(),
+    "Repair Gear",
+  );
+  assert.equal(await page.locator("[data-tech-mode]").count(), 0);
   assert.equal(
     await page
       .locator(".payout-inbox-form")
@@ -606,7 +618,7 @@ try {
     }),
   );
   assert.equal(await page.locator("[data-select-hq] option").count(), 2);
-  assert.equal(await page.locator(".hq-improvements li").count(), 2);
+  assert.equal(await page.locator(".hq-installed tbody tr").count(), 2);
   assert.equal(await page.locator("[data-open-container]").isEnabled(), true);
   assert.equal(await page.locator("[data-buy-improvement]").count(), 0);
   assert.equal(
@@ -637,15 +649,34 @@ try {
       (el, html) => (el.innerHTML = html),
       template({ ...data, isGM: true, gmDashboard: true }),
     );
-  assert.equal(await page.locator("[data-gm-dashboard-action]").count(), 6);
+  assert.deepEqual(
+    await page
+      .locator("[data-gm-dashboard-action]")
+      .evaluateAll((nodes) => nodes.map((n) => n.dataset.gmDashboardAction)),
+    [
+      "payout",
+      "exportPayout",
+      "calendar",
+      "rent",
+      "playerHub",
+      "expire",
+      "downtime",
+      "adjustDowntime",
+      "hqIp",
+      "headquarters",
+    ],
+  );
   assert.equal(
     await page
-      .getByRole("button", { name: "Rent Is Due", exact: true })
+      .getByRole("button", { name: "Mark Rent Due", exact: true })
       .isDisabled(),
     false,
   );
   assert.equal(await page.locator(".hub-metrics").count(), 0);
-  const actionsTop = await page.locator(".gm-dashboard-panel").boundingBox();
+  const actionsTop = await page
+    .locator(".gm-dashboard-panel")
+    .last()
+    .boundingBox();
   const outstanding = await page.locator(".hub-payout-heading").boundingBox();
   assert.ok(outstanding.y >= actionsTop.y + actionsTop.height);
   assert.equal(await page.locator("[data-enable-gm-actions]").count(), 1);

@@ -105,9 +105,9 @@ The Solo icon uses [Dog Tag from SVG Repo](https://www.svgrepo.com/svg/183279/do
 
 These icons have been modified in color, styling, and/or geometry from their original versions.
 
-## Manage Module Data
+## Data & Cleanup
 
-GMs can inspect records, clear selected payout records, and download CrewTools bookkeeping exports from **Module Settings → Module → View or Manage Module Data**. See [export scope and cleanup instructions](docs/module-data.md). Native character resources require a Foundry world backup.
+GMs can inspect record sizes and diagnostics, open Journals, export reference copies, and purge completed history with adjustable retention from **Module Settings → Advanced → Manage Data & Cleanup**. Cancellation and reset actions are in a separate advanced section. See [export scope and cleanup instructions](docs/module-data.md). Native character resources require a Foundry world backup.
 
 ### Custom downtime activities
 

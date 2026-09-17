@@ -94,10 +94,15 @@ try {
     0,
   );
   assert.equal(await page.locator('[name="image"], .file-picker').count(), 0);
-  assert.equal(await page.locator(".hq-picture .hq-save-properties").count(), 1);
+  assert.equal(
+    await page.locator(".hq-property-actions .hq-save-properties").count(),
+    1,
+  );
   for (const width of [620, 480]) {
     const rentBounds = await page.locator('[name="rentType"]').boundingBox();
-    const modifierBounds = await page.locator('[name="rentModifier"]').boundingBox();
+    const modifierBounds = await page
+      .locator('[name="rentModifier"]')
+      .boundingBox();
     assert.ok(Math.abs(rentBounds.y - modifierBounds.y) < 2);
     await page
       .locator(".app")

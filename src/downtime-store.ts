@@ -167,17 +167,22 @@ export async function save(state: DowntimeState): Promise<void> {
 // Shared lookup data is refreshed without rewriting any character activity pages.
 async function saveDirectory(state: DowntimeState): Promise<void> {
   if (game.user?.isGM) {
+    // Character actions can supply a filtered state; retain all other bindings.
+    const accounts = new Map(getIndex().accounts.map((a) => [a.actorId, a]));
+    for (const account of state.accounts)
+      accounts.set(account.actorId, account);
+    const directoryAccounts = Array.from(accounts.values());
     const index = {
       version: state.version,
       period: state.period,
-      accounts: state.accounts,
+      accounts: directoryAccounts,
       events: [],
     };
     const directoryUpdate = {
       [`flags.${MODULE_ID}.${FLAG}`]: index,
       "text.content":
         "<details><summary>About this page</summary><p>Character Journal links and session period for Crew Tools. Each character’s records are stored in their linked Journal.</p></details>" +
-        state.accounts
+        directoryAccounts
           .map(
             (a) =>
               "<p>" +

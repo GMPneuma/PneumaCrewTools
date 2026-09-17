@@ -38,13 +38,8 @@ export function buildPayoutPlan(
   const communalMoneyDescription = payoutContainer?.moneyDescription ?? "";
   const humanityPrompts: PayoutPlan["humanityPrompts"] = [];
   const factionReputations: PayoutPlan["factionReputations"] = [];
-  const absentDowntime = actors.some((a) =>
-    a.entries.some(
-      (e) => e.reward === "downtime" && e.scope === "group" && e.amount > 0,
-    ),
-  )
-    ? (draft.absentDowntime ?? [])
-    : [];
+  // The form explicitly opts in to nonparticipant awards independently of primary rewards.
+  const absentDowntime = draft.absentDowntime ?? [];
   const journalChanges: PayoutChange[] = absentDowntime.map(
     ({ actor, days }) => ({
       reward: "downtime",

@@ -155,14 +155,22 @@ test("absent downtime is separate from attendance and all other rewards", () => 
   assert.equal(changes[0].details.scope, "absent");
   assert.equal(p.actors.length, 1);
   d.actors[0].entries = [];
-  const disabled = buildPayoutPlan(d, {
+  const independent = buildPayoutPlan(d, {
     attendance: [],
     factionReputations: [],
   });
-  assert.equal(disabled.absentDowntime.length, 0);
+  assert.equal(independent.absentDowntime.length, 1);
+  const optOut = buildPayoutPlan(
+    { ...d, absentDowntime: [] },
+    { attendance: [], factionReputations: [] },
+  );
   assert.equal(
-    disabled.changes.some((c) => c.targetId === "absent"),
+    optOut.changes.some((c) => c.targetId === "absent"),
     false,
+  );
+  assert.equal(
+    independent.changes.some((c) => c.targetId === "absent" && c.amount === 5),
+    true,
   );
 });
 test("absent recipient selection uses one character per missing player, deduplicates shared Actors and honors choices", () => {
