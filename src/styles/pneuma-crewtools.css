@@ -4242,3 +4242,11 @@ html[data-cpr-theme="darkmode"] .pneuma-crewtools .netrunner-role {
   background: #350c12;
   outline: 2px solid #ff6666;
 }
+
+#client-settings .pneuma-homebrew-disclaimer {
+  margin: 12px 0 4px;
+  padding-top: 10px;
+  border-top: 1px solid var(--color-border-light-primary, #888);
+  font-size: 0.85em;
+  line-height: 1.4;
+}

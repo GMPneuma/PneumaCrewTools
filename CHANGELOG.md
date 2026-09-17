@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.8.6 - 2026-09-17
+
+- Added the RTG Homebrew Content Policy disclaimer at the bottom of module settings.
+- Shortened all Hustle activity descriptions while preserving themes, rolls and payouts. Existing untouched defaults receive the summaries; GM edits remain intact. Hustles remain world RollTables.
+
 ## 0.8.5 - 2026-09-17
 
 - Added a red low-EMP Player Hub status button with current EMP, summarized Cyberpsychosis roleplaying guidance, and the nine Hare traits.

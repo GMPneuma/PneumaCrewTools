@@ -4,7 +4,7 @@ Updated: September 17, 2026
 
 Player and crew bookkeeping for Cyberpunk RED on Foundry VTT v12. Foundry v13/v14 support remains pending compatible Cyberpunk RED releases and live verification.
 
-**Status:** Package and manifest version **0.8.5**. Implemented features and automated checks are listed below; live-world verification remains pending where noted.
+**Status:** Package and manifest version **0.8.6**. Implemented features and automated checks are listed below; live-world verification remains pending where noted.
 
 ## Project rules
 
@@ -50,6 +50,10 @@ See [Journal specifications](journals.md), [Data model](data-model.md), [Downtim
 - Nomad vehicles on the Player Hub; shared seven-day respec task gated by an HQ Garage.
 - Personal HUD/Token Controls preference, improved forms, and Mark Rent Due confirmation.
 - Explicit TECH item skills and corrected Expertise modifiers.
+
+## Included in 0.8.6
+
+- [x] RTG disclaimer below module settings; summarized Hustle descriptions with preserved payouts and GM edits. Tables remain native world RollTables.
 
 ## Included in 0.8.5
 
@@ -163,7 +167,7 @@ Characters Living on The Street have an Endurance shortcut below Rent & Lifestyl
 
 ## Verification and release
 
-Version 0.8.5 validation: all 351 unit tests passed. Both Data & Cleanup browser fixtures have passed. The Player Hub, Headquarters, rent and nonparticipant downtime fixtures also passed after the absent-player fix. TypeScript checking passed. Browser fixtures mock Foundry services; they do not replace a live multi-user world pass.
+Version 0.8.6 validation: all 353 unit tests passed; settings browser checks passed. Both Data & Cleanup browser fixtures have passed. The Player Hub, Headquarters, rent and nonparticipant downtime fixtures also passed after the absent-player fix. TypeScript checking passed. Browser fixtures mock Foundry services; they do not replace a live multi-user world pass.
 
 - [x] Updated and passed all four browser fixtures previously flagged in the project review. The nonparticipant test now covers independent opt-in and one-day advancement defaults.
 
@@ -175,7 +179,7 @@ Version 0.8.5 validation: all 351 unit tests passed. Both Data & Cleanup browser
 - [ ] Check cross-document inventory/resource operations for interruption and repeated-action behavior.
 - [ ] Confirm Journals remain understandable with the module disabled, and routine use does not produce unnecessary records or background work.
 - [x] Update the 0.8.5 changelog and package documentation.
-- Release target: 0.8.5, with matching package/manifest versions and runtime assets.
+- Release target: 0.8.6, with matching package/manifest versions and runtime assets.
 
 Live verification is a separate gate from implemented features. Deferred mechanics are not required to complete the currently agreed Pharma scope.
 

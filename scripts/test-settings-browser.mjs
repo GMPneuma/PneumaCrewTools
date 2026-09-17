@@ -85,8 +85,14 @@ try {
       simpleCalendarGroup: document
         .querySelector('[name="pneuma-crewtools.useSimpleCalendar"]')
         .closest("fieldset").dataset.crewSettingsGroup,
-      lastGroup: document.querySelector(".pneuma-settings-groups")
-        .lastElementChild.dataset.crewSettingsGroup,
+      lastGroup: document.querySelector(
+        ".pneuma-settings-groups > fieldset:last-of-type",
+      ).dataset.crewSettingsGroup,
+      disclaimerCount: document.querySelectorAll(".pneuma-homebrew-disclaimer")
+        .length,
+      disclaimer: document.querySelector(".pneuma-settings-groups")
+        .lastElementChild.textContent,
+      policy: document.querySelector(".pneuma-homebrew-disclaimer a").href,
       firstSetting: document.querySelector(
         ".pneuma-settings-groups > .form-group input",
       )?.name,
@@ -120,6 +126,13 @@ try {
   assert.deepEqual(result.lifestyleOrder, ["rentSettings", "hqImprovements"]);
   assert.equal(result.simpleCalendarGroup, "advanced");
   assert.equal(result.lastGroup, "advanced");
+  assert.equal(result.disclaimerCount, 1);
+  assert.match(result.disclaimer, /Pneuma's Crew Tools is unofficial content/);
+  assert.match(result.disclaimer, /not approved or endorsed by RTG/);
+  assert.equal(
+    result.policy,
+    "https://rtalsoriangames.com/homebrew-content-policy/",
+  );
   assert.equal(result.rows, 18);
   assert.equal(result.firstSetting, "pneuma-crewtools.actorExclusions");
   assert.equal(result.discord, "Discord Features");

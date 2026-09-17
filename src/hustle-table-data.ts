@@ -1,37 +1,36 @@
-// Transcribed from the user-supplied tables; docs/hustle-tables-source.md retains the original.
+// Brief activity summaries for native, GM-editable world RollTables.
 export const HUSTLE_TABLES = [
   {
     role: "Rockerboy",
     rows: [
       {
         roll: 1,
-        activity: "Played a small local gig.",
+        activity: "Neighborhood performance.",
         earnings: [200, 300, 600],
       },
       {
         roll: 2,
-        activity: "No gigs or jobs to be had this week.",
+        activity: "Bookings dried up.",
         earnings: [0, 100, 300],
       },
       {
         roll: 3,
-        activity: "Played a big gig for a rich Corporate or Local Personality.",
+        activity: "Private show for a wealthy patron.",
         earnings: [300, 500, 800],
       },
       {
         roll: 4,
-        activity:
-          "Got some royalties in for your most recent Data Pool download.",
+        activity: "Music download royalties.",
         earnings: [300, 500, 800],
       },
       {
         roll: 5,
-        activity: "Opening act for a Big-Name group.",
+        activity: "Supported a headline band.",
         earnings: [300, 500, 800],
       },
       {
         roll: 6,
-        activity: "Personal appearance netted you a large fee.",
+        activity: "Paid celebrity appearance.",
         earnings: [200, 300, 600],
       },
     ],
@@ -41,32 +40,32 @@ export const HUSTLE_TABLES = [
     rows: [
       {
         roll: 1,
-        activity: "Bodyguard work, low-end client.",
+        activity: "Budget protection detail.",
         earnings: [100, 200, 500],
       },
       {
         roll: 2,
-        activity: "Bodyguard work, high-end client.",
+        activity: "VIP protection contract.",
         earnings: [200, 300, 600],
       },
       {
         roll: 3,
-        activity: "Difficult hit or extraction.",
+        activity: "High-risk elimination or rescue.",
         earnings: [200, 300, 600],
       },
       {
         roll: 4,
-        activity: "Hired out as muscle to a Fixer, Corp, or Gang.",
+        activity: "Hired intimidation work.",
         earnings: [100, 200, 500],
       },
       {
         roll: 5,
-        activity: "Attracted undue attention, had to lay low.",
+        activity: "Too much heat to work.",
         earnings: [0, 100, 300],
       },
       {
         roll: 6,
-        activity: "Basic enforcer or hitman work for a local Corp.",
+        activity: "Corporate enforcement contract.",
         earnings: [100, 200, 500],
       },
     ],
@@ -76,35 +75,32 @@ export const HUSTLE_TABLES = [
     rows: [
       {
         roll: 1,
-        activity: "Cracked a small system and sold the data.",
+        activity: "Sold data from a minor breach.",
         earnings: [100, 200, 500],
       },
       {
         roll: 2,
-        activity: "Cracked a major Corporate system and sold the data.",
+        activity: "Sold stolen corporate data.",
         earnings: [200, 300, 600],
       },
       {
         roll: 3,
-        activity: "You got sidetracked and didn’t hack anything this week.",
+        activity: "Other distractions stalled hacking.",
         earnings: [0, 100, 300],
       },
       {
         roll: 4,
-        activity:
-          "Found a valuable data cache in an abandoned system and sold it.",
+        activity: "Recovered abandoned network data.",
         earnings: [200, 300, 600],
       },
       {
         roll: 5,
-        activity:
-          "Brought down a major system with ransomware and got paid off to uninstall it.",
+        activity: "Collected a ransomware payoff.",
         earnings: [200, 300, 600],
       },
       {
         roll: 6,
-        activity:
-          "Sabotaged or otherwise disabled a major system for a faceless client.",
+        activity: "Anonymous network sabotage contract.",
         earnings: [200, 300, 600],
       },
     ],
@@ -114,33 +110,32 @@ export const HUSTLE_TABLES = [
     rows: [
       {
         roll: 1,
-        activity: "No jobs this week.",
+        activity: "Repair contracts dried up.",
         earnings: [0, 100, 300],
       },
       {
         roll: 2,
-        activity: "Rebuilt some tech you scavenged in the Combat Zone.",
+        activity: "Restored Combat Zone salvage.",
         earnings: [100, 200, 500],
       },
       {
         roll: 3,
-        activity:
-          "Helped a client break into some place or installed security systems for a client.",
+        activity: "Security installation or bypass job.",
         earnings: [200, 300, 600],
       },
       {
         roll: 4,
-        activity: "Did some modifications or repairs to some cybertech.",
+        activity: "Cyberware servicing.",
         earnings: [100, 200, 500],
       },
       {
         roll: 5,
-        activity: "Did some modifications or repairs to some weapons.",
+        activity: "Weapon servicing.",
         earnings: [100, 200, 500],
       },
       {
         roll: 6,
-        activity: "Sabotaged or otherwise disabled something for a client.",
+        activity: "Paid equipment sabotage.",
         earnings: [100, 200, 500],
       },
     ],
@@ -150,36 +145,32 @@ export const HUSTLE_TABLES = [
     rows: [
       {
         roll: 1,
-        activity: "Patched up someone after a firefight.",
+        activity: "Treated gunshot injuries.",
         earnings: [100, 200, 500],
       },
       {
         roll: 2,
-        activity: 'Sold cyberware from a "failed" medical case.',
+        activity: "Sold implants from a lost patient.",
         earnings: [200, 300, 600],
       },
       {
         roll: 3,
-        activity:
-          "Helped Trauma Team on some backup work when they were overloaded.",
+        activity: "Covered excess Trauma Team calls.",
         earnings: [100, 200, 500],
       },
       {
         roll: 4,
-        activity:
-          'Did some minor "free clinic" work for locals. You can’t eat goodwill though.',
+        activity: "Neighborhood charity care.",
         earnings: [0, 100, 300],
       },
       {
         roll: 5,
-        activity:
-          "Did a major medical procedure for a very well-heeled client.",
+        activity: "Major procedure for a wealthy patient.",
         earnings: [200, 300, 600],
       },
       {
         roll: 6,
-        activity:
-          "Designed and delivered medicines or street drugs to a client.",
+        activity: "Produced a client's drug order.",
         earnings: [100, 200, 500],
       },
     ],
@@ -189,35 +180,32 @@ export const HUSTLE_TABLES = [
     rows: [
       {
         roll: 1,
-        activity:
-          "Wrote an expose that covered a major topic, made a big sale.",
+        activity: "Sold a major investigation.",
         earnings: [300, 500, 800],
       },
       {
         roll: 2,
-        activity:
-          'Wrote a popular "puff piece" that got you some notice and some cash.',
+        activity: "Successful promotional article.",
         earnings: [200, 300, 600],
       },
       {
         roll: 3,
-        activity: "Did some boring ad writing to pay the bills.",
+        activity: "Routine advertising copy.",
         earnings: [200, 300, 600],
       },
       {
         roll: 4,
-        activity:
-          "Exposed a big story that got you a few enemies and some cash.",
+        activity: "Profitable reporting angered its subjects.",
         earnings: [200, 300, 600],
       },
       {
         roll: 5,
-        activity: "No good stories or leads this week.",
+        activity: "Reporting leads dried up.",
         earnings: [0, 100, 300],
       },
       {
         roll: 6,
-        activity: "Wrote an expose that blew the lid off a major topic.",
+        activity: "Published a major revelation.",
         earnings: [300, 500, 800],
       },
     ],
@@ -227,35 +215,32 @@ export const HUSTLE_TABLES = [
     rows: [
       {
         roll: 1,
-        activity: "Made a few minor busts, business as usual.",
+        activity: "Routine small-time arrests.",
         earnings: [100, 200, 500],
       },
       {
         roll: 2,
-        activity: "Got a reward from a grateful citizen. Or was it a bribe?",
+        activity: "Citizen gratuity of doubtful legality.",
         earnings: [200, 300, 600],
       },
       {
         roll: 3,
-        activity: "Bust went bad, and it came out of your salary.",
+        activity: "Botched arrest reduced pay.",
         earnings: [0, 100, 300],
       },
       {
         roll: 4,
-        activity:
-          "Nothing much happened this week. Collected a paycheck and that was it.",
+        activity: "Quiet patrol, regular wages.",
         earnings: [100, 200, 500],
       },
       {
         roll: 5,
-        activity:
-          "Pulled off a major drug or smuggling bust and gained a bonus from the boss.",
+        activity: "Bonus for a major contraband seizure.",
         earnings: [200, 300, 600],
       },
       {
         roll: 6,
-        activity:
-          'Took down a big gang and got some of a "civil seizure" bonus.',
+        activity: "Gang takedown with seizure proceeds.",
         earnings: [200, 300, 600],
       },
     ],
@@ -265,36 +250,32 @@ export const HUSTLE_TABLES = [
     rows: [
       {
         roll: 1,
-        activity:
-          "Landed a moderate success on a project, earned a reward bonus.",
+        activity: "Bonus for a modest project win.",
         earnings: [300, 500, 800],
       },
       {
         roll: 2,
-        activity:
-          "Nothing much happened, and Corporate was unimpressed. Lost a bonus.",
+        activity: "Poor results cost a bonus.",
         earnings: [0, 100, 300],
       },
       {
         roll: 3,
-        activity: "Collected a paycheck and that was it.",
+        activity: "Ordinary salary week.",
         earnings: [200, 300, 600],
       },
       {
         roll: 4,
-        activity: "Got some dirt on a rival and used it to score a bonus.",
+        activity: "Leveraged a rival's secrets.",
         earnings: [300, 500, 800],
       },
       {
         roll: 5,
-        activity:
-          "Pulled off a major project success and gained a bonus from the Head Office.",
+        activity: "Head office rewarded a major success.",
         earnings: [300, 500, 800],
       },
       {
         roll: 6,
-        activity:
-          "Took out a legitimate target that was threatening a job and took their funding.",
+        activity: "Removed a business threat and claimed its budget.",
         earnings: [200, 300, 600],
       },
     ],
@@ -304,36 +285,32 @@ export const HUSTLE_TABLES = [
     rows: [
       {
         roll: 1,
-        activity: "Got a Media some information for a good bribe.",
+        activity: "Sold a journalist inside information.",
         earnings: [200, 300, 600],
       },
       {
         roll: 2,
-        activity: "Got a Rocker a good Gig for your 12% fee.",
+        activity: "Booked a performer for a commission.",
         earnings: [200, 300, 600],
       },
       {
         roll: 3,
-        activity:
-          "Helped a client locate a desirable item they needed and got a cut.",
+        activity: "Earned a sourcing commission.",
         earnings: [200, 300, 600],
       },
       {
         roll: 4,
-        activity:
-          "Deal went south; you’re keeping your head down till it blows over.",
+        activity: "Failed deal forced a retreat.",
         earnings: [0, 100, 300],
       },
       {
         roll: 5,
-        activity:
-          'Got a Solo or Netrunner a profitable "job" and took your agency fee.',
+        activity: "Brokered a mercenary or hacking contract.",
         earnings: [200, 300, 600],
       },
       {
         roll: 6,
-        activity:
-          "Brought in a rare, illegal, or very hard to get item for a client.",
+        activity: "Sourced rare or illicit merchandise.",
         earnings: [300, 500, 800],
       },
     ],
@@ -343,32 +320,32 @@ export const HUSTLE_TABLES = [
     rows: [
       {
         roll: 1,
-        activity: "Made a legit shipment.",
+        activity: "Legal freight run.",
         earnings: [100, 200, 500],
       },
       {
         roll: 2,
-        activity: "Protected a shipment.",
+        activity: "Cargo escort duty.",
         earnings: [100, 200, 500],
       },
       {
         roll: 3,
-        activity: "Smuggled some small contraband.",
+        activity: "Small contraband run.",
         earnings: [100, 200, 500],
       },
       {
         roll: 4,
-        activity: "Smuggled a huge shipment.",
+        activity: "Major smuggling run.",
         earnings: [200, 300, 600],
       },
       {
         roll: 5,
-        activity: "Delivered a client safely to destination.",
+        activity: "Safe passenger transport.",
         earnings: [100, 200, 500],
       },
       {
         roll: 6,
-        activity: "Couldn’t find work this week, legit or otherwise.",
+        activity: "Transport contracts dried up.",
         earnings: [0, 100, 300],
       },
     ],

@@ -138,6 +138,21 @@ export function groupModuleSettings(root: HTMLElement): void {
     }
   }
   wrapper.append(standalone, grouped);
+  const disclaimer = document.createElement("p");
+  disclaimer.className = "pneuma-homebrew-disclaimer";
+  disclaimer.append(
+    "Pneuma's Crew Tools is unofficial content provided under the ",
+  );
+  const policy = document.createElement("a");
+  policy.href = "https://rtalsoriangames.com/homebrew-content-policy/";
+  policy.target = "_blank";
+  policy.rel = "noopener noreferrer";
+  policy.textContent = "Homebrew Content Policy of R. Talsorian Games";
+  disclaimer.append(
+    policy,
+    " and is not approved or endorsed by RTG. This content references materials that are the property of R. Talsorian Games and its licensees.",
+  );
+  wrapper.append(disclaimer);
 }
 
 export function registerSettingsLayout(): void {

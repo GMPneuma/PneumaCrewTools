@@ -1,3 +1,4 @@
+import { updateHustleSummaries } from "./hustle-summary-migration";
 import { isPrimaryGM as primaryGM } from "./action-coordinator";
 import { recordEscape as escape } from "./journal-format";
 import { MODULE_ID } from "./constants";
@@ -19,7 +20,7 @@ export function hustleTableData(
     replacement: true,
     displayRoll: true,
     ownership: { default: 2 },
-    flags: { [MODULE_ID]: { hustleRole: table.role } },
+    flags: { [MODULE_ID]: { hustleRole: table.role, hustleSummaryVersion: 1 } },
     description: `<p>${escape(table.role)} weekly hustle.</p>`,
     results: table.rows.map((row) => ({
       type: 0,
@@ -60,10 +61,11 @@ export function ensureHustleTables(): Promise<void> {
         (t) => t.getFlag(MODULE_ID, "hustleRole") === table.role,
       );
       if (existing) {
-        // Native draws include this description, so keep it to one short sentence.
-        const { description, img } = hustleTableData(table, folder.id);
-        if (existing.description !== description || existing.img !== img)
-          await existing.update({ description, img });
+        await updateHustleSummaries(
+          existing,
+          table.role,
+          hustleTableData(table, folder.id),
+        );
         continue;
       }
       await RollTable.create(hustleTableData(table, folder.id));

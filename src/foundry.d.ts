@@ -453,6 +453,10 @@ interface FoundryTableResult {
   getFlag(namespace: string, key: string): unknown;
 }
 interface FoundryRollTable {
+  updateEmbeddedDocuments(
+    type: "TableResult",
+    updates: Record<string, unknown>[],
+  ): Promise<unknown>;
   formula?: string;
   results?: Iterable<FoundryTableResult>;
   name: string;
