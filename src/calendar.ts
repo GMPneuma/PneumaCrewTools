@@ -339,7 +339,8 @@ function renderCalendar(): void {
       document.body.append(root);
     }
   }
-  let monthDay = "Calendar",
+  let weekday = "",
+    monthDay = "Calendar",
     year = "unavailable";
   try {
     const current = getCampaignDate();
@@ -350,6 +351,10 @@ function renderCalendar(): void {
       return;
     root.dataset.date = current;
     const date = parseDate(current);
+    weekday = date.toLocaleDateString("en-US", {
+      weekday: "long",
+      timeZone: "UTC",
+    });
     monthDay = date.toLocaleDateString("en-US", {
       month: "short",
       day: "numeric",
@@ -364,16 +369,26 @@ function renderCalendar(): void {
   if (!label) {
     label = document.createElement("span");
     label.className = "pneuma-calendar-date";
-    const dayLine = document.createElement("span"),
+    const weekdayLine = document.createElement("span"),
+      dayLine = document.createElement("span"),
       yearLine = document.createElement("span");
+    weekdayLine.className = "pneuma-calendar-weekday";
     dayLine.className = "pneuma-calendar-month-day";
     yearLine.className = "pneuma-calendar-year";
-    label.append(dayLine, yearLine);
+    label.append(weekdayLine, dayLine, yearLine);
     root.prepend(label);
   }
+  const weekdayLine = label.querySelector<HTMLSpanElement>(
+    ".pneuma-calendar-weekday",
+  )!;
+  weekdayLine.textContent = weekday;
+  weekdayLine.hidden = !weekday;
   label.querySelector(".pneuma-calendar-month-day")!.textContent = monthDay;
   label.querySelector(".pneuma-calendar-year")!.textContent = year;
-  label.setAttribute("aria-label", monthDay + ", " + year);
+  label.setAttribute(
+    "aria-label",
+    [weekday, monthDay, year].filter(Boolean).join(", "),
+  );
 }
 export function registerCampaignCalendar(
   refreshHud: () => void = () => {},

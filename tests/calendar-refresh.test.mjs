@@ -55,11 +55,11 @@ test("calendar ignores unrelated hooks and leaves unchanged dates untouched", ()
     "updateWorldTime",
   ]);
   exports.readyCampaignCalendar();
-  assert.equal(writes, 2);
+  assert.equal(writes, 3);
   game.time.worldTime = 6;
   hooks.updateWorldTime();
-  assert.equal(writes, 2);
+  assert.equal(writes, 3);
   game.time.worldTime = 86400;
   hooks.updateWorldTime();
-  assert.equal(writes, 4);
+  assert.equal(writes, 6);
 });

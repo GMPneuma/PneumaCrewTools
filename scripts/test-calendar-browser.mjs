@@ -264,7 +264,12 @@ try {
       badge.querySelector(".pneuma-calendar-month-day").textContent ===
         "Jan 1" &&
         badge.querySelector(".pneuma-calendar-year").textContent === "2078",
-      "two-line date format",
+      "three-line date format",
+    );
+    assert(
+      badge.querySelector(".pneuma-calendar-weekday").textContent ===
+        "Saturday",
+      "weekday follows campaign date in UTC",
     );
     assert(
       !document.getElementById("logo") && badge.parentElement.id === "ui-left",
@@ -302,9 +307,9 @@ try {
       badge.x === 0 &&
         badge.y === 0 &&
         badge.width === 138 &&
-        badge.height === 70 &&
+        badge.height >= 70 &&
         controls.top === badge.bottom + 10,
-      "clock docks at 138 by 70px with a 10px gap above controls",
+      "clock fits the three date lines with a 10px gap above controls",
     );
   });
   await page.evaluate(() => {
@@ -535,6 +540,9 @@ try {
         getFlag: (_ns, key) => (key === "kind" ? "actorLedger" : undefined),
       });
       await new Promise((resolve) => setTimeout(resolve, 100));
+      const weekdayLine = root
+        .querySelector(".pneuma-calendar-weekday")
+        .getBoundingClientRect();
       const dayLine = root
         .querySelector(".pneuma-calendar-month-day")
         .getBoundingClientRect();
@@ -543,7 +551,8 @@ try {
         .getBoundingClientRect();
       const icon = hub.getBoundingClientRect();
       assert(
-        yearLine.top >= dayLine.bottom &&
+        dayLine.top >= weekdayLine.bottom &&
+          yearLine.top >= dayLine.bottom &&
           icon.left >= dayLine.right &&
           icon.height >= 38,
         "date stacked on left and large hub on right",
@@ -554,7 +563,7 @@ try {
         .getBoundingClientRect();
       assert(
         rect.width === 138 &&
-          rect.height === 70 &&
+          rect.height >= 70 &&
           rect.x === 0 &&
           rect.y === 0 &&
           controls.top === rect.bottom + 10,
@@ -579,6 +588,28 @@ try {
   });
   console.log("PASS HUD pointer interaction");
 
+  await page.evaluate(async () => {
+    game.time.worldTime = Date.parse("2026-09-30T00:00:00Z") / 1000;
+    fire("updateWorldTime");
+    const root = document.getElementById("pneuma-crewtools-calendar");
+    const weekday = root.querySelector(".pneuma-calendar-weekday");
+    const monthDay = root.querySelector(".pneuma-calendar-month-day");
+    const year = root.querySelector(".pneuma-calendar-year");
+    assert(
+      weekday.textContent === "Wednesday" &&
+        monthDay.textContent === "Sep 30" &&
+        year.textContent === "2026",
+      "full weekday and abbreviated month",
+    );
+    assert(
+      parseFloat(getComputedStyle(weekday).fontSize) <
+        parseFloat(getComputedStyle(monthDay).fontSize) &&
+        parseFloat(getComputedStyle(year).fontSize) <
+          parseFloat(getComputedStyle(monthDay).fontSize),
+      "weekday and year are smaller",
+    );
+    assert(root.scrollWidth <= root.clientWidth, "date stays inside HUD");
+  });
   if (process.env.CALENDAR_SCREENSHOT)
     await page
       .locator("#pneuma-crewtools-calendar")

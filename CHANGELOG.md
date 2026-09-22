@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.8.7 - 2026-09-22
+
+- Show the weekday above the abbreviated month and day in the HUD, with smaller weekday and year text.
+
 ## 0.8.6 - 2026-09-17
 
 - Added the RTG Homebrew Content Policy disclaimer at the bottom of module settings.

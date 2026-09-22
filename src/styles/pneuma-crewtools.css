@@ -1467,6 +1467,7 @@ html[data-cpr-theme="darkmode"]
 #pneuma-crewtools-calendar .pneuma-calendar-month-day {
   font-size: 26px;
 }
+#pneuma-crewtools-calendar .pneuma-calendar-weekday,
 #pneuma-crewtools-calendar .pneuma-calendar-year {
   font-size: 12px;
 }
