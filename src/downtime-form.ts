@@ -86,6 +86,17 @@ export async function projectDialog(
     : undefined;
   if (mode !== "invention" && source?.documentName !== "Item")
     throw new Error("Drop an Item onto the project first.");
+  if (mode === "fabricate" && !source?.pack)
+    throw new Error(
+      "Fabrication requires a compendium Item. Drag the original Item from a compendium, not from inventory or the world Items directory.",
+    );
+  if (
+    (mode === "upgrade" || mode === "repair") &&
+    (source?.pack || source?.parent?.id !== actor.id)
+  )
+    throw new Error(
+      "Upgrade and repair require an Item in the selected character’s inventory.",
+    );
   if (track && (!isNetrunner(actor) || !hasServerRoom()))
     throw new Error("Requires a ranked Netrunner and HQ Server Room II.");
   if (track && source && !netrunnerItem(source))

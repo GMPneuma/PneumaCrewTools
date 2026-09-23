@@ -240,15 +240,17 @@ export async function processTechRequest(
         )
       )
         throw new Error("You do not have permission to use this source Item.");
-      if (data.mode === "upgrade" && source.pack)
+      if (data.mode === "fabricate" && !source.pack)
         throw new Error(
-          "Upgrade a world or inventory Item, not a compendium template.",
+          "Fabrication requires a compendium Item. Drag the original Item from a compendium, not from inventory or the world Items directory.",
         );
       if (
-        data.mode === "repair" &&
+        (data.mode === "upgrade" || data.mode === "repair") &&
         (source.pack || source.parent?.id !== actor.id)
       )
-        throw new Error("Repair an Item in this character’s inventory.");
+        throw new Error(
+          "Upgrade and repair require an Item in the selected character’s inventory.",
+        );
       if (
         data.mode === "repair" &&
         techProjects(state, actor.id).some(
@@ -270,8 +272,12 @@ export async function processTechRequest(
     const spec: TechSpec = {
       ...data,
       ...projectSchedule(data.category, data.price, month),
+      fabricationUuid:
+        data.mode === "fabricate" && source?.pack ? source.uuid : undefined,
       itemData: source
-        ? snapshot(source)
+        ? data.mode === "fabricate" && source.pack
+          ? { name: source.name, type: source.type }
+          : snapshot(source)
         : {
             name: data.name,
             type: "gear",
@@ -343,7 +349,7 @@ export async function processTechRequest(
         "; " +
         (event.techCheck.success
           ? "success"
-          : "failure; " + project.half + " days burned");
+          : "failure; " + event.techCheck.burned + " days burned");
     } else
       event.reason =
         (event.kind === "techCancel" ? "Cancel " : "Allocate day: ") +
@@ -418,6 +424,26 @@ export async function processTechRequest(
         if (!held)
           throw new Error("Upgrade item is missing from its container.");
       }
+      let template: FoundryItem | undefined;
+      if (project.fabricationUuid) {
+        template = (await fromUuid(project.fabricationUuid)) as
+          FoundryItem | undefined;
+        if (
+          !template ||
+          template.documentName !== "Item" ||
+          !template.pack ||
+          !ctx.requester ||
+          !template.testUserPermission?.(ctx.requester, "OBSERVER")
+        )
+          throw new Error(
+            "Fabrication compendium source is missing or inaccessible. Restore access before completing this project.",
+          );
+      }
+      const data = held
+        ? snapshot(held)
+        : template
+          ? snapshot(template)
+          : structuredClone(project.itemData);
       const itemId = foundry.utils.randomID(16);
       await ctx.attempt({
         requestId: event.requestId,
@@ -428,7 +454,6 @@ export async function processTechRequest(
         destinationItemId: itemId,
       });
       mutation = true;
-      const data = held ? snapshot(held) : structuredClone(project.itemData);
       if (
         project.mode === "upgrade" &&
         event.kind !== "techCancel" &&
@@ -517,7 +542,7 @@ export async function processTechRequest(
                     project?.required +
                     " days allocated."
                   : (event.techCheck?.burned ?? 0) +
-                    " days burned. Add days before retrying.",
+                    " days of progress lost. Spent downtime is not refunded.",
         }),
       });
     } catch (error) {

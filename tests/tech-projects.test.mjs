@@ -333,18 +333,21 @@ test("successful early check completes only at full days and creates one inventi
   await assert.rejects(f.run("techDay", undefined, id), /Active TECH/);
   assert.equal(f.actor.items.filter((i) => i.type === "gear").length, 1);
 });
-test("failure burns floored half and requires new allocation before retry even with spare progress", async () => {
+test("failed 5 of 7 day project loses 3 progress days without refund", async () => {
   const f = fixture();
   const id = await f.run("techStart", f.invention());
-  for (let n = 0; n < 7; n++) await f.run("techDay", undefined, id);
+  for (let n = 0; n < 5; n++) await f.run("techDay", undefined, id);
   f.roll(21);
   await f.run("techRoll", undefined, id);
-  assert.equal(f.projects()[0].progress, 4);
+  assert.equal(f.projects()[0].progress, 2);
   assert.equal(f.projects()[0].burned, 3);
+  assert.equal(f.model.downtimeBalance(f.state(), "hero"), 95);
   await assert.rejects(f.run("techRoll", undefined, id), /half/);
   for (let n = 0; n < 3; n++) await f.run("techDay", undefined, id);
   f.roll(22);
   await f.run("techRoll", undefined, id);
+  assert.equal(f.projects()[0].active, true);
+  for (let n = 0; n < 2; n++) await f.run("techDay", undefined, id);
   assert.equal(f.projects()[0].active, false);
   assert.equal(f.model.downtimeBalance(f.state(), "hero"), 90);
 });
@@ -360,7 +363,7 @@ test("Premium permits zero-day initial check per floor rule, then needs one allo
   await f.run("techDay", undefined, id);
   assert.equal(f.projects()[0].active, false);
 });
-test("fabrication copies one item, preserves original and uses source price over request price", async () => {
+test("compendium fabrication copies one item, preserves original and uses source price over request price", async () => {
   const f = fixture();
   await f.service.storageActor(f.actor);
   f.gm.active = false;
@@ -373,6 +376,7 @@ test("fabrication copies one item, preserves original and uses source price over
     },
     undefined,
   );
+  asCompendium(f, item);
   const id = await f.run("techStart", {
     ...f.invention("premium", 100),
     mode: "fabricate",
@@ -392,7 +396,6 @@ test("upgrade moves original into module container offline and returns it with n
   f.gm.active = false;
   f.game.user = f.player;
   const actorCount = f.game.actors.length;
-  const other = f.makeActor({ name: "Storage", type: "container" });
   const item = f.makeItem(
     {
       name: "Pistol",
@@ -404,17 +407,20 @@ test("upgrade moves original into module container offline and returns it with n
         description: { value: "Original" },
       },
     },
-    other,
+    f.actor,
   );
-  other.items.push(item);
+  f.actor.items.push(item);
   const id = await f.run("techStart", {
     ...f.invention("premium", 100),
     mode: "upgrade",
     sourceUuid: item.uuid,
     description: "Improved grip",
   });
-  assert.equal(other.items.length, 0);
-  assert.equal(f.game.actors.length, actorCount + 1);
+  assert.equal(
+    f.actor.items.some((i) => i.id === item.id),
+    false,
+  );
+  assert.equal(f.game.actors.length, actorCount);
   const p = f.projects()[0],
     storage = f.game.actors.find((a) => a.id === p.storageActorId);
   assert.equal(storage.items.length, 1);
@@ -498,9 +504,9 @@ test("unauthorized sources, compendium upgrades and sub-Premium items are reject
       mode: "upgrade",
       sourceUuid: item.uuid,
     }),
-    /compendium/,
+    /selected character’s inventory/,
   );
-  item.pack = undefined;
+  asCompendium(f, item);
   item.system.price.market = 50;
   await assert.rejects(
     f.run("techStart", {
@@ -551,7 +557,7 @@ test("failed TECH check card shows outcome and burned days without internal Acto
   assert.match(card, /crewtools-roll-card/);
   assert.match(card, /FAILURE/);
   assert.match(card, /vs DV 17/);
-  assert.match(card, /0 days burned/);
+  assert.match(card, /0 days of progress lost/);
   assert.doesNotMatch(card, /Actor\./);
 });
 
@@ -955,6 +961,7 @@ test("Netrunner source restrictions cover fabrication, upgrade return and repair
       f.actor,
     );
     f.actor.items.push(weapon);
+    if (mode === "fabricate") asCompendium(f, weapon);
     await assert.rejects(
       f.run(
         "techStart",
@@ -971,6 +978,7 @@ test("Netrunner source restrictions cover fabrication, upgrade return and repair
       f.actor,
     );
     f.actor.items.push(deck);
+    if (mode === "fabricate") asCompendium(f, deck);
     const id = await f.run(
       "techStart",
       { ...input, mode, sourceUuid: deck.uuid },
@@ -998,6 +1006,134 @@ test("Netrunner source restrictions cover fabrication, upgrade return and repair
         f.actor.items.filter((i) => i.type === "cyberdeck").length,
         mode === "fabricate" ? 2 : 1,
       );
+    }
+  }
+});
+
+test("compendium fabrication imports current packaged components without exporting stale IDs", async () => {
+  const f = fixture();
+  const tree = [
+    {
+      _id: "old-child",
+      name: "Scope",
+      type: "gear",
+      system: { installedItems: { list: [] } },
+    },
+  ];
+  const item = f.makeItem({
+    name: "Packaged pistol",
+    type: "weapon",
+    system: { price: { market: 100 }, amount: 5 },
+  });
+  item.pack = "test.items";
+  item.uuid = "Compendium.test.items.Item.pistol";
+  f.uuids.set(item.uuid, item);
+  item.toCompendium = () => {
+    throw new Error("Cannot read properties of undefined (reading 'toObject')");
+  };
+  let reads = 0;
+  item.toObject = () => {
+    reads++;
+    return {
+      _id: "pistol",
+      name: "Updated pistol",
+      type: "weapon",
+      system: { amount: 5 },
+      flags: { cprInstallTree: tree },
+    };
+  };
+  const id = await f.run("techStart", {
+    ...f.invention("premium", 100),
+    mode: "fabricate",
+    sourceUuid: item.uuid,
+  });
+  assert.equal(reads, 0);
+  assert.equal(f.projects()[0].fabricationUuid, item.uuid);
+  await f.run("techRoll", undefined, id);
+  f.uuids.delete(item.uuid);
+  await assert.rejects(
+    f.run("techDay", undefined, id),
+    /compendium source is missing/,
+  );
+  assert.equal(f.attempt(), null);
+  assert.equal(f.projects()[0].progress, 0);
+  assert.equal(f.model.downtimeBalance(f.state(), "hero"), 100);
+  f.uuids.set(item.uuid, item);
+  await f.run("techDay", undefined, id);
+  const made = f.actor.items.find((i) => i.type === "weapon");
+  assert.equal(made.name, "Updated pistol");
+  assert.equal(made.system.amount, 1);
+  assert.deepEqual(made.toObject().flags.cprInstallTree, tree);
+  assert.equal(reads, 1);
+});
+
+test("even project threshold and repeated failures deduct half without refunds", async () => {
+  const f = fixture();
+  const id = await f.run("techStart", f.invention("veryExpensive", 1000));
+  for (let n = 0; n < 6; n++) await f.run("techDay", undefined, id);
+  assert.equal(f.projects()[0].canRoll, false);
+  await assert.rejects(f.run("techRoll", undefined, id), /half/);
+  await f.run("techDay", undefined, id);
+  assert.equal(f.projects()[0].canRoll, true);
+  f.roll(1);
+  await f.run("techRoll", undefined, id);
+  for (let n = 0; n < 8; n++) await f.run("techDay", undefined, id);
+  await f.run("techRoll", undefined, id);
+  assert.equal(f.projects()[0].progress, 1);
+  assert.equal(f.projects()[0].burned, 14);
+  assert.equal(f.model.downtimeBalance(f.state(), "hero"), 85);
+});
+
+function asCompendium(f, item) {
+  item.pack = "test.items";
+  item.uuid = "Compendium.test.items.Item." + item.id;
+  f.uuids.set(item.uuid, item);
+}
+
+test("fabrication rejects both world and owned Items before creating or charging a project", async () => {
+  for (const owned of [false, true]) {
+    const f = fixture();
+    const item = f.makeItem(
+      { name: "Pistol", type: "weapon", system: { price: { market: 500 } } },
+      owned ? f.actor : undefined,
+    );
+    item.toCompendium = () => {
+      throw new Error("Should never export rejected source");
+    };
+    await assert.rejects(
+      f.run("techStart", {
+        ...f.invention(),
+        mode: "fabricate",
+        sourceUuid: item.uuid,
+      }),
+      /Fabrication requires a compendium Item/,
+    );
+    assert.equal(f.projects().length, 0);
+    assert.equal(f.model.downtimeBalance(f.state(), "hero"), 100);
+    assert.equal(f.attempt(), null);
+  }
+});
+
+test("upgrade and repair reject world, compendium and other actor items despite owner permission", async () => {
+  for (const mode of ["upgrade", "repair"]) {
+    for (const source of ["world", "compendium", "other actor"]) {
+      const f = fixture();
+      const other = f.makeActor({ name: "Other inventory", type: "character" });
+      const item = f.makeItem(
+        { name: "Pistol", type: "weapon", system: { price: { market: 500 } } },
+        source === "other actor" ? other : undefined,
+      );
+      item.testUserPermission = () => true;
+      if (source === "compendium") asCompendium(f, item);
+      other.items.push(item);
+      await assert.rejects(
+        f.run("techStart", { ...f.invention(), mode, sourceUuid: item.uuid }),
+        /selected character’s inventory/,
+      );
+      assert.equal(f.projects().length, 0);
+      assert.equal(f.model.downtimeBalance(f.state(), "hero"), 100);
+      assert.equal(f.attempt(), null);
+      assert.equal(other.items.includes(item), true);
     }
   }
 });

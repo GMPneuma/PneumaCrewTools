@@ -4,7 +4,7 @@ Updated: September 22, 2026
 
 Player and crew bookkeeping for Cyberpunk RED on Foundry VTT v12. Foundry v13/v14 support remains pending compatible Cyberpunk RED releases and live verification.
 
-**Status:** Package and manifest version **0.9.0**. Implemented features and automated checks are listed below; live-world verification remains pending where noted.
+**Status:** Package and manifest version **0.9.1**. Implemented features and automated checks are listed below; live-world verification remains pending where noted.
 
 ## Project rules
 

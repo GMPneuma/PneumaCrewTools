@@ -324,6 +324,14 @@ try {
     await page.locator(".tech-slot").getByText("Requires Workshop").count(),
     2,
   );
+  assert.equal(
+    await page.locator(".tech-roll-control button").first().isDisabled(),
+    true,
+  );
+  assert.match(
+    await page.locator(".tech-roll-control small").first().textContent(),
+    /Must complete half\s+project before roll/,
+  );
   const header = await page.locator(".downtime-header").boundingBox();
   assert.ok(header.height < 60);
   assert.equal(await page.locator('select[name="actorId"]').count(), 0);
@@ -372,10 +380,14 @@ try {
     healBoxes.rightTop >= healBoxes.leftTop - 20 &&
       healBoxes.rightTop < healBoxes.leftBottom,
   );
-  if (process.env.DOWNTIME_SCREENSHOT)
+  if (process.env.DOWNTIME_SCREENSHOT) {
+    await page
+      .locator('[data-downtime-section="tech"]')
+      .evaluate((el) => (el.open = true));
     await page
       .locator(".window-app")
       .screenshot({ path: process.env.DOWNTIME_SCREENSHOT });
+  }
   console.log(
     "PASS activity template, project mini-lists and multiclass role picker.",
   );

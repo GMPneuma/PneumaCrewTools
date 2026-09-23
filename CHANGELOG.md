@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.9.1 - 2026-09-23
+
+- Fixed fabrication of compendium items with packaged attachments by resolving the compendium source at completion and preserving its native installation tree. Missing or inaccessible sources leave completion retryable.
+- Restricted new fabrication projects to compendium items; upgrade and repair require items in the selected character’s inventory. Invalid drops show a clear message before setup.
+- Added a half-project requirement message beside the disabled skill-roll button. Failed checks deduct half the required duration, rounded down, without refunding spent downtime (5/7 becomes 2/7).
+- Added regression coverage for item-source restrictions, attachment preservation, and project progress penalties.
+
+Live Foundry verification remains pending.
+
 ## 0.9.0 - 2026-09-23
 
 - Added the Moral Boost button below View HQ, listing active benefits. Automated the healing increase and Hustle roll-twice/keep-best or keep-both upgrades while retaining monthly benefits as references.

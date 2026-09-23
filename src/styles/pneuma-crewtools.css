@@ -4286,3 +4286,19 @@ html[data-cpr-theme="darkmode"] .pneuma-crewtools .netrunner-role {
   width: 34px;
   pointer-events: auto;
 }
+
+.pneuma-crewtools .tech-roll-control {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+.pneuma-crewtools .tech-roll-control small {
+  font-size: 0.75rem;
+  line-height: 1.15;
+  margin-bottom: 0.2rem;
+}
+.pneuma-crewtools .tech-roll-control button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

@@ -471,14 +471,18 @@
                           data-tech-action="techFinish"
                           data-tech-project="{{project.id}}"
                         >Complete Project</button>{{/if}}
-                      {{#if canRoll}}<button
-                          type="button"
-                          data-tech-action="techRoll"
-                          data-tech-project="{{project.id}}"
-                        >Roll skill</button>{{else}}<button
-                          type="button"
-                          disabled
-                        >Roll skill</button>{{/if}}
+                      <span class="tech-roll-control">
+                        {{#unless project.success}}<small>Must complete half
+                            project before roll (rounded down).</small>{{/unless}}
+                        {{#if canRoll}}<button
+                            type="button"
+                            data-tech-action="techRoll"
+                            data-tech-project="{{project.id}}"
+                          >Roll skill</button>{{else}}<button
+                            type="button"
+                            disabled
+                          >Roll skill</button>{{/if}}
+                      </span>
                       <button
                         type="button"
                         data-tech-action="techCancel"
@@ -554,14 +558,18 @@
                           data-tech-action="techFinish"
                           data-tech-project="{{project.id}}"
                         >Complete Project</button>{{/if}}
-                      {{#if canRoll}}<button
-                          type="button"
-                          data-tech-action="techRoll"
-                          data-tech-project="{{project.id}}"
-                        >Roll skill</button>{{else}}<button
-                          type="button"
-                          disabled
-                        >Roll skill</button>{{/if}}
+                      <span class="tech-roll-control">
+                        {{#unless project.success}}<small>Must complete half
+                            project before roll (rounded down).</small>{{/unless}}
+                        {{#if canRoll}}<button
+                            type="button"
+                            data-tech-action="techRoll"
+                            data-tech-project="{{project.id}}"
+                          >Roll skill</button>{{else}}<button
+                            type="button"
+                            disabled
+                          >Roll skill</button>{{/if}}
+                      </span>
                       <button
                         type="button"
                         data-tech-action="techCancel"

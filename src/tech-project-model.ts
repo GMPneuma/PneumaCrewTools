@@ -30,6 +30,7 @@ export interface TechInput {
   skillId: string;
 }
 export interface TechSpec extends TechInput {
+  fabricationUuid?: string;
   repairOverrideDays?: number;
   required: number;
   dv: number;
@@ -138,6 +139,13 @@ export function validateTechEvent(event: DowntimeEvent) {
       schedule.dv !== t.dv
     )
       throw new Error("Invalid TECH project schedule.");
+    if (
+      t.fabricationUuid !== undefined &&
+      (t.mode !== "fabricate" ||
+        typeof t.fabricationUuid !== "string" ||
+        !t.fabricationUuid.startsWith("Compendium."))
+    )
+      throw new Error("Invalid fabrication compendium source.");
     if (t.mode === "upgrade" && (!t.storageActorId || !t.storageItemId))
       throw new Error("Upgrade project requires a stored item.");
   }

@@ -107,7 +107,11 @@ export async function checkProject(
 }
 export function snapshot(item: FoundryItem): Record<string, unknown> {
   const data = structuredClone(
-    item.toCompendium ? item.toCompendium(null) : item.toObject(),
+    item.pack
+      ? item.toObject()
+      : item.toCompendium
+        ? item.toCompendium(null)
+        : item.toObject(),
   );
   delete data._id;
   delete data.folder;
