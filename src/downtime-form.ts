@@ -1,3 +1,5 @@
+import { trainingPanel } from "./hq-training";
+import { requestTraining } from "./downtime-service";
 import { customResultHtml } from "./custom-result-view";
 import {
   customActivityView,
@@ -413,6 +415,7 @@ export class DowntimeForm extends CrewToolsForm {
     const canHustle = roles.some((r) => r.rank <= 10);
     return {
       // The vehicle roster lives in the Hub; downtime exposes only its shared respec task.
+      training: trainingPanel(actor, getHeadquarters(false), available),
       nomad: nomadRespecPanel(actor, state, available),
       // A separate track keeps the role's one slot independent of Workshop batching.
       netrunnerVisible: isNetrunner(actor) || !!netProject,
@@ -585,6 +588,16 @@ export class DowntimeForm extends CrewToolsForm {
         this.#submitting = false;
       }
     };
+    root
+      ?.querySelector("[data-training-use]")
+      ?.addEventListener("click", () => {
+        void perform(() =>
+          requestTraining(
+            field("actorId"),
+            [field("trainingSkill"), field("trainingSkill2")].filter(Boolean),
+          ),
+        );
+      });
     const activityChoice = root?.querySelector<HTMLSelectElement>(
       "[data-custom-choice]",
     );

@@ -4,7 +4,7 @@ Updated: September 22, 2026
 
 Player and crew bookkeeping for Cyberpunk RED on Foundry VTT v12. Foundry v13/v14 support remains pending compatible Cyberpunk RED releases and live verification.
 
-**Status:** Package and manifest version **0.8.7**. Implemented features and automated checks are listed below; live-world verification remains pending where noted.
+**Status:** Package and manifest version **0.9.0**. Implemented features and automated checks are listed below; live-world verification remains pending where noted.
 
 ## Project rules
 
@@ -179,7 +179,7 @@ Version 0.8.6 validation: all 353 unit tests passed; settings browser checks pas
 - [ ] Check cross-document inventory/resource operations for interruption and repeated-action behavior.
 - [ ] Confirm Journals remain understandable with the module disabled, and routine use does not produce unnecessary records or background work.
 - [x] Update the 0.8.5 changelog and package documentation.
-- Release target: 0.8.7, with matching package/manifest versions and runtime assets.
+- Release target: 0.9.0, with matching package/manifest versions and runtime assets.
 
 Live verification is a separate gate from implemented features. Deferred mechanics are not required to complete the currently agreed Pharma scope.
 

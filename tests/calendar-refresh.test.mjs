@@ -19,6 +19,7 @@ test("calendar ignores unrelated hooks and leaves unchanged dates untouched", ()
     settings: { get: () => false, register() {} },
   };
   const deps = {
+    "./hud-shortcuts": { refreshHudShortcuts() {} },
     "./action-coordinator": { isPrimaryGM: () => true },
     "./foundry-form": { CrewToolsForm: class {} },
     "./constants": { MODULE_ID: "pneuma-crewtools" },

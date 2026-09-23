@@ -51,7 +51,7 @@ export function refreshCrewHud(): void {
         else openPlayerHub();
       }),
     );
-    root.append(row);
+    root.insertBefore(row, root.querySelector(".pneuma-external-shortcut"));
   }
   const hub = row.querySelector<HTMLButtonElement>('[data-hud-action="hub"]')!;
   const crew = game.user?.isGM ? "crew " : "";

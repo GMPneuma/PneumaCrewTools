@@ -345,6 +345,29 @@
     {{#if hasRoleAreas}}
       <section class="downtime-roles" aria-label="Role downtime">
         {{#if ready}}
+          {{#if training.visible}}<details
+              class="payout-heading hub-status"
+              data-downtime-section="training"
+            ><summary>Training Area</summary>
+              <p>Practice for seven downtime days. Gain +1 to the selected skill
+                until the next Group IP award or another training session.</p>
+              {{#if training.current}}<p>{{training.current}}</p>{{/if}}
+              <label>Skill
+                <select name="trainingSkill">{{#each training.skills}}<option
+                      value="{{id}}"
+                    >{{name}}</option>{{/each}}</select></label>
+              {{#if training.second}}<label>Second skill (Solo)
+                  <select name="trainingSkill2"><option
+                      value=""
+                    >None</option>{{#each training.skills}}<option
+                        value="{{id}}"
+                      >{{name}}</option>{{/each}}</select></label>{{/if}}
+              <button
+                type="button"
+                data-training-use
+                {{disabled training.cannotTrain}}
+              >Train · 7 Days</button>
+            </details>{{/if}}
           {{#if nomad.visible}}
             <details
               class="payout-heading hub-status downtime-nomad"
@@ -352,7 +375,12 @@
             >
               <summary><i class="fas fa-car"></i>
                 Nomad · Vehicle Respec</summary>
-              {{#unless nomad.garage}}<p class="notes">must have garage to use</p>{{/unless}}
+              {{#unless nomad.garage}}<p class="notes">An upgraded Garage is
+                  required.</p>{{/unless}}
+              {{#if nomad.problem}}<p class="notes">{{nomad.problem}}</p>{{/if}}
+              <p class="notes">All Nomad vehicles must be linked, fully repaired
+                and operational. Resolve untracked vehicle faults before using
+                this task.</p>
               <div class="nomad-respec">
                 <strong>Respec Nomad Vehicle</strong>
                 <div class="downtime-hustle-row">

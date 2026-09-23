@@ -115,11 +115,15 @@ export function actorLink(actorId: string, savedName?: string): string {
 export function ledgerHtml(state: DowntimeState): string {
   const account = state.accounts[0],
     page = account ? actorLedger(account.actorId) : undefined;
-  const guards = ["hustleAttempt", "techAttempt", "healingAttempt"].flatMap(
-    (key) =>
-      page?.getFlag?.(MODULE_ID, key)
-        ? [{ kind: key, details: page.getFlag!(MODULE_ID, key) }]
-        : [],
+  const guards = [
+    "hustleAttempt",
+    "techAttempt",
+    "healingAttempt",
+    "trainingAttempt",
+  ].flatMap((key) =>
+    page?.getFlag?.(MODULE_ID, key)
+      ? [{ kind: key, details: page.getFlag!(MODULE_ID, key) }]
+      : [],
   );
   return resourceTransactionsHtml(state, guards);
 }

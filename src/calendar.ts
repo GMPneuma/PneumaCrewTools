@@ -1,3 +1,4 @@
+import { refreshHudShortcuts } from "./hud-shortcuts";
 import { isPrimaryGM as primaryGM } from "./action-coordinator";
 import { CrewToolsForm } from "./foundry-form";
 import { MODULE_ID } from "./constants";
@@ -323,6 +324,7 @@ function renderCalendar(): void {
       else root.remove();
     }
     displacedLogo = null;
+    refreshHudShortcuts();
     return;
   }
   if (!root) {
@@ -339,6 +341,7 @@ function renderCalendar(): void {
       document.body.append(root);
     }
   }
+  refreshHudShortcuts();
   let weekday = "",
     monthDay = "Calendar",
     year = "unavailable";

@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.9.0 - 2026-09-23
+
+- Added the Moral Boost button below View HQ, listing active benefits. Automated the healing increase and Hustle roll-twice/keep-best or keep-both upgrades while retaining monthly benefits as references.
+- Implemented Rent Reduction for new HQ bills and extra beds, including upgrade caps and legacy purchases.
+- Added Training Area downtime with native skill bonuses, upgraded Solo training, and expiration on Group IP awards.
+- Required the Garage upgrade and fully repaired linked vehicles for Nomad respec.
+- Added native Server Room NET Architecture Items in the CrewTools folder, linked from player and GM HQ views with matching access.
+- Added the client-only HUD shortcut API for optional Combat Tools Biomon integration, including placement below the Crew icon and availability notifications.
+- Preserved catalog-only improvements and existing Workshop behavior. Added regression and browser coverage for the HQ and HUD changes.
+
+Live Foundry multiplayer verification remains pending.
+
 ## 0.8.7 - 2026-09-22
 
 - Show the weekday above the abbreviated month and day in the HUD, with smaller weekday and year text.

@@ -22,6 +22,8 @@ try {
     },
   ];
   const data = {
+    serverRoom: true,
+    serverRoomItem: { id: "net", name: "Watson Clinic — NET Architecture" },
     canManage: true,
     ip: 23,
     headquarters: [{ id: "hq", name: "Watson Clinic", selected: true }],
@@ -118,6 +120,7 @@ try {
   await page.screenshot({
     path: path.join(os.tmpdir(), "crewtools-hq-preview.png"),
   });
+  assert.equal(await page.locator("[data-hq-netarch]").count(), 1);
   data.canManage = false;
   data.hq.improvements[0].canManage = false;
   await page.setContent(
@@ -130,6 +133,7 @@ try {
     0,
   );
   assert.equal(await page.locator("[data-rent-open]").count(), 1);
+  assert.equal(await page.locator("[data-hq-netarch]").count(), 1);
   console.log(
     "PASS HQ layout, selected controls, narrow width, and GM/player visibility (mock Foundry styles).",
   );

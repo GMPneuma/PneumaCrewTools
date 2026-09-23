@@ -1,3 +1,4 @@
+import { registerServerRooms } from "./hq-server-room";
 import { registerCleanupSettings } from "./cleanup-settings";
 import { registerHustleTables, readyHustleTables } from "./hustle-tables";
 import { registerCustomDowntime } from "./custom-downtime-settings";
@@ -46,6 +47,7 @@ import { registerPayoutWindowControl } from "./window-controls";
 // listener must be registered as soon as the module script is evaluated.
 registerPayoutWindowControl();
 registerHumanityPromptHandler();
+registerServerRooms();
 
 Hooks.once("init", () => {
   console.info(`${MODULE_ID} | Initializing`);

@@ -33,6 +33,7 @@ try {
           },
         };
         const deps = {
+          "./hud-shortcuts": { refreshHudShortcuts() {} },
           "./constants": { MODULE_ID: "pneuma-crewtools" },
           "./action-coordinator": { isPrimaryGM: () => false },
           "./foundry-form": { CrewToolsForm: class {} },

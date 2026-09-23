@@ -1,3 +1,4 @@
+import { expireTrainingForPayout } from "./hq-training";
 import { advanceCampaignDays } from "./calendar";
 import {
   buildContainerMoneyUpdate,
@@ -191,6 +192,7 @@ async function executeLockedPayout(plan: PayoutPlan): Promise<void> {
     : null;
   let containerUpdated = false;
   const promptMessages: FoundryChatMessage[] = [];
+  let rollbackTraining: (() => Promise<void>) | null = null;
   let rollbackHeadquarters: (() => Promise<void>) | null = null;
   let rollbackDowntime: (() => Promise<void>) | null = null;
   let rollbackJournal: (() => Promise<void>) | null = null;
@@ -264,6 +266,7 @@ async function executeLockedPayout(plan: PayoutPlan): Promise<void> {
       previousWorldTime = game.time.worldTime;
       await advanceCampaignDays(advanceDays);
     }
+    rollbackTraining = await expireTrainingForPayout(plan);
     await appendPayoutRecord(record);
   } catch (error) {
     const failures: string[] = [];
@@ -295,6 +298,7 @@ async function executeLockedPayout(plan: PayoutPlan): Promise<void> {
         snapshot.actor.update({ "system.wealth": snapshot.wealth }),
       );
     }
+    if (rollbackTraining) await restore("HQ Training", rollbackTraining);
     if (rollbackHeadquarters) await restore("HQ IP", rollbackHeadquarters);
     if (rollbackDowntime) await restore("Downtime", rollbackDowntime);
     if (rollbackJournal) await restore("Payout Journal", rollbackJournal);

@@ -31,6 +31,9 @@ function load(file, globals, dependencies = {}) {
         );
       if (
         [
+          "./hq-training",
+          "./hq-benefits",
+          "./constants",
           "./actor-resources",
           "./payout-plan",
           "./payout-system",

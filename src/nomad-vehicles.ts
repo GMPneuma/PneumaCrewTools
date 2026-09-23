@@ -1,3 +1,4 @@
+import { crewImprovementLevel } from "./hq-benefits";
 import { MODULE_ID } from "./constants";
 import { queueAction } from "./action-coordinator";
 import {
@@ -32,9 +33,7 @@ export function isNomad(actor?: FoundryActor): boolean {
   });
 }
 export function hasNomadGarage(): boolean {
-  return getHeadquarters(false).headquarters.some((hq) =>
-    hq.improvements.some((i) => i.name.trim().toLowerCase() === "garage"),
-  );
+  return crewImprovementLevel(getHeadquarters(false), "garage") >= 2;
 }
 export function readNomadVehicles(actorId: string): Roster {
   return readRecord(actorPayoutJournal(actorId), "nomadVehicles", {
@@ -148,13 +147,41 @@ export async function setNomadVehicle(
     );
   });
 }
+export function nomadVehicleProblem(actorId: string): string {
+  const slots = nomadVehicleSlots(actorId).filter(Boolean);
+  if (!slots.length)
+    return "Link the Nomad vehicles in the Player Hub before respec.";
+  for (const slot of slots) {
+    const vehicle = game.actors.get(slot!.actorId);
+    const hp = (
+      vehicle?.system as {
+        derivedStats?: {
+          hp?: { value?: number; max?: number; total?: number };
+        };
+      }
+    )?.derivedStats?.hp;
+    const maximum = hp?.total ?? hp?.max;
+    if (
+      !vehicle ||
+      !canView(vehicle) ||
+      !Number.isFinite(hp?.value) ||
+      !Number.isFinite(maximum) ||
+      maximum! <= 0 ||
+      hp!.value! < maximum!
+    )
+      return "Every linked Nomad vehicle must be accessible and fully repaired before respec.";
+  }
+  return "";
+}
 // Recheck role and Garage at execution; the respec task is shared, not tied to one vehicle.
 export function requireNomadGarage(actorId: string): void {
   owner(actorId);
   if (!hasNomadGarage())
     throw new Error(
-      "An HQ Garage improvement is required to respec a Nomad vehicle.",
+      "An upgraded HQ Garage is required to respec a Nomad vehicle.",
     );
+  const problem = nomadVehicleProblem(actorId);
+  if (problem) throw new Error(problem);
 }
 // Hub roster reads only links and native Actor data, without loading downtime history.
 export function nomadVehiclePanel(actor: FoundryActor | undefined) {
@@ -199,19 +226,21 @@ export function nomadRespecPanel(
   state: DowntimeState,
   available: number,
 ) {
+  const problem = actor ? nomadVehicleProblem(actor.id) : "";
   const garage = isNomad(actor) && hasNomadGarage();
   const days = actor ? nomadRespecDays(state.events, actor.id) : 0;
   return {
     // Keep the task visible without a Garage, but disable every task action.
     visible: isNomad(actor),
-    cannotReset: !garage,
+    problem,
+    cannotReset: !garage || !!problem,
     garage,
     days,
     progress: (days / 7) * 100,
     remaining: 7 - days,
     complete: days === 7,
-    cannotAdd: !garage || days >= 7 || available < 1,
-    cannotFill: !garage || days >= 7 || available < 7 - days,
+    cannotAdd: !garage || !!problem || days >= 7 || available < 1,
+    cannotFill: !garage || !!problem || days >= 7 || available < 7 - days,
   };
 }
 export function bindNomadVehicles(

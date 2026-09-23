@@ -367,7 +367,7 @@ test("Nomad roster has three initial slots, live Actor portraits/HP, permissions
       nomad: api.nomadRespecPanel(f.exec, state, 7),
     });
   assert.equal((html().match(/class="nomad-respec"/g) ?? []).length, 1);
-  assert.match(html(), /must have garage to use/);
+  assert.match(html().replace(/\s+/g, " "), /An upgraded Garage is required/);
   const locked = api.nomadRespecPanel(f.exec, state, 7);
   assert.equal(locked.cannotAdd, true);
   assert.equal(locked.cannotFill, true);

@@ -6,7 +6,11 @@ import type { HeadquartersRecord } from "./headquarters";
 import type { HqRent } from "./rent-model";
 export type HqProperties = Pick<
   HeadquartersRecord,
-  "description" | "bedrooms" | "maxImprovements" | "improvements"
+  | "description"
+  | "bedrooms"
+  | "rentBaseBedrooms"
+  | "maxImprovements"
+  | "improvements"
 >;
 export function headquartersJournal(): FoundryJournalEntry | undefined {
   const journals = Array.from(game.journal).filter(

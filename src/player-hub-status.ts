@@ -1,5 +1,6 @@
 import { cyberpsychosisState } from "./hub-cyberpsychosis";
-import { headquartersIp } from "./headquarters";
+import { crewImprovementLevel } from "./hq-benefits";
+import { getHeadquarters, headquartersIp } from "./headquarters";
 import { actorPayoutRecords } from "./journal-records";
 import type { FactionReputationRecord } from "./payout-journal";
 import { medtechRole } from "./medtech-system";
@@ -40,6 +41,8 @@ export function getHubStatus(selectedActorId?: string) {
     downtimeNote = "Downtime records need GM attention.";
   }
   return {
+    moraleBoost:
+      crewImprovementLevel(getHeadquarters(false), "moraleBoost") > 0,
     cyberpsychosis: cyberpsychosisState(actor),
     actorId: actor?.id ?? "",
     actorName: actor?.name ?? "No eligible characters",

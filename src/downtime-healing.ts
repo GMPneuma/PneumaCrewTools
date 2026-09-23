@@ -1,3 +1,4 @@
+import { crewImprovementLevel } from "./hq-benefits";
 import type { HeadquartersState } from "./headquarters";
 
 export const MULTIPLY_ANTIBIOTIC_SETTING = "multiplyAntibioticBonus";
@@ -7,6 +8,7 @@ export interface HealingOptions {
   cryotank: boolean;
 }
 export interface HealingResult extends HealingOptions {
+  moraleBoost?: boolean;
   armorRepairs?: NaturalArmorRepair[];
   body: number;
   enhancedAntibodies: boolean;
@@ -172,9 +174,13 @@ export function healingPreview(
       data.isInstalled === true
     );
   });
+  const moraleBoost = crewImprovementLevel(hqs, "moraleBoost") >= 3;
   const bonus = options.antibiotic ? 2 : 0;
   const rate =
-    (body + (options.medbay ? 2 : 0) + (multiplyAntibiotic ? bonus : 0)) *
+    (body +
+      (moraleBoost ? 1 : 0) +
+      (options.medbay ? 2 : 0) +
+      (multiplyAntibiotic ? bonus : 0)) *
       (enhancedAntibodies ? 2 : 1) *
       (options.cryotank ? 2 : 1) +
     (multiplyAntibiotic ? 0 : bonus);
@@ -183,6 +189,7 @@ export function healingPreview(
     throw new Error("Healing amount is too large.");
   return {
     ...options,
+    moraleBoost,
     armorRepairs: naturalArmorRepairs(actor, days),
     body,
     enhancedAntibodies,
@@ -205,7 +212,7 @@ export function healingSummary(result: HealingResult): string {
         `${r.name} (${r.location === "headLocation" ? "head" : "body"}): restored ${r.before - r.after} SP; ablation ${r.before} → ${r.after}.`,
     );
   return (
-    `Healed ${result.restored} HP (${result.before} → ${result.after}/${result.maximum}); ${result.rate} HP/day. BODY ${result.body}; medbay ${result.medbay ? "+2 BODY" : "no"}; Enhanced Antibodies ${result.enhancedAntibodies ? "×2" : "no"}; antibiotics ${result.antibiotic ? "+2 HP" : "no"} (${result.multiplyAntibiotic ? "multiplied" : "added last"}); cryotank ${result.cryotank ? "×2" : "no"}.` +
+    `Healed ${result.restored} HP (${result.before} → ${result.after}/${result.maximum}); ${result.rate} HP/day. BODY ${result.body}; Morale Boost ${result.moraleBoost ? "+1 BODY" : "no"}; medbay ${result.medbay ? "+2 BODY" : "no"}; Enhanced Antibodies ${result.enhancedAntibodies ? "×2" : "no"}; antibiotics ${result.antibiotic ? "+2 HP" : "no"} (${result.multiplyAntibiotic ? "multiplied" : "added last"}); cryotank ${result.cryotank ? "×2" : "no"}.` +
     (armor.length ? " " + armor.join(" ") : "")
   );
 }
@@ -216,6 +223,11 @@ export function validateHealingResult(
 ): void {
   if (!result || typeof result !== "object")
     throw new Error("Invalid healing record.");
+  if (
+    result.moraleBoost !== undefined &&
+    typeof result.moraleBoost !== "boolean"
+  )
+    throw new Error("Invalid Morale Boost healing record.");
   if (result.armorRepairs !== undefined) {
     if (!Array.isArray(result.armorRepairs))
       throw new Error("Invalid healing armor record.");
@@ -263,6 +275,7 @@ export function validateHealingResult(
   const bonus = result.antibiotic ? 2 : 0;
   const rate =
     (result.body +
+      (result.moraleBoost ? 1 : 0) +
       (result.medbay ? 2 : 0) +
       (result.multiplyAntibiotic ? bonus : 0)) *
       (result.enhancedAntibodies ? 2 : 1) *

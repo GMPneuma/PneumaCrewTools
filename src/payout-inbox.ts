@@ -20,6 +20,7 @@ import {
   actorPayoutRecords,
   saveActorPayoutRecords,
 } from "./journal-records";
+import { openMoraleBoost } from "./morale-boost";
 import { openHeadquarters } from "./headquarters";
 import { getHubStatus } from "./player-hub-status";
 import { openDowntime } from "./downtime";
@@ -387,6 +388,9 @@ export class PlayerHub extends CrewToolsForm {
     root
       .querySelector("[data-hub-headquarters]")
       ?.addEventListener("click", openHeadquarters);
+    root
+      .querySelector("[data-hub-morale]")
+      ?.addEventListener("click", openMoraleBoost);
     root
       .querySelector("[data-hub-reputation]")
       ?.addEventListener("click", () => {

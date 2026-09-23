@@ -1,3 +1,5 @@
+import { trainingData, applyTraining } from "./hq-training";
+import { crewImprovementLevel } from "./hq-benefits";
 import { rollTableReadOnly, tableResultText } from "./table-roll";
 import { serverRoomAvailable } from "./netrunner-system";
 import { requireNomadGarage } from "./nomad-vehicles";
@@ -172,6 +174,7 @@ interface SpendRequest {
   roleItemId?: string;
   reason: string;
   period: number;
+  trainingSkills?: string[];
   healing?: HealingOptions;
   tech?: TechInput;
 }
@@ -258,11 +261,12 @@ async function executeDowntimeCommand(
     });
   if (!event) {
     if (
+      ledgerPage()?.getFlag?.(MODULE_ID, "trainingAttempt") ||
       ledgerPage()?.getFlag?.(MODULE_ID, "healingAttempt") ||
       ledgerPage()?.getFlag?.(MODULE_ID, "hustleAttempt")
     )
       throw new Error(
-        "An interrupted healing or hustle payment needs GM review in the Journals before retrying.",
+        "An interrupted training, healing or hustle payment needs GM review in the Journals before retrying.",
       );
     let healActor: FoundryActor | undefined;
 
@@ -285,6 +289,20 @@ async function executeDowntimeCommand(
       projectId: request.projectId,
       roleItemId: request.roleItemId,
     };
+    let training: Record<string, unknown> | undefined;
+    if (request.trainingSkills !== undefined) {
+      if (candidate.kind !== "spend" || candidate.days !== 7)
+        throw new Error("Training requires seven downtime days.");
+      training = trainingData(
+        actor,
+        getHeadquarters(false),
+        request.trainingSkills,
+      );
+      candidate.trainingSkills = [...request.trainingSkills];
+      candidate.reason =
+        String(training.name) +
+        "; +1 until the next Group IP award or training session.";
+    }
     if (candidate.kind === "rest") {
       candidate.healing = healingPreview(
         actor,
@@ -323,7 +341,35 @@ async function executeDowntimeCommand(
     event = candidate;
 
     // Commit healing once. Failed HP/ledger writes retain an attempt marker until resolved.
-    if (event.kind === "rest" && event.healing && healActor) {
+    if (training) {
+      await ledgerPage()!.update({
+        [`flags.${MODULE_ID}.trainingAttempt`]: {
+          requestId,
+          skills: request.trainingSkills,
+        },
+        "text.content":
+          ledgerHtml(getDowntime(actor.id)) +
+          "<h2>Training in progress</h2><p>" +
+          escape(candidate.reason) +
+          "</p>",
+      });
+      const undo = await applyTraining(actor, training);
+      try {
+        await save(state);
+      } catch (error) {
+        await undo();
+        await ledgerPage()!.update({
+          [`flags.${MODULE_ID}.trainingAttempt`]: null,
+        });
+        await ledgerPage()!.update({
+          "text.content": ledgerHtml(getDowntime(actor.id)),
+        });
+        throw error;
+      }
+      await ledgerPage()!.update({
+        [`flags.${MODULE_ID}.trainingAttempt`]: null,
+      });
+    } else if (event.kind === "rest" && event.healing && healActor) {
       // Persist the attempt on Downtime Log before touching HP. An interruption stops replay.
       await ledgerPage()!.update({
         [`flags.${MODULE_ID}.healingAttempt`]: event.healing,
@@ -397,44 +443,87 @@ async function executeDowntimeCommand(
         ?.value;
       if (typeof before !== "number" || !Number.isSafeInteger(before))
         throw new Error("Character money is unavailable.");
-      const draw = await rollTableReadOnly(tables[0]!);
-      const result = draw.results.length === 1 ? draw.results[0] : undefined;
-      const data = result?.getFlag(MODULE_ID, "hustle") as
-        { activity?: unknown; earnings?: unknown; roll?: unknown } | undefined;
-      const earnings = data?.earnings;
-      const amount = !draw.payoutEnabled
-        ? 0
-        : Array.isArray(earnings)
-          ? earnings[role.rank <= 4 ? 0 : role.rank <= 7 ? 1 : 2]
-          : undefined;
-      const resultRoll = draw.payoutEnabled ? draw.roll.total : data?.roll;
-      if (
-        !result ||
-        typeof data?.activity !== "string" ||
-        !Array.isArray(earnings) ||
-        earnings.length !== 3 ||
-        !earnings.every((n) => Number.isSafeInteger(n) && n >= 0) ||
-        typeof resultRoll !== "number" ||
-        !Number.isInteger(resultRoll) ||
-        resultRoll < 1 ||
-        resultRoll > 6 ||
-        data.roll !== resultRoll ||
-        !Number.isSafeInteger(before + amount)
-      )
-        throw new Error(
-          "Invalid structured Hustle table result. No days or money were changed.",
-        );
+      const morale = crewImprovementLevel(
+        getHeadquarters(false),
+        "moraleBoost",
+      );
+      const draws: Awaited<ReturnType<typeof rollTableReadOnly>>[] = [];
+      const rewards: HustleReward[] = [];
+      for (let n = 0; n < (morale >= 7 ? 2 : 1); n++) {
+        const draw = await rollTableReadOnly(tables[0]!);
+        const result = draw.results.length === 1 ? draw.results[0] : undefined;
+        const data = result?.getFlag(MODULE_ID, "hustle") as
+          | { activity?: unknown; earnings?: unknown; roll?: unknown }
+          | undefined;
+        const earnings = data?.earnings;
+        const amount = !draw.payoutEnabled
+          ? 0
+          : Array.isArray(earnings)
+            ? earnings[role.rank <= 4 ? 0 : role.rank <= 7 ? 1 : 2]
+            : undefined;
+        const resultRoll = draw.payoutEnabled ? draw.roll.total : data?.roll;
+        if (
+          !result ||
+          typeof data?.activity !== "string" ||
+          !Array.isArray(earnings) ||
+          earnings.length !== 3 ||
+          !earnings.every((n) => Number.isSafeInteger(n) && n >= 0) ||
+          typeof resultRoll !== "number" ||
+          !Number.isInteger(resultRoll) ||
+          resultRoll < 1 ||
+          resultRoll > 6 ||
+          data.roll !== resultRoll ||
+          !Number.isSafeInteger(before + amount)
+        )
+          throw new Error(
+            "Invalid structured Hustle table result. No days or money were changed.",
+          );
+        const reward: HustleReward = {
+          tableId: tables[0]!.id,
+          resultId: result.id,
+          resultText: tableResultText(result.text),
+          roll: resultRoll,
+          roleName: role.name,
+          rank: role.rank,
+          activity: data.activity,
+          amount,
+          before,
+          after: before + amount,
+        };
+        draws.push(draw);
+        rewards.push(reward);
+      }
+      const chosen = rewards.reduce((best, r) =>
+        r.amount > best.amount ? r : best,
+      );
+      const amount =
+        morale >= 9
+          ? rewards.reduce((sum, r) => sum + r.amount, 0)
+          : chosen.amount;
+      if (!Number.isSafeInteger(before + amount))
+        throw new Error("Hustle payment is too large.");
       const reward: HustleReward = {
-        tableId: tables[0]!.id,
-        resultId: result.id,
-        resultText: tableResultText(result.text),
-        roll: resultRoll,
-        roleName: role.name,
-        rank: role.rank,
-        activity: data.activity,
+        ...chosen,
         amount,
-        before,
         after: before + amount,
+        ...(rewards.length === 2
+          ? {
+              mode: morale >= 9 ? ("both" as const) : ("best" as const),
+              outcomes: rewards.map(
+                ({ resultId, resultText, roll, activity, amount }) => ({
+                  resultId,
+                  resultText,
+                  roll,
+                  activity,
+                  amount,
+                }),
+              ),
+              activity:
+                morale >= 9
+                  ? rewards.map((r) => r.activity).join("; ")
+                  : chosen.activity,
+            }
+          : {}),
       };
       event.hustleReward = reward;
       event.reason = hustleSummary(reward);
@@ -502,7 +591,7 @@ async function executeDowntimeCommand(
           speaker: { actor: actor.id, alias: actor.name },
           whisper: activityRollRecipients(actor),
           type: 5,
-          rolls: [draw.roll],
+          rolls: draws.map((d) => d.roll),
           content: rollCard({
             title: "Hustle — " + role.name,
 
@@ -519,6 +608,11 @@ async function executeDowntimeCommand(
       }
     } else await save(state);
   }
+  if (event.trainingSkills)
+    await ledgerPage()!.update({
+      [`flags.${MODULE_ID}.trainingAttempt`]: null,
+      "text.content": ledgerHtml(getDowntime(actor.id)),
+    });
   // A committed reward is never paid again if final request status failed.
   const pendingHustle = ledgerPage()?.getFlag?.(MODULE_ID, "hustleAttempt") as
     { requestId?: string } | undefined;
@@ -571,6 +665,7 @@ async function submitActivityRequestNow(request: SpendRequest): Promise<void> {
 export function healingFormula(h: HealingResult): string {
   const base = [
     "BODY " + h.body,
+    ...(h.moraleBoost ? ["1 Morale Boost"] : []),
     ...(h.medbay ? ["2 medbay"] : []),
     ...(h.antibiotic && h.multiplyAntibiotic ? ["2 antibiotic"] : []),
   ].join(" + ");
@@ -588,6 +683,18 @@ export function healingFormula(h: HealingResult): string {
 }
 function hustleSummary(h: HustleReward): string {
   return (
+    (h.outcomes
+      ? "Morale Boost (" +
+        h.mode +
+        "): " +
+        h.outcomes
+          .map(
+            (r) =>
+              "roll " + r.roll + " — " + r.activity + " (" + r.amount + " eb)",
+          )
+          .join("; ") +
+        ". "
+      : "") +
     h.roleName +
     " rank " +
     h.rank +
@@ -640,6 +747,19 @@ export async function requestHustleRoll(
     days: 0,
     reason: "Roll weekly hustle",
     period: 0,
+  });
+}
+export async function requestTraining(
+  actorId: string,
+  skills: string[],
+): Promise<void> {
+  return submitActivityRequest({
+    actorId,
+    kind: "spend",
+    days: 7,
+    reason: "HQ Training",
+    period: 0,
+    trainingSkills: skills,
   });
 }
 export async function requestDowntimeUse(

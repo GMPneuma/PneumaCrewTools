@@ -200,6 +200,11 @@ function fixture(customCatalog = []) {
     );
     return out;
   }
+  deps["./hq-benefits"] = loadExtra("hq-benefits");
+  deps["./hq-server-room"] = {
+    serverRoomLink: () => undefined,
+    openServerRoom() {},
+  };
   deps["./hq-records"] = loadExtra("hq-records");
   deps["./rent"].hqRent = (actor) => deps["./hq-records"].readHqRent(actor.id);
   vm.runInNewContext(code, {
@@ -882,7 +887,14 @@ test("player HQ discovery and facility checks require both native document permi
   const actor = f.game.actors.get(id);
   const page = f.records.hqPage(id);
   page.flags["pneuma-crewtools"].properties.improvements = [
-    { id: "garage", name: "Garage", cost: 0, notes: "", date: "2078-02-06" },
+    {
+      id: "garage",
+      name: "Garage",
+      level: 2,
+      cost: 0,
+      notes: "",
+      date: "2078-02-06",
+    },
     {
       id: "server",
       catalogId: "serverRoom",
@@ -902,7 +914,15 @@ test("player HQ discovery and facility checks require both native document permi
           target: ts.ScriptTarget.ES2022,
         },
       }).outputText,
-      { exports, require: (key) => (key === "./headquarters" ? f.api : {}) },
+      {
+        exports,
+        require: (key) =>
+          key === "./headquarters"
+            ? f.api
+            : key === "./hq-benefits"
+              ? loadFacility("hq-benefits")
+              : {},
+      },
     );
     return exports;
   };
@@ -1008,4 +1028,89 @@ test("HQ access failed page write restores explicit and inherited actor permissi
     f.api.saveHeadquartersAccess(id, false, ["missing"]),
     /no longer exists/,
   );
+});
+
+test("Rent Reduction upgrades add beds only up to the original capacity and removal restores them", async () => {
+  const f = fixture();
+  const id = await f.api.saveHeadquarters({
+    name: "Home",
+    image: "",
+    bedrooms: 2,
+  });
+  await f.award(200);
+  for (let n = 0; n < 3; n++)
+    await f.api.buyHqImprovement(
+      id,
+      "Rent Reduction",
+      40,
+      "",
+      "notes",
+      "rentReduction",
+    );
+  const hq = f.api.getHeadquarters().headquarters[0];
+  assert.equal(hq.bedrooms, 4);
+  assert.equal(hq.rentBaseBedrooms, 2);
+  await assert.rejects(
+    f.api.buyHqImprovement(
+      id,
+      "Rent Reduction",
+      40,
+      "",
+      "notes",
+      "rentReduction",
+    ),
+    /original bed/,
+  );
+  assert.equal(f.api.headquartersIp(), 80);
+  await f.api.removeHqImprovement(id, hq.improvements[0].id);
+  assert.equal(f.api.getHeadquarters().headquarters[0].bedrooms, 2);
+});
+test("Morale Boost permits the base plus ten upgrades and rejects an eleventh upgrade", async () => {
+  const f = fixture();
+  const id = await f.api.saveHeadquarters({ name: "Home", image: "" });
+  await f.award(500);
+  for (let n = 0; n < 11; n++)
+    await f.api.buyHqImprovement(
+      id,
+      "Morale Boost",
+      40,
+      "",
+      "notes",
+      "moraleBoost",
+    );
+  await assert.rejects(
+    f.api.buyHqImprovement(id, "Morale Boost", 40, "", "notes", "moraleBoost"),
+    /final upgrade/,
+  );
+  assert.equal(
+    f.api.getHeadquarters().headquarters[0].improvements[0].level,
+    11,
+  );
+});
+
+test("Legacy Rent Reduction bed upgrades are derived once and persist without compounding", async () => {
+  const f = fixture();
+  const id = await f.api.saveHeadquarters({
+    name: "Home",
+    image: "",
+    bedrooms: 2,
+  });
+  const page = Array.from(f.game.journal)
+    .flatMap((j) => j.pages ?? [])
+    .find((p) => p.getFlag("pneuma-crewtools", "hqActorId") === id);
+  page.flags["pneuma-crewtools"].properties.improvements = [
+    {
+      id: "rent",
+      name: "Rent Reduction",
+      catalogId: "rentReduction",
+      level: 2,
+      cost: 80,
+      notes: "",
+      date: "2078-02-06",
+    },
+  ];
+  assert.equal(f.api.getHeadquarters().headquarters[0].bedrooms, 3);
+  await f.api.saveHeadquarters({ id, name: "Home", image: "", bedrooms: 3 });
+  assert.equal(f.api.getHeadquarters().headquarters[0].bedrooms, 3);
+  assert.equal(f.api.getHeadquarters().headquarters[0].rentBaseBedrooms, 2);
 });

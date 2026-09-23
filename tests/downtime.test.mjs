@@ -2558,7 +2558,28 @@ test("Nomad shared respec charges seven days atomically, survives Garage removal
       actor.id,
     );
   await assert.rejects(f.api.requestNomadRespec(actor.id, 1), /Garage/);
-  f.headquarters.headquarters = [{ improvements: [{ name: "Garage" }] }];
+  f.headquarters.headquarters = [
+    { improvements: [{ name: "Garage", level: 2 }] },
+  ];
+  const vehicle = {
+    id: "nomad-car",
+    name: "Nomad Car",
+    type: "mook",
+    system: { derivedStats: { hp: { value: 40, max: 40 } } },
+    testUserPermission: () => true,
+  };
+  f.game.actors.push(vehicle);
+  f.requests().pages.push({
+    getFlag: (_ns, key) =>
+      key === "recordKey"
+        ? "nomadVehicles"
+        : key === "data"
+          ? { slots: [{ actorId: vehicle.id }], history: [] }
+          : undefined,
+  });
+  vehicle.system.derivedStats.hp.value = 39;
+  await assert.rejects(f.api.requestNomadRespec(actor.id, 2), /fully repaired/);
+  vehicle.system.derivedStats.hp.value = 40;
   await f.api.requestNomadRespec(actor.id, 2);
   assert.equal(progress(), 2);
   assert.equal(f.balance(), 13);
@@ -2566,7 +2587,9 @@ test("Nomad shared respec charges seven days atomically, survives Garage removal
   f.headquarters.headquarters = [];
   await assert.rejects(f.api.requestNomadRespec(actor.id, 1), /Garage/);
   assert.equal(progress(), 2);
-  f.headquarters.headquarters = [{ improvements: [{ name: "garage" }] }];
+  f.headquarters.headquarters = [
+    { improvements: [{ name: "garage", level: 2 }] },
+  ];
   f.failSave(true);
   await assert.rejects(f.api.requestNomadRespec(actor.id, 5), /write failed/);
   assert.equal(progress(), 2);
@@ -2779,4 +2802,159 @@ test("GM corrections preserve other directory accounts and their Journal records
     );
   }
   assert.equal(f.balance(), 6);
+});
+
+for (const [level, amount] of [
+  [6, 100],
+  [7, 250],
+  [9, 350],
+])
+  test(
+    "Morale Hustle level " + level + " pays correctly and charges one week",
+    async () => {
+      const f = fixture();
+      await f.award(14);
+      f.game.user = f.p1;
+      f.headquarters.headquarters = [
+        { improvements: [{ catalogId: "moraleBoost", level }] },
+      ];
+      await f.api.requestDowntimeUse(
+        7,
+        "hustle",
+        "Hustle week",
+        f.p1.character.id,
+      );
+      mockHustle(f);
+      let calls = 0;
+      const table = f.game.tables[0];
+      table.roll = async () => {
+        calls++;
+        const roll = calls === 1 ? 2 : 5;
+        const earnings = calls === 1 ? [100, 200, 500] : [250, 400, 800];
+        return {
+          roll: { total: roll },
+          results: [
+            {
+              id: "result" + roll,
+              text: "Job " + roll,
+              getFlag: () => ({ roll, activity: "Job " + roll, earnings }),
+            },
+          ],
+        };
+      };
+      await f.api.requestHustleRoll(f.p1.character.id, "tech-role");
+      const reward = f.api
+        .getDowntime(f.p1.character.id)
+        .events.at(-1).hustleReward;
+      assert.equal(reward.amount, amount);
+      assert.equal(calls, level >= 7 ? 2 : 1);
+      assert.equal(f.balance(), 7);
+      if (level >= 7) assert.equal(reward.outcomes.length, 2);
+    },
+  );
+
+test("Training charges seven days, installs one native effect, and restores it if the ledger fails", async () => {
+  const f = fixture();
+  await f.award(21);
+  f.game.user = f.p1;
+  const actor = f.p1.character;
+  actor.items.push(
+    { id: "gun", type: "skill", name: "Handgun" },
+    { id: "ath", type: "skill", name: "Athletics" },
+  );
+  actor.effects = [];
+  actor.createEmbeddedDocuments = async (type, data) =>
+    data.map((d) => {
+      const e = {
+        id: "training",
+        ...structuredClone(d),
+        getFlag: (ns, k) => e.flags[ns]?.[k],
+        toObject: () => ({
+          name: e.name,
+          changes: structuredClone(e.changes),
+          flags: structuredClone(e.flags),
+          disabled: e.disabled,
+        }),
+        update: async (c) => Object.assign(e, structuredClone(c)),
+      };
+      actor.effects.push(e);
+      return e;
+    });
+  actor.deleteEmbeddedDocuments = async (type, ids) => {
+    actor.effects = actor.effects.filter((e) => !ids.includes(e.id));
+  };
+  f.headquarters.headquarters = [
+    {
+      improvements: [
+        { catalogId: "trainingArea", name: "Training Area", level: 1 },
+      ],
+    },
+  ];
+  await f.api.requestTraining(actor.id, ["gun"]);
+  assert.equal(f.balance(), 14);
+  assert.equal(actor.effects.length, 1);
+  assert.match(actor.effects[0].name, /Handgun/);
+  const ledger = f
+    .requests()
+    .pages.find((p) => p.getFlag("pneuma-crewtools", "kind") === "actorLedger");
+  const update = ledger.update;
+  ledger.update = async (data) => {
+    if (
+      data["flags.pneuma-crewtools.downtime"]?.events.some((e) =>
+        e.trainingSkills?.includes("ath"),
+      )
+    )
+      throw Error("write failed");
+    return update(data);
+  };
+  await assert.rejects(
+    f.api.requestTraining(actor.id, ["ath"]),
+    /write failed/,
+  );
+  ledger.update = update;
+  assert.equal(f.balance(), 14);
+  assert.match(actor.effects[0].name, /Handgun/);
+  await f.api.requestTraining(actor.id, ["ath"]);
+  assert.equal(f.balance(), 7);
+  assert.equal(actor.effects.length, 1);
+  assert.match(actor.effects[0].name, /Athletics/);
+});
+
+test("Double Hustle failed payment retains both rolls and prevents a second payment or reroll", async () => {
+  const f = fixture();
+  const rolls = mockHustle(f);
+  await allocateHustle(f, 7);
+  f.game.user = f.p1;
+  f.headquarters.headquarters = [
+    {
+      improvements: [
+        { catalogId: "moraleBoost", name: "Morale Boost", level: 9 },
+      ],
+    },
+  ];
+  const ledger = f
+    .requests()
+    .pages.find((p) => p.getFlag("pneuma-crewtools", "kind") === "actorLedger");
+  const update = ledger.update;
+  ledger.update = async (data) => {
+    if (
+      data["flags.pneuma-crewtools.downtime"]?.events.some(
+        (e) => e.kind === "hustleRoll",
+      )
+    )
+      throw Error("write failed");
+    return update(data);
+  };
+  await assert.rejects(
+    f.api.requestHustleRoll("tech1", "tech-role"),
+    /write failed/,
+  );
+  ledger.update = update;
+  assert.equal(rolls(), 2);
+  assert.equal(f.p1.character.system.wealth.value, 100);
+  await assert.rejects(
+    f.api.requestHustleRoll("tech1", "tech-role"),
+    /GM review/,
+  );
+  assert.equal(rolls(), 2);
 });

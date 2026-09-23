@@ -2,6 +2,7 @@ import fs from "node:fs";
 import { createRequire } from "node:module";
 import Handlebars from "handlebars";
 import assert from "node:assert/strict";
+Handlebars.registerHelper("disabled", (value) => (value ? "disabled" : ""));
 const { chromium } = createRequire(import.meta.url)("playwright");
 const template = Handlebars.compile(
   fs.readFileSync(
@@ -136,10 +137,22 @@ try {
     bounds.status < bounds.payout,
     "dashboard stays smaller than an expanded payout",
   );
+  data.status.moraleBoost = true;
+  await page
+    .locator(".window-content")
+    .evaluate((el, html) => (el.innerHTML = html), template(data));
+  const moraleBox = await page.locator("[data-hub-morale]").boundingBox();
+  const hqBox = await page.locator("[data-hub-headquarters]").boundingBox();
+  assert.ok(
+    Math.abs(moraleBox.x - hqBox.x) < 1 &&
+      moraleBox.y >= hqBox.y + hqBox.height,
+    "Moral Boost appears directly below View HQ",
+  );
   if (process.env.HUB_SCREENSHOT)
     await page
       .locator(".window-app")
       .screenshot({ path: process.env.HUB_SCREENSHOT });
+  data.status.moraleBoost = false;
   // A long GM inbox must scroll, not collapse the opt-in controls to their borders.
   await page.locator(".window-content").evaluate(
     (el, html) => (el.innerHTML = html),
@@ -185,6 +198,16 @@ try {
     ),
   );
   const activityHtml = activityTemplate({
+    training: {
+      visible: true,
+      second: true,
+      cannotTrain: false,
+      skills: [
+        { id: "gun", name: "Handgun" },
+        { id: "ath", name: "Athletics" },
+      ],
+      current: "HQ Training — Athletics",
+    },
     canStartPatient: true,
     patientChoices: [
       { id: "standard", label: "Standard · 500 eb", selected: true },
@@ -276,6 +299,11 @@ try {
   await page
     .locator(".window-content")
     .evaluate((el, html) => (el.innerHTML = html), activityHtml);
+  await page.locator("[data-downtime-section=training] summary").click();
+  await page.locator("[name=trainingSkill]").selectOption("gun");
+  await page.locator("[name=trainingSkill2]").selectOption("ath");
+  assert.equal(await page.locator("[data-training-use]").isEnabled(), true);
+  assert.equal(await page.locator("[name=trainingSkill2]").inputValue(), "ath");
   assert.equal(await page.locator(".downtime-heal [data-heal-day]").count(), 1);
   assert.equal(await page.locator("[data-heal-day]").isEnabled(), true);
   assert.equal(

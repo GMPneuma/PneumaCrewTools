@@ -195,7 +195,24 @@ interface FoundryModule {
   api?: unknown;
 }
 
+interface FoundryActiveEffect {
+  id: string;
+  name: string;
+  disabled: boolean;
+  getFlag(namespace: string, key: string): unknown;
+  toObject(): Record<string, unknown>;
+  update(data: Record<string, unknown>): Promise<unknown>;
+}
 interface FoundryActor {
+  effects?: Iterable<FoundryActiveEffect>;
+  createEmbeddedDocuments(
+    type: "ActiveEffect",
+    data: Record<string, unknown>[],
+  ): Promise<FoundryActiveEffect[]>;
+  deleteEmbeddedDocuments(
+    type: "ActiveEffect",
+    ids: string[],
+  ): Promise<unknown>;
   img?: string;
   ownership?: Record<string, number>;
   documentName?: string;
@@ -233,6 +250,7 @@ interface FoundryActor {
 }
 
 interface FoundryItem {
+  getFlag?(namespace: string, key: string): unknown;
   snort?(): Promise<unknown>;
   uuid?: string;
   pack?: string;
@@ -479,4 +497,7 @@ declare const RollTable: {
   create(data: Record<string, unknown>): Promise<FoundryRollTable>;
 };
 
-declare const Item: { deleteDocuments(ids: string[]): Promise<unknown> };
+declare const Item: {
+  create(data: Record<string, unknown>): Promise<FoundryItem>;
+  deleteDocuments(ids: string[]): Promise<unknown>;
+};

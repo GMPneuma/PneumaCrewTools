@@ -21,9 +21,9 @@ Buy Improvement accepts a name, whole-number IP cost, notes, and an explicit eff
 | ---------- | -------------------------------------------------------------------- |
 | Notes only | Descriptive improvement; no automatic mechanics.                     |
 | Medbay     | Enables the downtime medbay checkbox: +2 effective BODY for healing. |
-| Workshop   | Enables all three TECH project slots.                                |
+| Workshop   | Enables two TECH project slots; the upgrade enables three.           |
 
-Effects survive renaming. Improvements without an explicit effect still recognize Medbay/Workshop names. Explicit Notes only grants no automatic benefit.
+Effects survive renaming. Improvements without an explicit effect still recognize Medbay/Workshop names. The effect selector controls optional Medbay/Workshop effects. Stock benefits such as Morale Boost and Training Area are identified by their catalog entry independently.
 
 A GM can edit name, notes, and effect after purchase; original cost/date remain. Removal requires confirmation, removes the benefit, and does not refund HQ IP. Use a separate IP adjustment for a deliberate correction. Existing projects are not deleted when Workshop access changes.
 
@@ -51,7 +51,7 @@ Tests cover management, effects, IP corrections/overspending, failed saves, owne
 
 Properties are edited alongside the clickable Container image. Bedrooms and an optional maximum improvement count are stored with description/improvements on the HQ Journal page; rent type, modifier, and existing bills also live on that page. A blank capacity means no limit.
 
-The built-in catalog uses the twelve No Place Like Home improvements (pages 3–6), with short summaries and 40 HQ IP costs. Buying the same catalog entry increases its recorded level. Capacity counts distinct improvements. No new benefit mechanics or upgrade eligibility rules are automated; existing Medbay and Workshop presence checks remain.
+The built-in catalog uses the twelve No Place Like Home improvements (pages 3–6), with short summaries and 40 HQ IP costs. Buying the same catalog entry increases its recorded level. Capacity counts distinct improvements. Stock improvements permit a base purchase and one upgrade, except Morale Boost (ten upgrades) and Rent Reduction (one extra bed per upgrade, capped at the original bed count). Custom improvement limits remain configurable.
 
 Settings → Headquarters → Manage Custom Improvements adds short named entries with any non-negative whole HQ IP cost, and permits editing custom costs or removing catalog options. Existing purchased entries remain intact. Custom definitions live in the HQ Improvements Journal, not on character Actors.
 
@@ -64,3 +64,13 @@ Inactive HQs remain listed for the GM. To finish removal, manually delete that H
 ## Player visibility and facility access
 
 Players need Observer or Owner access to both the HQ container and its HQ Journal page. Removing access to either hides that HQ from their Crew Tools lists and excludes its Garage, Workshop, Server Room and Medbay benefits. Native inherited and per-user permissions apply. GMs can still see active HQs regardless of player permissions; inactive HQs remain excluded.
+
+## Automated stock benefits
+
+- **Morale Boost:** Player Hub adds **Moral Boost** below View HQ. The screen lists active benefits from accessible HQs. Upgrade 2 adds +1 effective BODY to natural healing, stacking with Medbay. Upgrade 6 rolls Hustle twice and keeps the higher income (ties keep the first); upgrade 8 pays both incomes. Both outcomes are recorded, but only one week is consumed. Lifestyle, monthly Humanity, LUCK, negotiation and the GM-designed benefit are references only. Base purchase is level 1, so upgrade 2 is level 3.
+- **Rent Reduction:** New HQ bills use the next cheaper paid housing category; Cube Hotel becomes 100 eb. Free housing remains free. Existing bills keep their amounts. Each upgrade adds a bed without raising rent, up to twice the original capacity. Removing the improvement removes its added beds. Legacy upgrades gain their bed benefits when read; the original capacity is preserved on the next save.
+- **Training Area:** Spend seven days in Spend Downtime to gain a native +1 Active Effect for one eligible skill. Upgraded Training Areas allow Solos two distinct skills. Training replaces the previous bonus; a positive Group IP award through Crew Tools disables it. Individual IP and downtime-session changes do not expire it. For Group IP awarded outside Crew Tools, disable the HQ Training effect on the actor manually. Both native skill and weapon rolls consume the modifier.
+- **Garage:** Respec requires the upgrade. All linked Nomad vehicles must be accessible with full HP. Link every vehicle in the Player Hub and resolve any faults not represented by HP before respec. Vehicle choices and untracked operational faults remain manual.
+- **Server Room:** The primary GM creates one native NET Architecture Item under the CrewTools Item folder. Both HQ views link to it. Architecture design remains editable in its native sheet. Player read access follows HQ access; removing the improvement or deactivating the HQ revokes generated player access without deleting the Item. If no GM is online, creation waits until a GM connects. Existing architecture contents are preserved.
+
+Studio, Workstation, Evidence Wall, Lounge and Lockup remain catalog references. Medbay keeps its existing healing support; no extra medical automation was added. Workshop behavior remains unchanged.

@@ -5,6 +5,7 @@ import { isCrewActor, accessibleCrewActors } from "./actor-policy";
 import { moneyChange } from "./actor-resources";
 import { getCampaignDate } from "./calendar";
 import { displayDate } from "./date-format";
+import { reducedHqRate } from "./hq-benefits";
 import { getHeadquarters } from "./headquarters";
 import { createUniqueId } from "./id";
 import {
@@ -613,7 +614,10 @@ export function issueRent(): Promise<string> {
         data.bills.push({
           period: id,
           date,
-          charge: rentCharge(rate, data.modifier),
+          charge: rentCharge(
+            reducedHqRate(rate, rentConfig().housing, hq),
+            data.modifier,
+          ),
           paid: 0,
           contributions: [],
         });

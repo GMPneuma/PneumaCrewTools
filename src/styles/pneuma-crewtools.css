@@ -4251,3 +4251,38 @@ html[data-cpr-theme="darkmode"] .pneuma-crewtools .netrunner-role {
   font-size: 0.85em;
   line-height: 1.4;
 }
+
+.pneuma-crewtools .hub-actions [data-hub-morale] {
+  grid-column: 3;
+  grid-row: 2;
+}
+
+/* Public shortcut slots leave contributor colors and animations untouched. */
+#pneuma-crewtools-calendar.has-external-shortcuts {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 34px;
+  grid-template-rows: repeat(calc(1 + var(--pneuma-shortcut-count)), 26px);
+  gap: 0 8px;
+}
+#pneuma-crewtools-calendar.has-external-shortcuts > .pneuma-calendar-date {
+  grid-column: 1;
+  grid-row: 1 / -1;
+}
+#pneuma-crewtools-calendar.has-external-shortcuts > .pneuma-crew-hud {
+  grid-column: 2;
+  grid-row: 1;
+}
+#pneuma-crewtools-calendar.has-external-shortcuts .pneuma-crew-hud button {
+  height: 26px;
+}
+#pneuma-crewtools-calendar.has-external-shortcuts > .pneuma-external-shortcut {
+  grid-column: 2;
+}
+#pneuma-crewtools-calendar.has-external-shortcuts:not(:has(.pneuma-crew-hud)) {
+  grid-template-rows: repeat(var(--pneuma-shortcut-count), 26px);
+}
+#pneuma-crewtools-calendar .pneuma-external-shortcut {
+  flex: 0 0 34px;
+  width: 34px;
+  pointer-events: auto;
+}

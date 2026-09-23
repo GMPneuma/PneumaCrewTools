@@ -10,6 +10,7 @@ const sources = Object.fromEntries(
     "foundry-form",
     "date-format",
     "calendar-date",
+    "hud-shortcuts",
     "calendar",
     "ui-appearance",
   ].map((name) => [

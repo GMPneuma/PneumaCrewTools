@@ -19,6 +19,14 @@ export interface DowntimeAccount {
   characterJournalId: string;
 }
 export interface HustleReward {
+  mode?: "best" | "both";
+  outcomes?: {
+    resultId: string;
+    resultText?: string;
+    roll: number;
+    activity: string;
+    amount: number;
+  }[];
   tableId: string;
   resultId: string;
   resultText?: string;
@@ -58,6 +66,7 @@ export interface DowntimeEvent {
   resources?: ResourceChange[];
   projectId?: string;
   roleItemId?: string;
+  trainingSkills?: string[];
   healing?: HealingResult;
   hustleReward?: HustleReward;
   custom?: CustomProgress;
@@ -218,6 +227,17 @@ export function validateDowntime(state: DowntimeState): void {
     )
       throw new Error("Invalid downtime history row.");
     validateCustomEvent(event);
+    if (
+      event.trainingSkills &&
+      (event.kind !== "spend" ||
+        event.days !== 7 ||
+        !Array.isArray(event.trainingSkills) ||
+        event.trainingSkills.length < 1 ||
+        event.trainingSkills.length > 2 ||
+        new Set(event.trainingSkills).size !== event.trainingSkills.length ||
+        event.trainingSkills.some((id) => typeof id !== "string" || !id))
+    )
+      throw new Error("Invalid Training Area record.");
     if (event.healing) {
       if (event.kind !== "rest")
         throw new Error("Only rest can record healing.");
@@ -225,6 +245,28 @@ export function validateDowntime(state: DowntimeState): void {
     }
     if (event.kind === "hustleRoll") {
       const h = event.hustleReward;
+      if (
+        h?.outcomes &&
+        (h.outcomes.length !== 2 ||
+          !["best", "both"].includes(h.mode ?? "") ||
+          h.outcomes.some(
+            (r) =>
+              !r.resultId ||
+              typeof r.activity !== "string" ||
+              !Number.isInteger(r.roll) ||
+              r.roll < 1 ||
+              r.roll > 6 ||
+              !Number.isSafeInteger(r.amount) ||
+              r.amount < 0,
+          ) ||
+          h.amount !==
+            (h.mode === "both"
+              ? h.outcomes.reduce((sum, r) => sum + r.amount, 0)
+              : Math.max(...h.outcomes.map((r) => r.amount))))
+      )
+        throw new Error("Invalid double Hustle reward.");
+      if (h?.mode && !h.outcomes)
+        throw new Error("Missing double Hustle outcomes.");
       if (
         (hustlePools.get(event.actorId) ?? 0) < 7 ||
         !event.roleItemId ||

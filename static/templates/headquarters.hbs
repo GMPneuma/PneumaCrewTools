@@ -145,7 +145,14 @@
     <fieldset class="payout-heading hub-status"><legend><i
           class="fas fa-tools"
         ></i>
-        Improvements</legend><div class="hq-improvements-layout">
+        Improvements</legend>{{#if serverRoom}}<p><button
+            type="button"
+            data-hq-netarch
+          ><i class="fas fa-network-wired"></i>
+            {{#if serverRoomItem}}{{serverRoomItem.name}}{{else}}NET
+              Architecture · GM setup pending{{/if}}</button></p>{{/if}}<div
+        class="hq-improvements-layout"
+      >
         <div class="hq-installed"><table><thead><tr><th>Improvement</th><th
                 >Level</th>{{#if canManage}}<th></th>{{/if}}</tr></thead><tbody
             >{{#each hq.improvements}}<tr><td title="{{notes}}">{{name}}</td><td

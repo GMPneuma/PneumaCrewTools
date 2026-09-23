@@ -1,3 +1,4 @@
+import { hudShortcuts } from "./hud-shortcuts";
 import {
   openHeadquarters,
   getHeadquarters,
@@ -26,6 +27,7 @@ import { discoverPlayerAccounts } from "./player-discovery";
 import { openPayoutWindow, openGMDashboard } from "./window-controls";
 
 export const pneumaCrewToolsApi = Object.freeze({
+  hudShortcuts,
   openGMDashboard,
   openPlayerHub,
   headquarters: Object.freeze({

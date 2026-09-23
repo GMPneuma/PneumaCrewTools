@@ -18,6 +18,8 @@ function load(name, globals, deps) {
   vm.runInNewContext(code, {
     exports,
     require: (k) => {
+      if (k === "./hq-benefits") return load("hq-benefits", globals, {});
+      if (k === "./morale-boost") return { openMoraleBoost() {} };
       if (k === "./hub-cyberpsychosis")
         return load("hub-cyberpsychosis", globals, {});
       if (k === "./netrunner-panel" || k === "./netrunner-system")
@@ -177,7 +179,10 @@ function fixture() {
     { game },
     {
       "./constants": { MODULE_ID: "pneuma-crewtools" },
-      "./headquarters": { headquartersIp: () => 12 },
+      "./headquarters": {
+        headquartersIp: () => 12,
+        getHeadquarters: () => ({ headquarters: [] }),
+      },
       "./journal-records": { actorPayoutRecords: () => [] },
       "./downtime-model": model,
       "./downtime-store": {

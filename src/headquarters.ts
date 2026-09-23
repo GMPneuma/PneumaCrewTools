@@ -11,6 +11,8 @@ import {
 } from "./hq-records";
 import { getHqCatalog, HqCatalogSettings } from "./hq-catalog";
 import * as rent from "./rent";
+import { serverRoomLink, openServerRoom } from "./hq-server-room";
+import { reducedHqRate, improvementLevel } from "./hq-benefits";
 import { rentCharge, modifierLabel } from "./rent-model";
 import { openRent } from "./rent-form";
 import { coalesceRefresh } from "./ui-refresh";
@@ -32,6 +34,7 @@ export interface HeadquartersRecord {
   image: string;
   description?: string;
   bedrooms?: number;
+  rentBaseBedrooms?: number;
   maxImprovements?: number | null;
   actorId: string;
   improvements: Array<{
@@ -139,12 +142,19 @@ export function getHeadquarters(includeLedger = true): HeadquartersState {
       })
       .map((actor) => {
         const data = hqProperties(actor.id)!;
+        const rentLevel = improvementLevel(data, "rentReduction");
+        const legacyRent = rentLevel > 0 && data.rentBaseBedrooms === undefined;
         return {
           id: actor.id,
           actorId: actor.id,
           name: actor.name,
           image: actor.img ?? "",
-          bedrooms: data.bedrooms ?? 0,
+          bedrooms:
+            (data.bedrooms ?? 0) +
+            (legacyRent ? Math.max(0, rentLevel - 1) : 0),
+          rentBaseBedrooms: legacyRent
+            ? (data.bedrooms ?? 0)
+            : data.rentBaseBedrooms,
           maxImprovements: data.maxImprovements ?? null,
           description: data.description ?? "",
           improvements: structuredClone(data.improvements ?? []),
@@ -256,6 +266,9 @@ async function save(state: HeadquartersState): Promise<void> {
       const before = hqProperties(actor.id)!;
       const after = {
         bedrooms: hq.bedrooms ?? 0,
+        ...(hq.rentBaseBedrooms !== undefined
+          ? { rentBaseBedrooms: hq.rentBaseBedrooms }
+          : {}),
         maxImprovements: hq.maxImprovements ?? null,
         description: hq.description ?? "",
         improvements: hq.improvements,
@@ -402,7 +415,9 @@ export async function saveHeadquarters(input: {
       throw new Error("Headquarters no longer exists.");
     if (!input.id && actor && hqPage(actor.id))
       throw new Error("This container is already an HQ.");
-    const current = actor ? hqProperties(actor.id) : undefined;
+    const current = actor
+      ? getHeadquarters(false).headquarters.find((h) => h.id === actor.id)
+      : undefined;
     const bedrooms = input.bedrooms ?? current?.bedrooms ?? 0;
     const maxImprovements =
       input.maxImprovements === undefined
@@ -435,6 +450,9 @@ export async function saveHeadquarters(input: {
     }
     const data = {
       bedrooms,
+      ...(current?.rentBaseBedrooms !== undefined
+        ? { rentBaseBedrooms: current.rentBaseBedrooms }
+        : {}),
       maxImprovements,
       description,
       improvements: current?.improvements ?? [],
@@ -506,12 +524,41 @@ export async function buyHqImprovement(
       ? getHqCatalog().find((i) => i.id === catalogId)
       : undefined;
     const nextLevel = existing ? (existing.level ?? 1) + 1 : 1;
+    const customOption =
+      option &&
+      ![
+        "evidenceWall",
+        "garage",
+        "lockup",
+        "lounge",
+        "medbay",
+        "moraleBoost",
+        "rentReduction",
+        "serverRoom",
+        "studio",
+        "trainingArea",
+        "workshop",
+        "workstation",
+      ].includes(option.id);
+    if (catalogId === "moraleBoost" && nextLevel > 11)
+      throw new Error("Morale Boost has reached its final upgrade.");
+    if (catalogId === "rentReduction") {
+      hq.rentBaseBedrooms ??= Math.max(
+        0,
+        (hq.bedrooms ?? 0) - Math.max(0, (existing?.level ?? 1) - 1),
+      );
+      if (nextLevel > hq.rentBaseBedrooms + 1)
+        throw new Error(
+          "Rent Reduction cannot exceed twice the original bed count.",
+        );
+      if (nextLevel > 1) hq.bedrooms = (hq.bedrooms ?? 0) + 1;
+    }
     if (
       option?.hasLevel2 !== undefined &&
       nextLevel > (option.hasLevel2 ? 2 : 1)
     )
       throw new Error("This improvement has reached its final level.");
-    if (option?.hasLevel2 !== undefined)
+    if (customOption && option?.hasLevel2 !== undefined)
       notes =
         nextLevel === 2 ? (option.level2Description ?? "") : option.description;
     if (
@@ -524,7 +571,8 @@ export async function buyHqImprovement(
       existing.level = (existing.level ?? 1) + 1;
       existing.cost += cost;
       existing.catalogId = catalogId;
-      if (option?.hasLevel2 !== undefined) existing.notes = notes.trim();
+      if (customOption && option?.hasLevel2 !== undefined)
+        existing.notes = notes.trim();
     } else
       hq.improvements.push({
         catalogId,
@@ -729,6 +777,13 @@ export async function removeHqImprovement(
     const hq = state.headquarters.find((h) => h.id === hqId);
     const item = hq?.improvements.find((i) => i.id === improvementId);
     if (!hq || !item) throw new Error("Improvement no longer exists.");
+    if (improvementLevel({ improvements: [item] }, "rentReduction") > 0) {
+      hq.bedrooms = Math.max(
+        0,
+        (hq.bedrooms ?? 0) - Math.max(0, (item.level ?? 1) - 1),
+      );
+      delete hq.rentBaseBedrooms;
+    }
     hq.improvements = hq.improvements.filter((i) => i.id !== improvementId);
     state.transactions.push({
       id: createUniqueId(),
@@ -847,8 +902,12 @@ export class HeadquartersForm extends CrewToolsForm {
                 ? 1
                 : 0)) + 1,
         }))
-        .filter(
-          (i) => i.hasLevel2 === undefined || i.level <= (i.hasLevel2 ? 2 : 1),
+        .filter((i) =>
+          i.id === "moraleBoost"
+            ? i.level <= 11
+            : i.id === "rentReduction"
+              ? i.level <= (hq?.rentBaseBedrooms ?? hq?.bedrooms ?? 0) + 1
+              : i.hasLevel2 === undefined || i.level <= (i.hasLevel2 ? 2 : 1),
         )
         .map((i) => ({
           ...i,
@@ -857,9 +916,14 @@ export class HeadquartersForm extends CrewToolsForm {
               ? (i.level2Description ?? "")
               : i.description,
         })),
+      serverRoom: hq && improvementLevel(hq, "serverRoom") > 0,
+      serverRoomItem: hq && serverRoomLink(hq.id),
       effects: effectOptions(),
       rentAmount:
-        rate && rental ? rentCharge(rate, rental.modifier).amount : undefined,
+        rate && rental && hq
+          ? rentCharge(reducedHqRate(rate, config.housing, hq), rental.modifier)
+              .amount
+          : undefined,
       rentConfigured: !!rate,
       rentRates: config.housing.map((r) => ({
         ...r,
@@ -1012,6 +1076,9 @@ export class HeadquartersForm extends CrewToolsForm {
         { width: 420, height: "auto", resizable: true },
       );
       dialog.render(true);
+    });
+    root?.querySelector("[data-hq-netarch]")?.addEventListener("click", () => {
+      if (this.selectedId) openServerRoom(this.selectedId);
     });
     root?.querySelector("[data-new-hq]")?.addEventListener("click", () => {
       this.selectedId = "";
@@ -1208,6 +1275,10 @@ export function registerHeadquarters(): void {
   Hooks.on("createActor", (actor) => {
     if (window?.rendered && hqPage(actor.id)) refresh();
   });
+  for (const hook of ["createItem", "updateItem", "deleteItem"] as const)
+    Hooks.on(hook, (item) => {
+      if (item.getFlag?.(MODULE_ID, "hqServerRoom")) refresh();
+    });
   Hooks.on("deleteActor", (actor) => {
     if (!window?.rendered) return;
     if (hqPage(actor.id)) refresh();

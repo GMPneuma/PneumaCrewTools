@@ -48,6 +48,9 @@ export const DEFAULT_HQ_IMPROVEMENTS: HqImprovementOption[] = [
   name,
   description,
   cost: 40,
+  ...(!["moraleBoost", "rentReduction"].includes(id)
+    ? { hasLevel2: true, level2Description: description }
+    : {}),
   effect: id === "medbay" ? "medbay" : id === "workshop" ? "workshop" : "notes",
 }));
 export function getHqCatalog(): HqImprovementOption[] {
