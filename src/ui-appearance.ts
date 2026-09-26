@@ -5,9 +5,9 @@ const UI_COLORS = [
   {
     key: "calendarFontColor",
     name: "Appearance: Calendar Font Color",
-    hint: "Date display text color on this device. Default: aqua (#7fffea).",
+    hint: "Date display text color on this device. Default: Biomonitor blue (#b8efeb).",
     variable: "--pneuma-calendar-font-color",
-    default: "#7fffea",
+    default: "#b8efeb",
   },
   {
     key: "hudIconColor",

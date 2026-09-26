@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.9.2 - 2026-09-25
+
+- Changed the corner HUD date's default text color to Biomonitor blue (#b8efeb), matching Combat Tools. Custom calendar color settings remain unchanged.
+
 ## 0.9.1 - 2026-09-23
 
 - Fixed fabrication of compendium items with packaged attachments by resolving the compendium source at completion and preserving its native installation tree. Missing or inaccessible sources leave completion retryable.

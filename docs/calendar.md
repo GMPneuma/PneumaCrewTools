@@ -12,11 +12,11 @@ If Simple Calendar is later disabled, uninstalled, or not ready, Crew Tools repo
 
 ### Crew Tools calendar mode
 
-The aqua city-clock display replaces the Foundry logo in the upper-left corner and shows the current world
+The blue city-clock display replaces the Foundry logo in the upper-left corner and shows the current world
 date to players and GMs. It does not change the clock merely to initialize the UI.
 On v12, a world time of zero displays 1970-01-01 under the Gregorian shim.
 
-The aqua date reads, for example, **Jan 1, 2078**. The date itself is passive and
+The blue date reads, for example, **Jan 1, 2078**. The date itself is passive and
 does not respond to clicks. Its transparent face has a subtle metal frame,
 and subtle scan lines. It occupies the logo slot above the scene controls;
 if no logo exists, it falls back to the upper-left corner.
@@ -108,6 +108,6 @@ world; verify v13/v14 when compatible system releases are available.
 
 ## Appearance settings
 
-Module Settings > Pneuma's Crew Tools > Appearance: Calendar Font Color provides a native color picker. The default is aqua (#7fffea). Saving applies immediately. This client setting affects only this device; it does not change campaign data or create Journals.
+Module Settings > Pneuma's Crew Tools > Appearance: Calendar Font Color provides a native color picker. The default is Biomonitor blue (#b8efeb), matching the Combat Tools Biomonitor HUD. Saving applies immediately. This client setting affects only this device; it does not change campaign data or create Journals.
 
 Future UI color options belong in the UI_COLORS registry in src/ui-appearance.ts. Each entry defines its setting key, label, hint, default six-digit hex color, and CSS custom property. Registration, color pickers, validation fallback, and immediate application are shared. Calendar styles consume --pneuma-calendar-font-color.

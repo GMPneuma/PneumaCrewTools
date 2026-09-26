@@ -1441,7 +1441,7 @@ html[data-cpr-theme="darkmode"]
   box-shadow:
     2px 3px 4px rgba(0, 0, 0, 0.35),
     inset -1px -1px rgba(190, 210, 215, 0.18);
-  color: var(--pneuma-calendar-font-color, #7fffea);
+  color: var(--pneuma-calendar-font-color, #b8efeb);
   font-family:
     "Pneuma HUD Rajdhani", "Roboto Condensed", "Arial Narrow", sans-serif;
   font-size: 17px;
