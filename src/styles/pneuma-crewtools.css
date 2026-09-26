@@ -1412,6 +1412,7 @@ html[data-cpr-theme="darkmode"]
 }
 
 /* Glass display with a dark housing, docked in the Foundry logo's slot. */
+/* Match Combat Tools #pneuma-eye-hud's frame, background and typography. */
 #pneuma-crewtools-calendar {
   position: fixed;
   top: 0;
@@ -1421,37 +1422,30 @@ html[data-cpr-theme="darkmode"]
   flex-direction: row;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  width: 138px;
+  gap: 4px;
+  width: 124px;
   max-width: 100%;
   min-height: 70px;
-  padding: 16px 9px 8px 15px;
+  padding: 6px 4px;
   box-sizing: border-box;
-  border: 0;
-
-  border-radius: 0 0 9px 0;
-  background:
-    linear-gradient(125deg, rgba(220, 255, 250, 0.1), transparent 45%),
-    repeating-linear-gradient(
-      0deg,
-      transparent 0 3px,
-      rgba(91, 255, 231, 0.025) 3px 4px
-    ),
-    rgba(3, 14, 17, 0.38);
+  border: 1px solid #487a82;
+  border-left: 3px solid #64f1df;
+  border-radius: 0 0 12px 0;
+  background: linear-gradient(
+    135deg,
+    rgba(5, 22, 28, 0.8),
+    rgba(5, 12, 21, 0.72)
+  );
   box-shadow:
-    2px 3px 4px rgba(0, 0, 0, 0.35),
-    inset -1px -1px rgba(190, 210, 215, 0.18);
+    0 8px 28px #0008,
+    inset 0 0 20px #2ba8ba12;
   color: var(--pneuma-calendar-font-color, #b8efeb);
-  font-family:
-    "Pneuma HUD Rajdhani", "Roboto Condensed", "Arial Narrow", sans-serif;
-  font-size: 17px;
-  font-weight: 600;
+  font: 12px/1.45 monospace;
   letter-spacing: 0;
-  line-height: 1.15;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
   text-align: center;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  text-shadow: none;
   pointer-events: none;
   user-select: none;
 }
@@ -1459,48 +1453,19 @@ html[data-cpr-theme="darkmode"]
   display: flex;
   flex-direction: column;
   flex: 1 1 auto;
-  gap: 3px;
+  justify-content: center;
+  gap: 1px;
   margin: 0;
   padding: 0;
   line-height: 1;
 }
 #pneuma-crewtools-calendar .pneuma-calendar-month-day {
-  font-size: 26px;
+  font-size: 22px;
+  font-weight: 700;
 }
 #pneuma-crewtools-calendar .pneuma-calendar-weekday,
 #pneuma-crewtools-calendar .pneuma-calendar-year {
   font-size: 12px;
-}
-#pneuma-crewtools-calendar::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  clip-path: polygon(
-    calc(100% - 5px) 0,
-    100% 0,
-    100% 100%,
-    0 100%,
-    0 calc(100% - 5px),
-    calc(100% - 5px) calc(100% - 5px)
-  );
-  background:
-    linear-gradient(
-      135deg,
-      transparent 65%,
-      rgba(215, 227, 230, 0.18) 83%,
-      transparent 94%
-    ),
-    repeating-linear-gradient(
-      0deg,
-      rgba(255, 255, 255, 0.025) 0 1px,
-      transparent 1px 3px
-    ),
-    linear-gradient(90deg, #22292d, #424c52 55%, #69767c 97%, #1b2226);
-  box-shadow:
-    inset -1px -1px 0 #101619,
-    inset -2px -2px 0 rgba(181, 195, 200, 0.45),
-    inset -4px -4px 0 rgba(0, 0, 0, 0.45);
 }
 #pneuma-crewtools-calendar.pneuma-calendar--logo-slot {
   position: relative;
@@ -1508,7 +1473,7 @@ html[data-cpr-theme="darkmode"]
   left: auto;
   flex: 0 0 auto;
   align-self: flex-start;
-  margin: -10px 10px 10px -10px;
+  margin: 0 10px 10px 0;
 }
 .pneuma-calendar-form .form-group {
   margin: 8px 0;
@@ -1661,14 +1626,11 @@ html[data-cpr-theme="darkmode"]
 }
 
 /* Compact shortcuts share the clock glass; only real buttons accept input. */
-#pneuma-crewtools-calendar::after {
-  pointer-events: none;
-}
 #pneuma-crewtools-calendar .pneuma-crew-hud {
   display: grid;
   grid-template-columns: 1fr;
-  flex: 0 0 34px;
-  width: 34px;
+  flex: 0 0 26px;
+  width: 26px;
 }
 #pneuma-crewtools-calendar .pneuma-crew-hud button {
   position: relative;
@@ -4260,13 +4222,18 @@ html[data-cpr-theme="darkmode"] .pneuma-crewtools .netrunner-role {
 /* Public shortcut slots leave contributor colors and animations untouched. */
 #pneuma-crewtools-calendar.has-external-shortcuts {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 34px;
-  grid-template-rows: repeat(calc(1 + var(--pneuma-shortcut-count)), 26px);
-  gap: 0 8px;
+  grid-template-columns: minmax(0, 1fr) 26px;
+  grid-template-rows: repeat(
+    calc(1 + var(--pneuma-shortcut-count)),
+    minmax(26px, 1fr)
+  );
+  align-content: center;
+  gap: 4px;
 }
 #pneuma-crewtools-calendar.has-external-shortcuts > .pneuma-calendar-date {
   grid-column: 1;
   grid-row: 1 / -1;
+  align-self: stretch;
 }
 #pneuma-crewtools-calendar.has-external-shortcuts > .pneuma-crew-hud {
   grid-column: 2;
@@ -4279,11 +4246,18 @@ html[data-cpr-theme="darkmode"] .pneuma-crewtools .netrunner-role {
   grid-column: 2;
 }
 #pneuma-crewtools-calendar.has-external-shortcuts:not(:has(.pneuma-crew-hud)) {
-  grid-template-rows: repeat(var(--pneuma-shortcut-count), 26px);
+  grid-template-rows: repeat(var(--pneuma-shortcut-count), minmax(26px, 1fr));
+}
+#pneuma-crewtools-calendar .pneuma-external-shortcut > button {
+  width: 100%;
 }
 #pneuma-crewtools-calendar .pneuma-external-shortcut {
-  flex: 0 0 34px;
-  width: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  flex: 0 0 26px;
+  width: 26px;
   pointer-events: auto;
 }
 

@@ -40,6 +40,15 @@ export function applyUiAppearance(): void {
   }
 }
 
+/** Replace the former shipped aqua default without resetting other custom colors. */
+export async function readyUiAppearance(): Promise<void> {
+  const saved = game.settings.get(MODULE_ID, "calendarFontColor");
+  if (typeof saved === "string" && saved.toLowerCase() === "#7fffea") {
+    await game.settings.set(MODULE_ID, "calendarFontColor", "#b8efeb");
+  }
+  applyUiAppearance();
+}
+
 export function registerUiAppearance(): void {
   for (const color of UI_COLORS) {
     game.settings.register(MODULE_ID, color.key, {
@@ -56,6 +65,7 @@ export function registerUiAppearance(): void {
     "renderSettingsConfig",
     (_app: unknown, html: FoundryHtml | HTMLElement) => {
       const root = html instanceof HTMLElement ? html : html[0];
+      if (!root) return;
       for (const color of UI_COLORS) {
         const input = root?.querySelector<HTMLInputElement>(
           `input[name="${MODULE_ID}.${color.key}"]`,
@@ -65,6 +75,46 @@ export function registerUiAppearance(): void {
         input.type = "color";
         input.value = value;
       }
+      const lastColor = UI_COLORS[UI_COLORS.length - 1]!;
+      const lastRow = root
+        ?.querySelector<HTMLInputElement>(
+          `input[name="${MODULE_ID}.${lastColor.key}"]`,
+        )
+        ?.closest(".form-group");
+      if (!lastRow || root.querySelector("[data-reset-hud-colors]")) return;
+      const reset = document.createElement("button");
+      reset.type = "button";
+      reset.dataset.resetHudColors = "";
+      reset.textContent = "Reset HUD Colors to Defaults";
+      reset.title =
+        "Reset all three HUD colors on this device and apply immediately.";
+      reset.addEventListener("click", async () => {
+        reset.disabled = true;
+        try {
+          for (const color of UI_COLORS) {
+            await game.settings.set(MODULE_ID, color.key, color.default);
+          }
+        } catch (error) {
+          console.error(`${MODULE_ID} | HUD color reset failed`, error);
+          ui.notifications.error(
+            "Could not reset all HUD colors. Please try again.",
+          );
+        } finally {
+          for (const color of UI_COLORS) {
+            const input = root.querySelector<HTMLInputElement>(
+              `input[name="${MODULE_ID}.${color.key}"]`,
+            );
+            if (input)
+              input.value = validColor(
+                game.settings.get(MODULE_ID, color.key),
+                color.default,
+              );
+          }
+          applyUiAppearance();
+          reset.disabled = false;
+        }
+      });
+      lastRow.append(reset);
     },
   );
 }

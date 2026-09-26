@@ -24,7 +24,7 @@ import {
   isDowntimeGM,
 } from "./downtime";
 import { registerCampaignCalendar, readyCampaignCalendar } from "./calendar";
-import { registerUiAppearance, applyUiAppearance } from "./ui-appearance";
+import { registerUiAppearance, readyUiAppearance } from "./ui-appearance";
 import "./styles/pneuma-crewtools.css";
 import { pneumaCrewToolsApi } from "./api";
 import { MODULE_ID } from "./constants";
@@ -82,7 +82,9 @@ Hooks.once("init", () => {
 
 Hooks.once("ready", () => {
   console.info(`${MODULE_ID} | Ready`);
-  applyUiAppearance();
+  void readyUiAppearance().catch((error) =>
+    console.error(`${MODULE_ID} | HUD appearance initialization failed`, error),
+  );
   readyCampaignCalendar();
   readyCrewHud();
   readyDowntime();

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.9.3 - 2026-09-25
+
+- Restyled the corner HUD with Biomonitor text and background colors, monospace type, a thin frame, and a bottom-right curve.
+- Kept the HUD compact at 124 by 70 pixels with a bold 22px month/day, tighter date lines, centered shortcuts, and corrected logo-slot offsets.
+- Updated saved legacy aqua date colors to the Biomonitor text color while preserving other custom colors.
+- Added Reset HUD Colors to Defaults to restore all three device-specific HUD colors immediately and refresh their settings pickers.
+
 ## 0.9.2 - 2026-09-25
 
 - Changed the corner HUD date's default text color to Biomonitor blue (#b8efeb), matching Combat Tools. Custom calendar color settings remain unchanged.

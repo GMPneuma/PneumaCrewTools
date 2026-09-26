@@ -17,8 +17,7 @@ date to players and GMs. It does not change the clock merely to initialize the U
 On v12, a world time of zero displays 1970-01-01 under the Gregorian shim.
 
 The blue date reads, for example, **Jan 1, 2078**. The date itself is passive and
-does not respond to clicks. Its transparent face has a subtle metal frame,
-and subtle scan lines. It occupies the logo slot above the scene controls;
+does not respond to clicks. Its monospace text, dark translucent gradient, thin blue border, cyan left edge, and restrained shadow match the Combat Tools Biomonitor HUD. The compact 124px frame rounds its bottom-right corner to suit its upper-left screen placement. The weekday and year stay smaller than the month/day; the existing Crew and Biomon shortcuts keep their positions and status colors. It occupies the logo slot above the scene controls;
 if no logo exists, it falls back to the upper-left corner.
 
 To edit the date, open **Module Settings > Pneuma's Crew Tools > Campaign
@@ -108,6 +107,8 @@ world; verify v13/v14 when compatible system releases are available.
 
 ## Appearance settings
 
-Module Settings > Pneuma's Crew Tools > Appearance: Calendar Font Color provides a native color picker. The default is Biomonitor blue (#b8efeb), matching the Combat Tools Biomonitor HUD. Saving applies immediately. This client setting affects only this device; it does not change campaign data or create Journals.
+Module Settings > Pneuma's Crew Tools > Appearance: Calendar Font Color provides a native color picker. The default is Biomonitor blue (#b8efeb), matching the Combat Tools Biomonitor HUD. The former default aqua (#7fffea), if saved on this device, is updated to the Biomonitor text color on startup; other custom colors are retained. Saving applies immediately. This client setting affects only this device; it does not change campaign data or create Journals.
 
 Future UI color options belong in the UI_COLORS registry in src/ui-appearance.ts. Each entry defines its setting key, label, hint, default six-digit hex color, and CSS custom property. Registration, color pickers, validation fallback, and immediate application are shared. Calendar styles consume --pneuma-calendar-font-color.
+
+Use **Reset HUD Colors to Defaults** in the HUD settings group to restore the calendar font, shortcut icon, and attention colors on this device. The reset saves and applies immediately and updates all three color pickers.
