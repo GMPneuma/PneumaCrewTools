@@ -22,6 +22,8 @@ import {
 } from "./journal-records";
 import { openMoraleBoost } from "./morale-boost";
 import { openHeadquarters } from "./headquarters";
+import { openIpSpending } from "./ip-spending-form";
+
 import { getHubStatus } from "./player-hub-status";
 import { openDowntime } from "./downtime";
 import { MODULE_ID, PAYOUT_ACKNOWLEDGMENTS_ENABLED_SETTING } from "./constants";
@@ -139,6 +141,7 @@ export function registerPayoutInboxSettings(): void {
     });
   }
   Hooks.on("createActor", refresh);
+
   Hooks.on("deleteActor", refresh);
   Hooks.on("updateUser", refresh);
   const refreshPage = (page: FoundryJournalPage) => {
@@ -388,6 +391,11 @@ export class PlayerHub extends CrewToolsForm {
     root
       .querySelector("[data-hub-headquarters]")
       ?.addEventListener("click", openHeadquarters);
+    root
+      .querySelector("[data-hub-spend-ip]")
+      ?.addEventListener("click", () =>
+        openIpSpending(getHubStatus(this.#selectedActorId).actorId),
+      );
     root
       .querySelector("[data-hub-morale]")
       ?.addEventListener("click", openMoraleBoost);

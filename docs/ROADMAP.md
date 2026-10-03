@@ -1,5 +1,7 @@
 # Pneuma's Crew Tools — Roadmap
 
+The current editable work list is [backlog.md](../backlog.md). This document preserves detailed scope and history; older version labels and release targets below are historical.
+
 Updated: September 22, 2026
 
 Player and crew bookkeeping for Cyberpunk RED on Foundry VTT v12. Foundry v13/v14 support remains pending compatible Cyberpunk RED releases and live verification.

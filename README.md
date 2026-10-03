@@ -47,6 +47,12 @@ See [the Journal guide and specifications](docs/journals.md),
 [player discovery](docs/player-discovery.md), and [the roadmap](ROADMAP.md).
 The inherited project history is preserved under [docs/legacy](docs/legacy).
 
+## Spend IP
+
+Player Hub → Spend IP opens a skill and role improvement planner. Filter skills by current rank or name, add or remove planned ranks, and review the receipt before clicking Improve. Costs include every intermediate rank: regular skills cost 20 × the new rank, difficult skills 40 × the new rank, and roles 60 × the new rank.
+
+Each improved skill or role gets one native IP ledger entry, such as `Accounting 0 -> 3`, with the combined cost. Add Another Role loads the system role compendium and purchases rank 1 for 60 IP; current roles must reach rank 4 first. Allocate Tech and Medtech specialties using the native role sheet after purchasing the main rank.
+
 ## Downtime
 
 Payouts now award player downtime balances. Players can spend or allocate whole days through Crew Tools Player Hub → Spend Downtime. See [Downtime implementation notes](docs/downtime.md) for the workflow, Journal format, and current limitations.

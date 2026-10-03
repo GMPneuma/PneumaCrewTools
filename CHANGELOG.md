@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.9.4 - 2026-10-03
+
+- Added Spend IP directly below View HQ in the Player Hub, with searchable skill filters, role upgrades, and a pending purchase receipt.
+- Calculate every intermediate rank at the regular, difficult-skill, or role IP rate; group each skill or role purchase into one native IP ledger entry.
+- Added system-compendium role purchases and validation for available IP, character ownership, changed ranks, and multiclass eligibility.
+- Added a compact planner matching CrewTools panels and colors, with tighter skill rows and an Improve (spend IP) button.
+- Keep invalid or above-limit ranks visible without blocking valid purchases.
+- Added an editable backlog while retaining roadmap history.
+
+Live Foundry verification remains pending.
+
 ## 0.9.3 - 2026-09-25
 
 - Restyled the corner HUD with Biomonitor text and background colors, monospace type, a thin frame, and a bottom-right curve.

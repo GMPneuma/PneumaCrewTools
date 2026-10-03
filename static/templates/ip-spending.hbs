@@ -1,0 +1,50 @@
+<form class="ip-spending">
+  <header class="ip-spending-balance">
+    <div class="ip-spending-character"><small>Improvement Points</small><strong>{{actorName}}</strong></div>
+    <div class="ip-spending-metric"><small>Current IP</small><b>{{balance}}</b></div>
+    <div class="ip-spending-metric"><small>After purchase</small><b>{{remaining}}</b></div>
+  </header>
+  <div class="ip-spending-columns">
+    <section class="ip-spending-skills ip-spending-panel">
+      <h2><i class="fas fa-list" aria-hidden="true"></i> Skills</h2>
+      <div class="ip-spending-filters"><input type="search" data-ip-search placeholder="Filter skills…" aria-label="Filter skills"><select data-ip-filter aria-label="Skill ranks"><option value="all">All skills</option><option value="positive">Skills &gt; 0</option><option value="zero">Skills = 0</option></select></div>
+      <div class="ip-spending-column-labels"><span>Skill</span><span>Rank</span><span>Next rank</span></div>
+      <div class="ip-spending-list">{{#each skills}}
+        <div class="ip-spending-row {{#if cost}}ip-spending-row-planned{{/if}}" data-ip-skill data-name="{{name}}" data-rank="{{from}}">
+          <span class="ip-spending-name" title="{{blockedReason}}">{{name}}{{#if doubled}} <em class="ip-spending-badge">×2</em>{{/if}}{{#if blockedReason}}<small>{{blockedReason}}</small>{{/if}}</span>
+          <span class="ip-spending-rank">{{#if blockedReason}}{{currentRank}}{{else}}{{#if cost}}{{from}} <span>→</span> <b>{{to}}</b>{{else}}<b>{{from}}</b>{{/if}}{{/if}}</span>
+          <button type="button" data-ip-change="-1" data-id="{{id}}" aria-label="Remove one rank from {{name}}" {{#unless canRemove}}disabled{{/unless}}>−</button>
+          <button type="button" data-ip-change="1" data-id="{{id}}" aria-label="Add one rank to {{name}}" {{#unless canAdd}}disabled{{/unless}}>+{{next}} IP</button>
+        </div>
+      {{/each}}</div>
+    </section>
+    <div class="ip-spending-right">
+      <section class="ip-spending-panel ip-spending-roles">
+        <h2><i class="fas fa-id-badge" aria-hidden="true"></i> Roles</h2>
+        <div class="ip-spending-role-list">{{#each roles}}
+          <div class="ip-spending-row {{#if cost}}ip-spending-row-planned{{/if}}">
+            <span class="ip-spending-name">{{name}}<small>{{ability}}</small>{{#if blockedReason}}<small>{{blockedReason}}</small>{{/if}}</span>
+            <span class="ip-spending-rank">{{#if blockedReason}}{{currentRank}}{{else}}{{from}} <span>→</span> <b>{{to}}</b>{{/if}}</span>
+            <button type="button" data-ip-change="-1" data-id="{{id}}" aria-label="Remove one rank from {{name}}" {{#unless canRemove}}disabled{{/unless}}>−</button>
+            <button type="button" data-ip-change="1" data-id="{{id}}" aria-label="Add one rank to {{name}}" {{#unless canAdd}}disabled{{/unless}}>+{{next}} IP</button>
+          </div>
+        {{/each}}</div>
+        <div class="ip-spending-recruit">
+          {{#if availableRoles}}<select data-ip-new-role aria-label="New role">{{#each availableRoles}}<option value="{{id}}">{{name}}</option>{{/each}}</select>{{/if}}
+          <button type="button" data-ip-recruit {{#unless canRecruit}}disabled{{/unless}}><i class="fas fa-plus" aria-hidden="true"></i> Add Another Role</button>
+          <p class="notes">New roles start at rank 1. Current roles must reach rank 4.</p>
+          <details><summary>Specialty allocation</summary><p class="notes">Allocate Tech and Medtech specialty ranks on the native role sheet.</p></details>
+        </div>
+      </section>
+      <section class="ip-spending-panel ip-spending-receipt-panel">
+        <h2><i class="fas fa-receipt" aria-hidden="true"></i> Receipt <span>{{total}} IP</span></h2>
+        <div class="ip-spending-receipt">{{#each receipt}}<div><span>{{name}} {{from}} → {{to}}</span><strong>{{cost}} IP</strong></div>{{else}}<p class="ip-spending-empty">No improvements selected.</p>{{/each}}</div>
+        <footer class="ip-spending-checkout">
+          <div class="ip-spending-total"><span>Total cost</span><strong>{{total}} IP</strong></div>
+          <button class="ip-spending-improve" type="submit" {{#unless canImprove}}disabled{{/unless}}><i class="fas fa-arrow-up" aria-hidden="true"></i> Improve (spend IP)</button>
+        </footer>
+      </section>
+    </div>
+  </div>
+</form>
+

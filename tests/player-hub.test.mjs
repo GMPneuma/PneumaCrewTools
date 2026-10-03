@@ -227,6 +227,7 @@ function fixture() {
         actorPayoutRecords: (actorId) => (actorId === "a1" ? p1.getFlag() : []),
       },
       "./headquarters": { openHeadquarters: () => {} },
+      "./ip-spending-form": { openIpSpending: () => {} },
       "./downtime": { openDowntime: () => {} },
       "./player-hub-status": status,
       "./humanity-prompts": { getAllPendingHumanityRolls: () => [] },

@@ -1,6 +1,6 @@
 # Pneuma's Crew Tools — Roadmap
 
-The current roadmap is maintained in [docs/ROADMAP.md](docs/ROADMAP.md).
+The editable work list is [backlog.md](backlog.md). Detailed feature history is retained in [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Optional Crew Tools / Biomon HUD integration
 
