@@ -38,6 +38,7 @@ export interface TechSpec extends TechInput {
   itemData: Record<string, unknown>;
   storageActorId?: string;
   storageItemId?: string;
+  originalName?: string;
 }
 export interface TechCheck {
   total: number;
@@ -147,7 +148,17 @@ export function validateTechEvent(event: DowntimeEvent) {
     )
       throw new Error("Invalid fabrication compendium source.");
     if (t.mode === "upgrade" && (!t.storageActorId || !t.storageItemId))
-      throw new Error("Upgrade project requires a stored item.");
+      throw new Error("Upgrade project requires a reference item.");
+    if (
+      t.originalName !== undefined &&
+      (typeof t.originalName !== "string" ||
+        !t.originalName.trim() ||
+        !["upgrade", "repair"].includes(t.mode) ||
+        !t.sourceUuid ||
+        !t.storageActorId ||
+        !t.storageItemId)
+    )
+      throw new Error("Invalid inventory project reference.");
   }
   if (
     ["techDay", "techRoll", "techCancel", "techFinish"].includes(event.kind) &&

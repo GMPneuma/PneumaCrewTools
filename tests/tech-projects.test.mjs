@@ -39,6 +39,8 @@ function fixture() {
       name: raw.name,
       type: raw.type,
       system: raw.system ?? {},
+      img: raw.img,
+      getFlag: (ns, key) => raw.flags?.[ns]?.[key],
       parent,
       documentName: "Item",
       uuid: parent
@@ -54,10 +56,8 @@ function fixture() {
           for (const part of parts.slice(0, -1)) node = node[part] ??= {};
           node[parts.at(-1)] = value;
         }
-        if ("system.amount" in update) {
-          raw.system.amount = update["system.amount"];
-          item.system.amount = update["system.amount"];
-        }
+        raw.name = item.name;
+        raw.system = item.system;
       },
     };
     uuids.set(item.uuid, item);
@@ -70,7 +70,7 @@ function fixture() {
       documentName: "Actor",
       items: [],
       getFlag: (ns, k) => data.flags?.[ns]?.[k],
-      testUserPermission: (u) => u.id === "player",
+      testUserPermission: (u) => u.isGM || u.id === "player",
       createEmbeddedDocuments: async (_type, rows) =>
         rows.map((d) => {
           const i = makeItem(d, actor);
@@ -390,7 +390,7 @@ test("compendium fabrication copies one item, preserves original and uses source
   assert.equal(made.system.amount, 1);
   assert.equal(made.system.damage, "2d6");
 });
-test("upgrade moves original into module container offline and returns it with notes only", async () => {
+test("upgrade retains original offline and removes its reference on completion", async () => {
   const f = fixture();
   await f.service.storageActor(f.actor);
   f.gm.active = false;
@@ -418,12 +418,15 @@ test("upgrade moves original into module container offline and returns it with n
   });
   assert.equal(
     f.actor.items.some((i) => i.id === item.id),
-    false,
+    true,
   );
+  assert.equal(item.name, "Pistol (being upgraded)");
   assert.equal(f.game.actors.length, actorCount);
   const p = f.projects()[0],
     storage = f.game.actors.find((a) => a.id === p.storageActorId);
   assert.equal(storage.items.length, 1);
+  assert.equal(storage.items[0].type, "gear");
+  assert.equal(storage.items[0].system.price.market, 0);
   assert.equal(storage.ownership.player, 3);
   assert.equal(
     f.game.folders.find((x) => x.id === storage.folder).name,
@@ -433,11 +436,13 @@ test("upgrade moves original into module container offline and returns it with n
   await f.run("techDay", undefined, id);
   assert.equal(storage.items.length, 0);
   const done = f.actor.items.find((i) => i.type === "weapon");
+  assert.equal(done, item);
+  assert.equal(done.name, "Pistol");
   assert.equal(done.system.damage, "2d6");
   assert.match(done.system.description.value, /Improved grip/);
   assert.equal(f.attempt(), null);
 });
-test("upgrade splits a stack and cancellation returns one unmodified item", async () => {
+test("upgrade splits a stack and cancellation restores the original name", async () => {
   const f = fixture();
   const item = f.makeItem(
     {
@@ -458,7 +463,9 @@ test("upgrade splits a stack and cancellation returns one unmodified item", asyn
     sourceUuid: item.uuid,
     description: "pending changes",
   });
-  assert.equal(item.system.amount, 2);
+  assert.equal(item.system.amount, 1);
+  assert.equal(item.name, "Gadget (being upgraded)");
+  assert.equal(f.actor.items.find((i) => i.name === "Gadget").system.amount, 2);
   await f.run("techCancel", undefined, id);
   assert.equal(f.actor.items.filter((i) => i.type === "gear").length, 2);
   assert.equal(
@@ -468,7 +475,345 @@ test("upgrade splits a stack and cancellation returns one unmodified item", asyn
     3,
   );
   assert.equal(f.projects()[0].active, false);
+  assert.equal(item.name, "Gadget");
+  assert.equal(item.system.description.value, "Original");
 });
+test("installed items and their children retain UUIDs through upgrades and repairs", async () => {
+  for (const mode of ["upgrade", "repair"]) {
+    const f = fixture();
+    const item = f.makeItem(
+      {
+        name: "Deck",
+        type: "cyberdeck",
+        system: {
+          price: { market: 100 },
+          amount: 1,
+          isInstalled: true,
+          installedItems: { list: ["child"], usedSlots: 1 },
+          description: { value: "Original" },
+        },
+      },
+      f.actor,
+    );
+    const child = f.makeItem(
+      {
+        _id: "child",
+        name: "Program",
+        type: "program",
+        system: { isInstalled: true },
+      },
+      f.actor,
+    );
+    item.recursiveGetAllInstalledItems = () => [child];
+    item.toCompendium = () => {
+      throw Error("Installed items must not be exported");
+    };
+    item.uninstall = () => {
+      throw Error("Installed items must not be uninstalled");
+    };
+    f.actor.items.push(item, child);
+    const originalUuid = item.uuid;
+    const id = await f.run("techStart", {
+      ...f.invention("premium", 100),
+      mode,
+      sourceUuid: item.uuid,
+    });
+    assert.equal(
+      item.name,
+      `Deck (being ${mode === "upgrade" ? "upgraded" : "repaired"})`,
+    );
+    const storage = f.game.actors.find(
+      (a) => a.id === f.projects()[0].storageActorId,
+    );
+    const reference = storage.items[0];
+    assert.equal(reference.type, "gear");
+    assert.equal(reference.system.installedItems, undefined);
+    assert.equal(reference.system.isInstalled, undefined);
+    assert.equal(
+      reference.getFlag("pneuma-crewtools", "techProjectReference").sourceUuid,
+      originalUuid,
+    );
+    await item.update({
+      "system.description.value": "Changed during project",
+      "system.custom": 7,
+    });
+    await f.run("techRoll", undefined, id);
+    await f.run("techDay", undefined, id);
+    assert.equal(item.uuid, originalUuid);
+    assert.equal(f.uuids.get(originalUuid), item);
+    assert.equal(item.name, "Deck");
+    assert.equal(item.system.custom, 7);
+    assert.match(item.system.description.value, /Changed during project/);
+    assert.equal(
+      item.system.description.value.includes("TECH upgrade notes"),
+      mode === "upgrade",
+    );
+    assert.deepEqual(item.system.installedItems.list, ["child"]);
+    assert.equal(f.uuids.get(child.uuid), child);
+    assert.equal(storage.items.length, 0);
+    assert.equal(f.actor.items.filter((i) => i.type === "cyberdeck").length, 1);
+  }
+});
+
+test("unavailable project containers fail before marking an original", async () => {
+  for (const missing of [false, true]) {
+    const f = fixture();
+    if (!missing) {
+      const storage = await f.service.storageActor(f.actor);
+      storage.testUserPermission = () => false;
+    }
+    f.gm.active = false;
+    f.game.user = f.player;
+    const item = f.makeItem(
+      {
+        name: "Gear",
+        type: "gear",
+        system: { amount: 1, price: { market: 100 } },
+      },
+      f.actor,
+    );
+    f.actor.items.push(item);
+    await assert.rejects(
+      f.run("techStart", {
+        ...f.invention(),
+        mode: "upgrade",
+        sourceUuid: item.uuid,
+      }),
+      missing ? /GM must connect/ : /permission.*container/,
+    );
+    assert.equal(item.name, "Gear");
+    assert.equal(f.projects().length, 0);
+    assert.equal(f.attempt(), null);
+  }
+});
+
+test("lost container permissions prevent partial completion and allow a clean retry", async () => {
+  const f = fixture();
+  const item = f.makeItem(
+    {
+      name: "Gear",
+      type: "gear",
+      system: { amount: 1, price: { market: 100 } },
+    },
+    f.actor,
+  );
+  f.actor.items.push(item);
+  const id = await f.run("techStart", {
+    ...f.invention("premium", 100),
+    mode: "upgrade",
+    sourceUuid: item.uuid,
+  });
+  await f.run("techRoll", undefined, id);
+  const storage = f.game.actors[1];
+  storage.testUserPermission = () => false;
+  await assert.rejects(
+    f.run("techDay", undefined, id),
+    /permission.*container/,
+  );
+  assert.equal(item.name, "Gear (being upgraded)");
+  assert.equal(item.system.description, undefined);
+  assert.equal(f.projects()[0].progress, 0);
+  assert.equal(f.model.downtimeBalance(f.state(), "hero"), 100);
+  assert.equal(f.attempt(), null);
+  storage.testUserPermission = () => true;
+  await f.run("techDay", undefined, id);
+  assert.equal(item.name, "Gear");
+  assert.equal(storage.items.length, 0);
+  assert.equal(f.model.downtimeBalance(f.state(), "hero"), 99);
+});
+
+test("installed stacks require a native split before any inventory mutation", async () => {
+  for (const system of [
+    { isInstalled: true },
+    { installedItems: { list: ["child"] } },
+  ]) {
+    const f = fixture();
+    const item = f.makeItem(
+      {
+        name: "Stack",
+        type: "gear",
+        system: {
+          amount: 3,
+          price: { market: 100 },
+          ...system,
+        },
+      },
+      f.actor,
+    );
+    f.actor.items.push(item);
+    await assert.rejects(
+      f.run("techStart", {
+        ...f.invention(),
+        mode: "upgrade",
+        sourceUuid: item.uuid,
+      }),
+      /Split this stack/,
+    );
+    assert.equal(item.name, "Stack");
+    assert.equal(item.system.amount, 3);
+    assert.equal(f.projects().length, 0);
+    assert.equal(f.game.actors.length, 1);
+    assert.equal(f.attempt(), null);
+  }
+});
+
+test("an original cannot have overlapping upgrade and repair projects", async () => {
+  const f = fixture();
+  const item = f.makeItem(
+    {
+      name: "Gear",
+      type: "gear",
+      system: { amount: 1, price: { market: 100 } },
+    },
+    f.actor,
+  );
+  f.actor.items.push(item);
+  await f.run(
+    "techStart",
+    { ...f.invention(), mode: "upgrade", sourceUuid: item.uuid },
+    undefined,
+    3,
+  );
+  for (const mode of ["upgrade", "repair"])
+    await assert.rejects(
+      f.run(
+        "techStart",
+        { ...f.invention("premium", 100, 1), mode, sourceUuid: item.uuid },
+        undefined,
+        3,
+      ),
+      /already has an active project/,
+    );
+  assert.equal(f.projects().length, 1);
+  assert.equal(f.attempt(), null);
+});
+
+test("cancellation restores names after losing the TECH role and preserves deliberate renames", async () => {
+  for (const rename of [false, true]) {
+    const f = fixture();
+    const item = f.makeItem(
+      {
+        name: "Gear",
+        type: "gear",
+        system: {
+          price: { market: 100 },
+          amount: 1,
+          description: { value: "Unchanged" },
+        },
+      },
+      f.actor,
+    );
+    f.actor.items.push(item);
+    const id = await f.run("techStart", {
+      ...f.invention(),
+      mode: "upgrade",
+      sourceUuid: item.uuid,
+    });
+    if (rename) await item.update({ name: "Custom name" });
+    f.actor.items = f.actor.items.filter((i) => i.type !== "role");
+    await f.run("techCancel", undefined, id);
+    assert.equal(item.name, rename ? "Custom name" : "Gear");
+    assert.equal(item.system.description.value, "Unchanged");
+    assert.equal(f.projects()[0].active, false);
+    assert.equal(f.game.actors[1].items.length, 0);
+  }
+});
+
+test("missing references do not recreate originals and mismatched references cannot delete unrelated items", async () => {
+  for (const tampered of [false, true]) {
+    const f = fixture();
+    const item = f.makeItem(
+      {
+        name: "Gear",
+        type: "gear",
+        system: { amount: 1, price: { market: 100 } },
+      },
+      f.actor,
+    );
+    f.actor.items.push(item);
+    const id = await f.run("techStart", {
+      ...f.invention(),
+      mode: "upgrade",
+      sourceUuid: item.uuid,
+    });
+    const storage = f.game.actors[1];
+    if (tampered) storage.items[0].getFlag = () => ({ projectId: "unrelated" });
+    else await storage.deleteEmbeddedDocuments("Item", [storage.items[0].id]);
+    if (tampered) {
+      await assert.rejects(
+        f.run("techCancel", undefined, id),
+        /reference does not match/,
+      );
+      assert.equal(storage.items.length, 1);
+      assert.equal(item.name, "Gear (being upgraded)");
+      assert.equal(f.attempt(), null);
+    } else {
+      await f.run("techCancel", undefined, id);
+      assert.equal(item.name, "Gear");
+      assert.equal(f.actor.items.filter((i) => i.type === "gear").length, 1);
+    }
+  }
+});
+
+test("interrupted project start keeps original and stack recovery details and blocks retries", async () => {
+  const f = fixture();
+  const item = f.makeItem(
+    {
+      name: "Stack",
+      type: "gear",
+      system: { amount: 3, price: { market: 100 } },
+    },
+    f.actor,
+  );
+  f.actor.items.push(item);
+  f.fail();
+  const input = { ...f.invention(), mode: "upgrade", sourceUuid: item.uuid };
+  await assert.rejects(f.run("techStart", input), /save failed/);
+  assert.equal(f.uuids.get(item.uuid), item);
+  assert.equal(item.name, "Stack (being upgraded)");
+  assert.equal(
+    f.actor.items
+      .filter((i) => i.type === "gear")
+      .reduce((n, i) => n + i.system.amount, 0),
+    3,
+  );
+  assert.equal(f.attempt().originalName, "Stack");
+  assert.equal(f.attempt().originalAmount, 3);
+  assert.ok(f.attempt().remainderItemId);
+  await assert.rejects(f.run("techStart", input), /GM review/);
+  assert.equal(f.game.actors[1].items.length, 1);
+});
+
+test("interrupted completion retains original and guard instead of delivering a duplicate", async () => {
+  const f = fixture();
+  const item = f.makeItem(
+    {
+      name: "Gear",
+      type: "gear",
+      system: { amount: 1, price: { market: 100 } },
+    },
+    f.actor,
+  );
+  f.actor.items.push(item);
+  const id = await f.run("techStart", {
+    ...f.invention("premium", 100),
+    mode: "upgrade",
+    sourceUuid: item.uuid,
+  });
+  await f.run("techRoll", undefined, id);
+  f.fail();
+  await assert.rejects(f.run("techDay", undefined, id), /save failed/);
+  assert.equal(item.name, "Gear");
+  assert.equal(f.actor.items.filter((i) => i.type === "gear").length, 1);
+  assert.equal(f.attempt().sourceUuid, item.uuid);
+  assert.equal(f.attempt().action, "Complete inventory project");
+  await assert.rejects(f.run("techDay", undefined, id), /GM review/);
+  assert.equal(
+    item.system.description.value.match(/TECH upgrade notes/g).length,
+    1,
+  );
+});
+
 test("failed Item delivery save leaves an auditable guard and prevents repeat delivery", async () => {
   const f = fixture();
   const id = await f.run("techStart", f.invention("premium", 100));
@@ -561,8 +906,11 @@ test("failed TECH check card shows outcome and burned days without internal Acto
   assert.doesNotMatch(card, /Actor\./);
 });
 
-test("non-TECH repairs retain one original Item and restore native armor without fabrication", async () => {
+test("offline non-TECH repairs retain the original and restore native armor", async () => {
   const f = fixture();
+  await f.service.storageActor(f.actor);
+  f.gm.active = false;
+  f.game.user = f.player;
   f.actor.items = f.actor.items.filter((i) => i.type !== "role");
   const item = f.makeItem(
     {
@@ -952,7 +1300,7 @@ test("Netrunner invention completes with Electronics/Security Tech and no Maker 
   assert.equal(f.actor.items.filter((i) => i.type === "gear").length, 1);
   assert.ok(f.messages[0].content.includes("Electronics/Security Tech"));
 });
-test("Netrunner source restrictions cover fabrication, upgrade return and repair", async () => {
+test("Netrunner source restrictions cover fabrication, retained upgrades and repair", async () => {
   for (const mode of ["fabricate", "upgrade", "repair"]) {
     const f = fixture(),
       input = netrunner(f);
@@ -990,9 +1338,11 @@ test("Netrunner source restrictions cover fabrication, upgrade return and repair
     if (mode === "upgrade") {
       assert.equal(
         f.actor.items.some((i) => i.id === deck.id),
-        false,
+        true,
       );
+      assert.equal(deck.name, "Deck (being upgraded)");
       await f.run("techCancel", undefined, id, 1, false, false);
+      assert.equal(deck.name, "Deck");
       assert.equal(
         f.actor.items.filter((i) => i.type === "cyberdeck").length,
         1,

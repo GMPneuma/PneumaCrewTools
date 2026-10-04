@@ -1685,6 +1685,60 @@ test("GM setup creates storage only for eligible TECHs without creating their Jo
   assert.equal(containers().length, 1);
 });
 
+test("GM setup prepares repair references for non-TECH characters without creating Journals", async () => {
+  const f = fixture();
+  const actor = f.p1.character;
+  actor.items = [
+    {
+      id: "skill",
+      name: "Basic Tech",
+      type: "skill",
+      system: { stat: "tech" },
+    },
+  ];
+  await f.process();
+  const storage = f.game.actors.find(
+    (a) => a.getFlag?.("pneuma-crewtools", "upgradeProjectsFor") === actor.id,
+  );
+  assert.ok(storage);
+  assert.equal(storage.ownership.p1, 3);
+  assert.equal(f.api.getDowntime().accounts.length, 0);
+});
+
+test("losing TECH keeps every active slot visible for cancellation and disables advancement", async () => {
+  const f = fixture();
+  await f.award(3);
+  f.game.user = f.p1;
+  f.game.settings.get = (_ns, k) =>
+    k === "techCraftingMonthDays" ? 28 : k === "techMultipleWithoutWorkshop";
+  f.p1.character.items.push({
+    id: "skill",
+    name: "Basic Tech",
+    type: "skill",
+    system: { stat: "tech" },
+  });
+  await f.api.requestTechAction("techStart", "tech1", undefined, {
+    mode: "invention",
+    slot: 2,
+    name: "Widget",
+    description: "test",
+    category: "expensive",
+    price: 500,
+    skillId: "skill",
+  });
+  const id = f.api.getDowntime().events.find((e) => e.kind === "techStart").id;
+  f.p1.character.items = f.p1.character.items.filter((i) => i.type !== "role");
+  const data = new f.api.DowntimeForm().getData();
+  assert.equal(data.techSlots.length, 3);
+  assert.equal(data.techSlots[2].project.id, id);
+  assert.equal(data.techSlots[2].enabled, false);
+  assert.equal(data.techSlots[2].canAdd, false);
+  assert.equal(data.techSlots[2].canRoll, false);
+  await f.api.requestTechAction("techCancel", "tech1", id);
+  assert.equal(f.balance(), 3);
+  assert.ok(f.api.getDowntime().events.some((e) => e.kind === "techCancel"));
+});
+
 test("TECH Cancel requires confirmation; keeping or closing preserves progress and confirmed cancellation refunds no days", async () => {
   const f = fixture();
   await f.award(3);

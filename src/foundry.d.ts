@@ -7,6 +7,10 @@ declare const foundry: {
 
 declare const Hooks: {
   on(
+    event: "userConnected",
+    callback: (user: FoundryUser, connected: boolean) => void,
+  ): number;
+  on(
     event: "preUpdateSetting",
     callback: (
       setting: { key: string },
@@ -302,6 +306,10 @@ interface FoundryUser {
 }
 
 declare const game: {
+  socket?: {
+    on(channel: string, callback: (message: unknown) => void): void;
+    emit(channel: string, message: unknown): void;
+  };
   i18n: { localize(key: string): string };
   items?: Iterable<FoundryItem>;
   packs?: Iterable<{
@@ -384,7 +392,10 @@ interface FoundryChatMessage {
 
 declare const ChatMessage: {
   create(data: Record<string, unknown>): Promise<FoundryChatMessage>;
+  applyRollMode(data: Record<string, unknown>, mode: string): void;
 };
+
+declare function renderTemplate(path: string, data: object): Promise<string>;
 
 interface DialogButtonConfig {
   icon?: string;

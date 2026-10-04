@@ -66,7 +66,10 @@ export function registerDowntime(): void {
       if (item.parent?.documentName !== "Actor") refreshRoles();
     }
     if (item.parent?.id === window?.selectedActorId) refreshRoles();
-    if (item.type === "role" && item.parent?.documentName === "Actor")
+    if (
+      ["role", "skill"].includes(item.type) &&
+      item.parent?.documentName === "Actor"
+    )
       scheduleDowntimeMaintenance(item.parent.id);
   };
   Hooks.on("updateCompendium", (pack) => {

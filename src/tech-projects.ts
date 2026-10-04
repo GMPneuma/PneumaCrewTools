@@ -11,9 +11,11 @@ import {
   itemPrice,
   checkProject,
   snapshot,
-  removeItem,
 } from "./tech-system";
-import { storageActor } from "./upgrade-storage";
+import {
+  beginInventoryProject,
+  finishInventoryProject,
+} from "./tech-inventory";
 export { techSkills, techRole, itemPrice } from "./tech-system";
 export { storageActor, syncUpgradeStorage } from "./upgrade-storage";
 import { deliverItems } from "./actor-resources";
@@ -102,7 +104,12 @@ export function validateTechRequest(
     slots = 1;
   }
   const isTech = !!techRole(actor);
-  if (!netrunner && !isTech && (input?.mode ?? existing?.mode) !== "repair")
+  if (
+    !netrunner &&
+    !isTech &&
+    event.kind !== "techCancel" &&
+    (input?.mode ?? existing?.mode) !== "repair"
+  )
     throw new Error("A ranked TECH role is required.");
   if (!isTech) slots = 1;
   if (event.days !== (event.kind === "techDay" ? 1 : 0))
@@ -224,6 +231,10 @@ export async function processTechRequest(
     );
   validateTechRequest(state, event, actor, slots, input, ctx.serverRoom);
   let mutation = false;
+  const guard = async (details: Record<string, unknown>) => {
+    await ctx.attempt({ ...details, requestId: event.requestId });
+    mutation = true;
+  };
   if (event.kind === "techStart") {
     const data = input!;
     let source: FoundryItem | undefined;
@@ -252,7 +263,7 @@ export async function processTechRequest(
           "Upgrade and repair require an Item in the selected character’s inventory.",
         );
       if (
-        data.mode === "repair" &&
+        ["upgrade", "repair"].includes(data.mode) &&
         techProjects(state, actor.id).some(
           (p) => p.active && p.sourceUuid === data.sourceUuid,
         )
@@ -265,6 +276,7 @@ export async function processTechRequest(
       data.price = itemPrice(source);
       data.category = categoryForPrice(data.price);
       data.name = source.name;
+      data.sourceUuid = source.uuid;
     }
     const month = Number(
       game.settings.get(MODULE_ID, TECH_MONTH_SETTING) ?? 28,
@@ -277,7 +289,7 @@ export async function processTechRequest(
       itemData: source
         ? data.mode === "fabricate" && source.pack
           ? { name: source.name, type: source.type }
-          : snapshot(source)
+          : { name: source.name, type: source.type, img: source.img }
         : {
             name: data.name,
             type: "gear",
@@ -296,28 +308,8 @@ export async function processTechRequest(
         spec.repairOverrideDays = days;
       }
     }
-    if (data.mode === "upgrade" && source) {
-      const storage = await storageActor(actor);
-      const itemId = foundry.utils.randomID(16);
-      await ctx.attempt({
-        requestId: event.requestId,
-        projectId: event.id,
-        sourceUuid: data.sourceUuid,
-        destinationActorId: storage.id,
-        destinationItemId: itemId,
-        action: "Move upgrade item",
-      });
-      mutation = true;
-      const [stored] = await deliverItems(
-        storage,
-        [{ ...spec.itemData, _id: itemId }],
-        { keepId: true },
-      );
-      if (!stored) throw new Error("Upgrade item could not be stored.");
-      await removeItem(source);
-      spec.storageActorId = storage.id;
-      spec.storageItemId = stored.id;
-    }
+    if (["upgrade", "repair"].includes(data.mode) && source)
+      await beginInventoryProject(actor, source, spec, event.id, guard);
     event.tech = spec;
     event.reason =
       spec.mode +
@@ -369,61 +361,21 @@ export async function processTechRequest(
     ((project.success && project.progress >= project.required) ||
       event.kind === "techCancel")
   ) {
-    if (project.mode === "repair" && event.kind !== "techCancel") {
-      const item = (await fromUuid(project.sourceUuid ?? "")) as
-        FoundryItem | undefined;
-      if (
-        !item ||
-        item.documentName !== "Item" ||
-        item.parent?.id !== actor.id ||
-        !ctx.requester ||
-        !item.testUserPermission?.(ctx.requester, "OWNER")
-      )
-        throw new Error(
-          "The original repair Item is missing or no longer owned.",
-        );
-      const system = item.system as {
-        isHeadLocation?: boolean;
-        isBodyLocation?: boolean;
-        isShield?: boolean;
-        shieldHitPoints?: { max: number };
-        headLocation?: { ablation: number };
-        bodyLocation?: { ablation: number };
-      };
-      const update: Record<string, unknown> = {};
-      if (item.type === "armor") {
-        if (system.isHeadLocation && system.headLocation)
-          update["system.headLocation.ablation"] = 0;
-        if (system.isBodyLocation && system.bodyLocation)
-          update["system.bodyLocation.ablation"] = 0;
-        if (system.isShield && Number.isFinite(system.shieldHitPoints?.max))
-          update["system.shieldHitPoints.value"] = system.shieldHitPoints!.max;
-      }
-      if (Object.keys(update).length) {
-        await ctx.attempt({
-          requestId: event.requestId,
-          projectId: project.id,
-          action: "Repair original Item",
-          sourceUuid: item.uuid,
-          update,
-        });
-        mutation = true;
-        await item.update!(update);
-      }
+    if (project.mode === "repair" || project.mode === "upgrade") {
+      const item = await finishInventoryProject(
+        actor,
+        ctx.requester,
+        project,
+        project.id,
+        event.kind === "techCancel",
+        guard,
+      );
       event.techDelivery = { actorId: actor.id, itemId: item.id };
-      event.reason += "; repaired " + item.name;
-    } else if (event.kind !== "techCancel" || project.mode === "upgrade") {
-      let held: FoundryItem | undefined;
-      if (project.mode === "upgrade") {
-        const storage = Array.from(game.actors).find(
-          (a) => a.id === project.storageActorId,
-        );
-        held = Array.from(storage?.items ?? []).find(
-          (i) => i.id === project.storageItemId,
-        );
-        if (!held)
-          throw new Error("Upgrade item is missing from its container.");
-      }
+      event.reason +=
+        event.kind === "techCancel"
+          ? "; original Item retained"
+          : "; completed " + item.name;
+    } else if (event.kind !== "techCancel") {
       let template: FoundryItem | undefined;
       if (project.fabricationUuid) {
         template = (await fromUuid(project.fabricationUuid)) as
@@ -439,43 +391,25 @@ export async function processTechRequest(
             "Fabrication compendium source is missing or inaccessible. Restore access before completing this project.",
           );
       }
-      const data = held
-        ? snapshot(held)
-        : template
-          ? snapshot(template)
-          : structuredClone(project.itemData);
+      const data = template
+        ? snapshot(template)
+        : structuredClone(project.itemData);
       const itemId = foundry.utils.randomID(16);
       await ctx.attempt({
         requestId: event.requestId,
         projectId: project.id,
         action: "Deliver project item",
-        sourceUuid: held?.uuid ?? null,
+        sourceUuid: template?.uuid ?? null,
         destinationActorId: actor.id,
         destinationItemId: itemId,
       });
       mutation = true;
-      if (
-        project.mode === "upgrade" &&
-        event.kind !== "techCancel" &&
-        project.description.trim()
-      ) {
-        const system = (data.system ??= {}) as {
-          description?: { value?: string };
-        };
-        system.description ??= { value: "" };
-        system.description.value =
-          (system.description.value ?? "") +
-          "<p><strong>TECH upgrade notes:</strong> " +
-          esc(project.description) +
-          "</p>";
-      }
       const [delivered] = await deliverItems(
         actor,
         [{ ...data, _id: itemId }],
         { keepId: true },
       );
       if (!delivered) throw new Error("Project item could not be delivered.");
-      if (held) await removeItem(held);
       event.techDelivery = { actorId: actor.id, itemId: delivered.id };
       event.reason +=
         "; delivered " +
@@ -489,7 +423,7 @@ export async function processTechRequest(
   recordTechActivity(state, event);
   const transaction = state.events.find((e) => e.id === event.id);
   if (transaction) transaction.reason = event.reason;
-  // Once Items were moved, an interrupted write retains a visible Journal guard for GM reconciliation.
+  // Once Items were changed, an interrupted write retains a visible Journal guard for GM reconciliation.
   await ctx.save(state);
   if (mutation) await ctx.attempt(null);
   if (event.techCheck || event.techDelivery) {
@@ -507,7 +441,7 @@ export async function processTechRequest(
           subject: project?.name ?? event.tech?.name ?? "Project",
           outcome:
             event.kind === "techCancel"
-              ? "RETURNED"
+              ? "CANCELLED"
               : event.techDelivery
                 ? "COMPLETE"
                 : event.techCheck?.success
@@ -530,11 +464,13 @@ export async function processTechRequest(
             : undefined,
           effect:
             event.kind === "techCancel"
-              ? "Item returned to inventory. Allocated days are lost."
+              ? "Project cancelled. Original Item retained. Allocated days are lost."
               : event.techDelivery
                 ? project?.mode === "repair"
                   ? "Repair complete. Original Item retained."
-                  : "Item added to inventory."
+                  : project?.mode === "upgrade"
+                    ? "Upgrade complete. Original Item retained."
+                    : "Item added to inventory."
                 : event.techCheck?.success
                   ? "Check passed. " +
                     project?.progress +

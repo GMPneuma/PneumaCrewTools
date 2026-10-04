@@ -99,6 +99,12 @@ function fixture(failLedger = false) {
       "./calendar": {
         advanceCampaignDays: async (days) => game.time.advance(days * 86400),
       },
+      "./resource-lock": { withResourceLock: (fn) => fn() },
+      "./payout-attempts": {
+        beginPayoutAttempt: async () => ({ steps: [] }),
+        checkpointPayout: (_attempt, _label, fn) => fn(),
+        savePayoutAttempt: async () => {},
+      },
       "./downtime": {
         withDowntimeLock: (fn) => fn(),
         applyDowntimeAwards: transaction("downtime"),
@@ -108,6 +114,7 @@ function fixture(failLedger = false) {
       },
       "./constants": { MODULE_ID: "pneuma-crewtools" },
       "./payout-ledger": {
+        getPayoutLedger: () => ({ records: [] }),
         appendPayoutRecord: async () => {
           events.push("ledger");
           if (failLedger) throw Error("ledger failure");

@@ -26,6 +26,7 @@ import { openIpSpending } from "./ip-spending-form";
 
 import { getHubStatus } from "./player-hub-status";
 import { openDowntime } from "./downtime";
+import { openTreatment } from "./treatment";
 import { MODULE_ID, PAYOUT_ACKNOWLEDGMENTS_ENABLED_SETTING } from "./constants";
 import { createUniqueId } from "./id";
 import {
@@ -383,6 +384,17 @@ export class PlayerHub extends CrewToolsForm {
     root.querySelector("[data-hub-downtime]")?.addEventListener("click", () => {
       openDowntime(getHubStatus(this.#selectedActorId).actorId);
     });
+    root
+      .querySelector<HTMLButtonElement>("[data-hub-treatment]")
+      ?.addEventListener("click", (event) => {
+        const button = event.currentTarget as HTMLButtonElement;
+        button.disabled = true;
+        void openTreatment(getHubStatus(this.#selectedActorId).actorId)
+          .catch((error) => ui.notifications.error(String(error)))
+          .finally(() => {
+            button.disabled = false;
+          });
+      });
     root
       .querySelectorAll<HTMLDetailsElement>("[data-inbox-expanded]")
       .forEach((card) => {

@@ -70,6 +70,7 @@ function fixture() {
     ...journalWorld(game),
     foundry: { utils: { randomID: () => "id" + ++seq } },
     Hooks: { on() {} },
+    Dialog: class {},
     FormApplication: class {},
     ui: { notifications: { error() {}, info() {}, warn() {} } },
     document: {
@@ -191,6 +192,142 @@ function fixture() {
   };
   return { game, gm, owner, stranger, actor, updates, load, plan };
 }
+
+test("money-only payout rollback preserves intervening IP, Humanity and native ledgers", async () => {
+  const f = fixture();
+  f.plan.humanityPrompts = [];
+  const ledger = f.load("payout-ledger");
+  ledger.appendPayoutRecord = async () => {
+    f.actor.system.improvementPoints = {
+      value: 20,
+      transactions: [["+20", "Intervening IP grant"]],
+    };
+    f.actor.system.derivedStats.humanity.value = 45;
+    f.actor.system.stats.emp.value = 4;
+    throw Error("ledger failed");
+  };
+  await assert.rejects(
+    f.load("payout-execution").executePayoutPlan(f.plan),
+    /ledger failed/,
+  );
+  assert.equal(f.actor.system.wealth.value, 100);
+  assert.equal(f.actor.system.improvementPoints.value, 20);
+  assert.equal(
+    f.actor.system.improvementPoints.transactions[0][1],
+    "Intervening IP grant",
+  );
+  assert.equal(f.actor.system.derivedStats.humanity.value, 45);
+  assert.deepEqual(Object.keys(f.updates.at(-1)).sort(), [
+    "system.wealth.transactions",
+    "system.wealth.value",
+  ]);
+});
+test("payout rollback refuses to overwrite a later change to the same resource", async () => {
+  const f = fixture();
+  f.load("payout-ledger").appendPayoutRecord = async () => {
+    f.actor.system.wealth.value = 130;
+    f.actor.system.wealth.transactions.push(["+5", "Later money"]);
+    throw Error("ledger failed");
+  };
+  await assert.rejects(
+    f.load("payout-execution").executePayoutPlan(f.plan),
+    /Rollback incomplete: Resources/,
+  );
+  assert.equal(f.actor.system.wealth.value, 130);
+  assert.equal(f.actor.system.wealth.transactions.at(-1)[1], "Later money");
+  assert.equal(
+    f.load("payout-attempts").unresolvedPayoutAttempts()[0].status,
+    "needsReview",
+  );
+});
+test("persisted payout attempt blocks a fresh preview after a client interruption", async () => {
+  const f = fixture();
+  const update = f.actor.update;
+  f.actor.update = async (data) => {
+    const attempt = f.load("payout-attempts").unresolvedPayoutAttempts()[0];
+    assert.equal(
+      attempt.status,
+      "pending",
+      "recovery record persisted before the first native write",
+    );
+    assert.equal(attempt.steps.at(-1).status, "started");
+    await update.call(f.actor, data);
+    return new Promise(() => {}); // server persisted; browser never received completion
+  };
+  void f.load("payout-execution").executePayoutPlan(f.plan);
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(f.actor.system.wealth.value, 125);
+  const reload = fixture();
+  reload.game.journal = f.game.journal;
+  reload.actor.system = structuredClone(f.actor.system);
+  reload.plan.changes = reload
+    .load("payout-execution")
+    .planActorChanges(reload.plan.actors[0]);
+  await assert.rejects(
+    reload.load("payout-execution").executePayoutPlan(reload.plan),
+    /interrupted payout needs review/,
+  );
+  assert.equal(reload.actor.system.wealth.value, 125);
+  assert.equal(reload.updates.length, 0);
+  const recovery = reload.load("payout-attempts");
+  const attempt = recovery.unresolvedPayoutAttempts()[0];
+  await assert.rejects(
+    recovery.resolvePayoutAttempt(attempt.id, ""),
+    /reconciliation notes/,
+  );
+  await recovery.resolvePayoutAttempt(
+    attempt.id,
+    "Inspected and reconciled partial rewards manually.",
+  );
+  assert.equal(recovery.unresolvedPayoutAttempts().length, 0);
+  assert.equal(
+    reload.actor.system.wealth.value,
+    125,
+    "resolving does not replay rewards",
+  );
+});
+test("a persisted final ledger write with a lost acknowledgment is committed, never refunded", async () => {
+  const f = fixture();
+  const ledger = f.load("payout-ledger");
+  const append = ledger.appendPayoutRecord;
+  ledger.appendPayoutRecord = async (record) => {
+    await append(record);
+    throw Error("acknowledgment lost");
+  };
+  await f.load("payout-execution").executePayoutPlan(f.plan);
+  assert.equal(f.actor.system.wealth.value, 125);
+  assert.equal(ledger.getPayoutLedger().records.length, 1);
+  assert.equal(f.load("payout-attempts").unresolvedPayoutAttempts().length, 0);
+});
+test("recovery record failures prevent native payout writes", async () => {
+  const f = fixture();
+  const journal = await f
+    .load("journal-records")
+    .ensureRecordJournal("payoutAttempts", "Payout Recovery", "gm");
+  journal.createEmbeddedDocuments = async () => {
+    throw Error("recovery unavailable");
+  };
+  await assert.rejects(
+    f.load("payout-execution").executePayoutPlan(f.plan),
+    /recovery unavailable/,
+  );
+  assert.equal(f.updates.length, 0);
+  assert.equal(f.actor.system.wealth.value, 100);
+});
+test("a ledger record cannot hide an explicit payout recovery conflict", async () => {
+  const f = fixture();
+  await f.load("payout-execution").executePayoutPlan(f.plan);
+  const record = f.load("payout-ledger").getPayoutLedger().records[0];
+  const recovery = f.load("payout-attempts");
+  await recovery.savePayoutAttempt({
+    id: record.id,
+    record,
+    status: "needsReview",
+    steps: [],
+    error: "Uncertain commit followed by partial rollback",
+  });
+  assert.equal(recovery.unresolvedPayoutAttempts().length, 1);
+});
 
 test("payout execution stores campaign data only in correctly permissioned Journals", async () => {
   const f = fixture();

@@ -19,7 +19,7 @@ import {
   type DowntimeState,
 } from "./downtime-model";
 import { syncUpgradeStorage, storageActor } from "./upgrade-storage";
-import { techRole } from "./tech-system";
+import { techRole, techSkills } from "./tech-system";
 const FLAG = "downtime";
 
 export function ledgerPage(): FoundryJournalPage | undefined {
@@ -317,12 +317,12 @@ export async function ensureDowntime(
     await ledgerPage()!.update({
       [`flags.${MODULE_ID}.${FLAG}`]: { ...state, events: [] },
     });
-  // Prepare inventory storage for eligible TECHs and Netrunners; this does not create character Journals.
+  // Prepare project references for TECHs, Netrunners and characters eligible to repair.
   for (const actor of Array.from(game.actors))
     if (
       (!maintenanceActorIds || maintenanceActorIds.includes(actor.id)) &&
       playerCharacter(actor) &&
-      (techRole(actor) || isNetrunner(actor))
+      (techRole(actor) || isNetrunner(actor) || techSkills(actor).length > 0)
     )
       await storageActor(actor);
   await syncUpgradeStorage(maintenanceActorIds);

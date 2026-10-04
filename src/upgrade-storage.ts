@@ -1,5 +1,5 @@
 import { MODULE_ID } from "./constants";
-// Native holding containers contain real Items; project metadata remains in Journals.
+// Native containers hold reference Items; originals stay in character inventories.
 // Keep generated holding containers tied to the character's current owners.
 export async function syncUpgradeStorage(
   actorIds?: readonly string[],
@@ -35,7 +35,7 @@ export async function storageActor(owner: FoundryActor): Promise<FoundryActor> {
   if (existing[0]) return existing[0];
   if (!game.user?.isGM)
     throw new Error(
-      "A GM must connect once after this character gains TECH or Netrunner to automatically prepare its Upgrade Projects container.",
+      "A GM must connect once after this character gains a crafting role or repair skill to automatically prepare its Upgrade Projects container.",
     );
   let folder = Array.from(game.folders).find(
     (f) => f.type === "Actor" && f.name === "CrewTools" && !f.folder,

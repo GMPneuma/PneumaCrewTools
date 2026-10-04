@@ -1,4 +1,6 @@
 import { registerServerRooms } from "./hq-server-room";
+import { registerResourceLock } from "./resource-lock";
+import { unresolvedPayoutAttempts } from "./payout-attempts";
 import { registerCleanupSettings } from "./cleanup-settings";
 import { registerHustleTables, readyHustleTables } from "./hustle-tables";
 import { registerCustomDowntime } from "./custom-downtime-settings";
@@ -81,6 +83,11 @@ Hooks.once("init", () => {
 });
 
 Hooks.once("ready", () => {
+  registerResourceLock();
+  if (game.user?.isGM && unresolvedPayoutAttempts().length)
+    ui.notifications.warn(
+      "Crew Tools: an interrupted payout needs review in the GM Dashboard before another payout can be applied.",
+    );
   console.info(`${MODULE_ID} | Ready`);
   void readyUiAppearance().catch((error) =>
     console.error(`${MODULE_ID} | HUD appearance initialization failed`, error),

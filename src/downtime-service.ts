@@ -199,7 +199,7 @@ async function executeDowntimeCommand(
   ) {
     if (ledgerPage()?.getFlag?.(MODULE_ID, "techAttempt"))
       throw new Error(
-        "An interrupted TECH item transfer needs GM review in the Downtime Journal.",
+        "An interrupted TECH item change needs GM review in the Downtime Journal.",
       );
     try {
       if (request.actorId !== account.actorId)
@@ -233,9 +233,9 @@ async function executeDowntimeCommand(
             "text.content":
               ledgerHtml(getDowntime(request.actorId)) +
               (details
-                ? "<h2>TECH item transfer in progress</h2><pre>" +
+                ? "<h2>TECH item change in progress</h2><pre>" +
                   escape(JSON.stringify(details, null, 2)) +
-                  "</pre><p>If interrupted, inspect the listed source and destination Items before clearing techAttempt. Do not repeat the move blindly.</p>"
+                  "</pre><p>If interrupted, inspect the original Item, project reference and any stack remainder before clearing techAttempt. Do not repeat the operation blindly.</p>"
                 : ""),
           });
         },

@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.0.0 - 2026-10-04
+
+- Added Treatment directly below Spend Downtime with a red cross, matching CrewTools panels and controls. Patient selection, stabilization and Body/Head QuickFix or Treatment rolls use native skills, Surgery, injury DVs, modifiers and chat privacy. Named patients support use without patient Actor access or an online GM.
+- Upgrade and repair projects retain the original inventory Item and its installed contents, mark its name during work, and keep a reference in the project container. Completion or cancellation restores the name and removes the reference. Ordinary stacks split safely; installed stacks require a native split first.
+- Coordinate IP purchases, HQ changes and payouts across connected clients to prevent concurrent resource spending.
+- Added saved payout attempts and GM review controls for interrupted payouts. Rollback checks for later changes and restores only resources affected by the payout.
+- Prevent shared HQ IP changes from rewriting unrelated HQ pages and retain interrupted TECH Item changes for review.
+- Keep project cancellation available after losing a crafting role or facility, including active slots that would otherwise disappear.
+
+Live Foundry multiplayer verification remains pending.
+
 ## 0.9.4 - 2026-10-03
 
 - Added Spend IP directly below View HQ in the Player Hub, with searchable skill filters, role upgrades, and a pending purchase receipt.

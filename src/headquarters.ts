@@ -22,11 +22,16 @@ import { isActorExcluded } from "./actor-policy";
 import { MODULE_ID } from "./constants";
 import { createUniqueId } from "./id";
 import { getCampaignDate } from "./calendar";
+import { withResourceLock } from "./resource-lock";
 import {
-  queueAction,
-  withGMAction as withDowntimeLock,
+  queueAction as localQueue,
+  withGMAction,
   isPrimaryGM as isDowntimeGM,
 } from "./action-coordinator";
+const queueAction = <T>(action: () => Promise<T>) =>
+  localQueue(() => withResourceLock(action));
+const withDowntimeLock = <T>(action: () => Promise<T>) =>
+  withGMAction(() => withResourceLock(action));
 import type { PayoutPlan } from "./payout-execution";
 export interface HeadquartersRecord {
   id: string;
@@ -254,13 +259,17 @@ function html(state: HeadquartersState): string {
     <details><summary>About this page</summary><p>Payouts add shared HQ IP; improvement purchases spend it. HQ properties, improvements, bills, and payments live on each HQ page in this Journal. Editing this text does not change records.</p></details>`
   );
 }
-async function save(state: HeadquartersState): Promise<void> {
+async function save(
+  state: HeadquartersState,
+  changedHqs?: Set<string>,
+): Promise<void> {
   validate(state);
   const document = page();
   if (!document) throw new Error("HQ IP Journal is missing.");
   const changed: Array<{ actor: FoundryActor; before: HqProperties }> = [];
   try {
     for (const hq of state.headquarters) {
+      if (changedHqs && !changedHqs.has(hq.id)) continue;
       const actor = game.actors.get(hq.actorId);
       if (!actor) throw new Error("HQ Actor no longer exists.");
       const before = hqProperties(actor.id)!;
@@ -592,7 +601,7 @@ export async function buyHqImprovement(
       hqId,
       improvementId: existing?.id ?? id,
     });
-    await save(state);
+    await save(state, new Set([hqId]));
   });
 }
 // Corrections share the same GM action queue as payouts and purchases.
@@ -618,7 +627,7 @@ export async function adjustHeadquartersIp(
       reason: reason.trim(),
       date: getCampaignDate(),
     });
-    await save(state);
+    await save(state, new Set());
   });
 }
 export async function editHqImprovement(
@@ -639,7 +648,7 @@ export async function editHqImprovement(
         "Enter a name (up to 100 characters) and notes (up to 1000).",
       );
     Object.assign(item, { name: name.trim(), notes: notes.trim(), effect });
-    await save(state);
+    await save(state, new Set([hqId]));
   });
 }
 export function headquartersAccess(actorId: string) {
@@ -793,7 +802,7 @@ export async function removeHqImprovement(
       hqId,
       improvementId,
     });
-    await save(state);
+    await save(state, new Set([hqId]));
   });
 }
 // Caller holds the payout/downtime lock through its complete transaction.
@@ -822,8 +831,17 @@ export async function applyHeadquartersPayout(
       plan.hqIpTransactions.map((t) => t.reason).join("; "),
     payoutId,
   });
-  await save(state);
-  return () => save(before);
+  await save(state, new Set());
+  const expected = structuredClone(getHeadquarters().transactions);
+  return async () => {
+    const current = getHeadquarters();
+    if (JSON.stringify(current.transactions) !== JSON.stringify(expected))
+      throw new Error(
+        "HQ IP changed after this payout; review before restoring.",
+      );
+    current.transactions = before.transactions;
+    await save(current, new Set());
+  };
 }
 function report(error: unknown): void {
   ui.notifications.error(

@@ -85,6 +85,7 @@ function load(name, globals, deps) {
   return exports;
 }
 function fixture() {
+  const treatmentCalls = [];
   let nomadReadCount = 0;
   const nomadReads = () => {
     nomadReadCount++;
@@ -229,6 +230,9 @@ function fixture() {
       "./headquarters": { openHeadquarters: () => {} },
       "./ip-spending-form": { openIpSpending: () => {} },
       "./downtime": { openDowntime: () => {} },
+      "./treatment": {
+        openTreatment: async (actorId) => treatmentCalls.push(actorId),
+      },
       "./player-hub-status": status,
       "./humanity-prompts": { getAllPendingHumanityRolls: () => [] },
     },
@@ -247,6 +251,7 @@ function fixture() {
     hooks,
     timers,
     renders,
+    treatmentCalls,
   };
 }
 const template = Handlebars.compile(
@@ -440,6 +445,42 @@ test("HUD receipt counting avoids reading award details and honors recipients", 
   assert.equal(f.inbox.waitingPayoutCount(), 1);
   f.game.user = f.gm;
   assert.equal(f.inbox.waitingPayoutCount(), 2);
+});
+
+test("Treatment opens for the selected Hub actor and remains available without a Medtech role", async () => {
+  const f = fixture();
+  f.game.user = f.gm;
+  const form = new f.inbox.PlayerHub();
+  const select = {
+    value: "a2",
+    addEventListener(_event, fn) {
+      this.change = fn;
+    },
+  };
+  const button = {
+    disabled: false,
+    addEventListener(_event, fn) {
+      this.click = fn;
+    },
+  };
+  form.activateListeners([
+    {
+      querySelector: (selector) =>
+        selector === "[data-hub-actor]"
+          ? select
+          : selector === "[data-hub-treatment]"
+            ? button
+            : null,
+      querySelectorAll: () => [],
+    },
+  ]);
+  select.change({ currentTarget: select });
+  button.click({ currentTarget: button });
+  assert.equal(button.disabled, true);
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.deepEqual(f.treatmentCalls, ["a2"]);
+  assert.equal(button.disabled, false);
+  assert.match(template(form.getData()), /data-hub-treatment/);
 });
 
 test("resource tile shortcuts open the selected actor's native ledgers", async () => {

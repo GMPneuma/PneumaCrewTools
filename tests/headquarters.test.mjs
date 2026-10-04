@@ -4,7 +4,15 @@ import fs from "node:fs";
 import vm from "node:vm";
 import ts from "typescript";
 import Handlebars from "handlebars";
-function fixture(customCatalog = []) {
+import {
+  loadTransactionModule,
+  socketWorld,
+  tick,
+} from "./transaction-world.mjs";
+function fixture(
+  customCatalog = [],
+  resourceLock = { withResourceLock: (fn) => fn() },
+) {
   let sequence = 0,
     fail = false,
     queue = Promise.resolve();
@@ -67,6 +75,7 @@ function fixture(customCatalog = []) {
     },
   };
   const deps = {
+    "./resource-lock": resourceLock,
     "./hq-catalog": {
       getHqCatalog: () => [
         ...customCatalog,
@@ -262,6 +271,52 @@ function fixture(customCatalog = []) {
       ),
   };
 }
+test("independent player clients debit shared HQ IP and preserve improvements on different HQs", async () => {
+  let lockA, lockB;
+  const a = fixture([], {
+    withResourceLock: (fn) => (lockA ? lockA.withResourceLock(fn) : fn()),
+  });
+  const b = fixture([], {
+    withResourceLock: (fn) => (lockB ? lockB.withResourceLock(fn) : fn()),
+  });
+  const first = await a.api.saveHeadquarters({ name: "Workshop", image: "" });
+  const second = await a.api.saveHeadquarters({ name: "Safehouse", image: "" });
+  await a.award(100);
+  b.game.journal = a.game.journal;
+  b.game.actors = a.game.actors;
+  const users = [
+    { id: "a", active: true, isGM: false },
+    { id: "b", active: true, isGM: false },
+  ];
+  a.game.user = users[0];
+  b.game.user = users[1];
+  a.game.users = b.game.users = users;
+  socketWorld([a.game, b.game]);
+  lockA = loadTransactionModule("resource-lock", a.game);
+  lockB = loadTransactionModule("resource-lock", b.game);
+  lockA.registerResourceLock();
+  lockB.registerResourceLock();
+  for (const journal of a.game.journal)
+    for (const page of journal.pages) {
+      const update = page.update;
+      page.update = async (changes) => {
+        await tick();
+        return update(changes);
+      };
+    }
+  await Promise.all([
+    a.api.buyHqImprovement(first, "Medbay", 40, ""),
+    b.api.buyHqImprovement(second, "Workshop", 40, ""),
+  ]);
+  assert.equal(a.api.headquartersIp(), 20);
+  assert.equal(
+    a.api.getHeadquarters().transactions.filter((t) => t.amount === -40).length,
+    2,
+  );
+  assert.equal(a.records.hqProperties(first).improvements[0].name, "Medbay");
+  assert.equal(a.records.hqProperties(second).improvements[0].name, "Workshop");
+});
+
 test("multiple HQs use standard containers, shared module folders, tags and readable Journals", async () => {
   const f = fixture();
   const a = await f.api.saveHeadquarters({

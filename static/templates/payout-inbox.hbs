@@ -8,6 +8,12 @@
             class="fas fa-coins"
           ></i>
           Initiate Payout</button>
+        {{#if interruptedPayouts}}
+          <button type="button" data-gm-dashboard-action="payoutRecovery"><i
+              class="fas fa-triangle-exclamation"
+            ></i>
+            Review Interrupted Payouts ({{interruptedPayouts}})</button>
+        {{/if}}
         <button type="button" data-gm-dashboard-action="exportPayout"><i
             class="fab fa-discord"
           ></i>
@@ -128,13 +134,21 @@
             class="fas fa-hourglass-half"
           ></i>
           Spend Downtime</button>
+        {{#if status.hasActor}}<button type="button" data-hub-treatment><i
+              class="fas fa-plus"
+              aria-hidden="true"
+            ></i>
+            Treatment</button>{{/if}}
         <button type="button" data-hub-rent><i class="fas fa-house"></i>
           Rent & Lifestyle</button>
         <button type="button" data-hub-headquarters><i
             class="fas fa-building"
           ></i>
           View HQ</button>
-        {{#if status.hasActor}}<button type="button" data-hub-spend-ip><i class="fas fa-arrow-up"></i> Spend IP</button>{{/if}}
+        {{#if status.hasActor}}<button type="button" data-hub-spend-ip><i
+              class="fas fa-arrow-up"
+            ></i>
+            Spend IP</button>{{/if}}
         <button type="button" data-hub-reputation><i class="fas fa-flag"></i>
           Faction Reputation</button>
         {{#if rent.homeless}}<button type="button" data-hub-endurance><i

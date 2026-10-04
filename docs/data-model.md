@@ -34,7 +34,7 @@ Money and its native transaction list, IP, standard Reputation, HP, Humanity, EM
 
 Actor IDs identify characters; Item UUIDs identify source Items; User IDs identify the applying GM, receipt recipient or roll authorization. User IDs never own resource balances. Chat Humanity buttons carry only an Actor ID and roll ID; they resolve the authoritative Journal record.
 
-Hustle RollTables remain native reference data. Upgrade holding Actors remain native inventory containers; their module tag only links them to a character, while project state stays in Journals.
+Hustle RollTables remain native reference data. Upgrade Projects Actors remain native containers linked to a character. They hold reference Gear Items for upgrades and repairs; originals and installed contents stay in character inventories. Reference Item flags link the project and original UUID, while project state stays in Journals.
 
 ## Configuration
 

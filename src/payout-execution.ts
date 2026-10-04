@@ -1,11 +1,18 @@
 import { expireTrainingForPayout } from "./hq-training";
+import { withResourceLock } from "./resource-lock";
+import {
+  beginPayoutAttempt,
+  checkpointPayout,
+  savePayoutAttempt,
+} from "./payout-attempts";
 import { advanceCampaignDays } from "./calendar";
 import {
   buildContainerMoneyUpdate,
   buildActorUpdate,
   itemDocumentsForPayout,
   createSnapshot,
-  valueAt,
+  restoreSnapshot,
+  assertSnapshotCurrent,
   type ActorSnapshot,
 } from "./payout-system";
 import { planActorChanges } from "./payout-plan";
@@ -14,7 +21,7 @@ import { deliverItems } from "./actor-resources";
 import { isActorExcluded } from "./actor-policy";
 import { applyHeadquartersPayout } from "./headquarters";
 import { applyDowntimeAwards, withDowntimeLock } from "./downtime";
-import { appendPayoutRecord } from "./payout-ledger";
+import { appendPayoutRecord, getPayoutLedger } from "./payout-ledger";
 import {
   applyPayoutToJournal,
   type FactionReputationRecord,
@@ -99,7 +106,9 @@ export interface PayoutPlan {
 
 export async function executePayoutPlan(plan: PayoutPlan): Promise<void> {
   if (!game.user?.isGM) throw new Error("Only a GM can apply payouts.");
-  return withDowntimeLock(() => executeLockedPayout(plan));
+  return withDowntimeLock(() =>
+    withResourceLock(() => executeLockedPayout(plan)),
+  );
 }
 async function executeLockedPayout(plan: PayoutPlan): Promise<void> {
   if (!game.user?.isGM) throw new Error("Only a GM can apply payouts.");
@@ -107,6 +116,7 @@ async function executeLockedPayout(plan: PayoutPlan): Promise<void> {
   if (!Number.isSafeInteger(advanceDays) || advanceDays < 0)
     throw new Error("Invalid GameTime day advance.");
   let previousWorldTime: number | undefined;
+  let appliedWorldTime: number | undefined;
   const actorIds = new Set<string>();
   for (const { actor } of plan.actors) {
     if (isActorExcluded(actor.id))
@@ -179,14 +189,19 @@ async function executeLockedPayout(plan: PayoutPlan): Promise<void> {
     createPendingHumanityRoll(prompt, record.id),
   );
   const rollbackPending: Array<() => Promise<void>> = [];
-  const snapshots = plan.actors.map(createSnapshot);
   const updated: ActorSnapshot[] = [];
   const createdItems: Array<{ actor: FoundryActor; ids: string[] }> = [];
   const containerSnapshot = plan.payoutContainer
     ? {
         actor: plan.payoutContainer.actor,
-        wealth: structuredClone(
-          valueAt(plan.payoutContainer.actor.system, "wealth"),
+        snapshot: createSnapshot(
+          plan.payoutContainer.actor,
+          buildContainerMoneyUpdate(
+            plan.payoutContainer.actor,
+            plan.payoutContainer.moneyAmount,
+            plan.payoutContainer.moneyDescription,
+            plan.sessionLabel,
+          ),
         ),
       }
     : null;
@@ -197,27 +212,40 @@ async function executeLockedPayout(plan: PayoutPlan): Promise<void> {
   let rollbackDowntime: (() => Promise<void>) | null = null;
   let rollbackJournal: (() => Promise<void>) | null = null;
   let rollbackAcknowledgments: (() => Promise<void>) | null = null;
+  const attempt = await beginPayoutAttempt(record, plan);
+  const step = <T>(
+    label: string,
+    action: () => Promise<T>,
+    details?: unknown,
+  ) => checkpointPayout(attempt, label, action, details);
   try {
     if (plan.payoutContainer) {
-      const { actor, moneyAmount, moneyDescription } = plan.payoutContainer;
+      const { actor, moneyAmount } = plan.payoutContainer;
       if (moneyAmount) {
-        await actor.update(
-          buildContainerMoneyUpdate(
-            actor,
-            moneyAmount,
-            moneyDescription,
-            plan.sessionLabel,
-          ),
+        await step(
+          "Communal container money",
+          async () => {
+            assertSnapshotCurrent(containerSnapshot!.snapshot);
+            containerUpdated = true;
+            await actor.update(containerSnapshot!.snapshot.expected);
+          },
+          {
+            actorId: actor.id,
+            before: containerSnapshot!.snapshot.update,
+            after: containerSnapshot!.snapshot.expected,
+          },
         );
-        containerUpdated = true;
       }
       if (plan.communalItems.length) {
-        const created = await deliverItems(
-          actor,
-          plan.communalItems.flatMap(itemDocumentsForPayout),
-          { CPRsplitStack: true },
-        );
-        createdItems.push({ actor, ids: created.map(({ id }) => id) });
+        await step("Communal items", async () => {
+          const created = await deliverItems(
+            actor,
+            plan.communalItems.flatMap(itemDocumentsForPayout),
+            { CPRsplitStack: true },
+          );
+          createdItems.push({ actor, ids: created.map(({ id }) => id) });
+          return { actorId: actor.id, itemIds: created.map(({ id }) => id) };
+        });
       }
     }
     for (const actorInput of plan.actors) {
@@ -231,44 +259,98 @@ async function executeLockedPayout(plan: PayoutPlan): Promise<void> {
       );
       // Journal-only rewards must not issue even an empty Actor/flag update.
       if (Object.keys(update).length) {
-        await actorInput.actor.update(update);
-        const snapshot = snapshots.find(
-          ({ actor }) => actor === actorInput.actor,
+        const snapshot = createSnapshot(actorInput.actor, update);
+        await step(
+          "Resources for " + actorInput.actor.name,
+          async () => {
+            assertSnapshotCurrent(snapshot);
+            updated.push(snapshot);
+            await actorInput.actor.update(update);
+          },
+          {
+            actorId: actorInput.actor.id,
+            before: snapshot.update,
+            after: update,
+          },
         );
-        if (snapshot) updated.push(snapshot);
       }
       if (actorInput.items.length) {
-        const itemData = actorInput.items.flatMap(itemDocumentsForPayout);
-        const created = await deliverItems(actorInput.actor, itemData, {
-          CPRsplitStack: true,
-        });
-        createdItems.push({
-          actor: actorInput.actor,
-          ids: created.map(({ id }) => id),
+        await step("Items for " + actorInput.actor.name, async () => {
+          const itemData = actorInput.items.flatMap(itemDocumentsForPayout);
+          const created = await deliverItems(actorInput.actor, itemData, {
+            CPRsplitStack: true,
+          });
+          createdItems.push({
+            actor: actorInput.actor,
+            ids: created.map(({ id }) => id),
+          });
+          return {
+            actorId: actorInput.actor.id,
+            itemIds: created.map(({ id }) => id),
+          };
         });
       }
     }
     for (const { actor } of plan.actors) {
       const rolls = pendingRolls.filter((r) => r.actorId === actor.id);
       if (rolls.length)
-        rollbackPending.push(await appendPendingHumanityRolls(actor, rolls));
+        await step("Humanity records for " + actor.name, async () => {
+          rollbackPending.push(await appendPendingHumanityRolls(actor, rolls));
+        });
     }
     for (const prompt of pendingRolls)
-      promptMessages.push(await createHumanityPrompt(prompt));
-    rollbackDowntime = await applyDowntimeAwards(plan, record.id);
-    rollbackHeadquarters = await applyHeadquartersPayout(plan, record.id);
-    rollbackJournal = await applyPayoutToJournal(plan);
-    rollbackAcknowledgments = await createPayoutAcknowledgments(
-      record.id,
-      plan,
-    );
+      await step("Humanity chat prompt", async () => {
+        promptMessages.push(await createHumanityPrompt(prompt));
+      });
+    await step("Downtime", async () => {
+      rollbackDowntime = await applyDowntimeAwards(plan, record.id);
+    });
+    await step("HQ IP", async () => {
+      rollbackHeadquarters = await applyHeadquartersPayout(plan, record.id);
+    });
+    await step("Payout Journal", async () => {
+      rollbackJournal = await applyPayoutToJournal(plan);
+    });
+    await step("Acknowledgments", async () => {
+      rollbackAcknowledgments = await createPayoutAcknowledgments(
+        record.id,
+        plan,
+      );
+    });
     if (advanceDays > 0) {
-      previousWorldTime = game.time.worldTime;
-      await advanceCampaignDays(advanceDays);
+      await step(
+        "GameTime",
+        async () => {
+          previousWorldTime = game.time.worldTime;
+          await advanceCampaignDays(advanceDays);
+          appliedWorldTime = game.time.worldTime;
+          return { after: appliedWorldTime };
+        },
+        { before: game.time.worldTime, days: advanceDays },
+      );
     }
-    rollbackTraining = await expireTrainingForPayout(plan);
-    await appendPayoutRecord(record);
+    await step("HQ Training", async () => {
+      rollbackTraining = await expireTrainingForPayout(plan);
+    });
+    await step("Payout Ledger", async () => {
+      await appendPayoutRecord(record);
+    });
+    attempt.status = "completed";
+    await savePayoutAttempt(attempt);
   } catch (error) {
+    // The final ledger is the commit point, including a persisted write whose acknowledgment failed.
+    if (getPayoutLedger().records.some((r) => r.id === record.id)) {
+      attempt.status = "completed";
+      try {
+        await savePayoutAttempt(attempt);
+      } catch (failure) {
+        console.error(
+          "Crew Tools: payout committed; recovery checkpoint could not be finalized",
+          failure,
+        );
+      }
+      return;
+    }
     const failures: string[] = [];
     const restore = async (label: string, undo: () => Promise<unknown>) => {
       try {
@@ -280,14 +362,24 @@ async function executeLockedPayout(plan: PayoutPlan): Promise<void> {
     };
     if (previousWorldTime !== undefined) {
       const previous = previousWorldTime;
-      await restore("GameTime", () =>
-        game.time.advance(previous - game.time.worldTime),
-      );
+      await restore("GameTime", async () => {
+        if (game.time.worldTime === previous) return;
+        if (
+          appliedWorldTime === undefined ||
+          game.time.worldTime !== appliedWorldTime
+        )
+          throw new Error(
+            "GameTime changed after this payout; review before restoring.",
+          );
+        await game.time.advance(previous - game.time.worldTime);
+      });
     }
     for (const undo of rollbackPending.reverse())
       await restore("Humanity records", undo);
-    for (const { actor, update } of updated)
-      await restore("Resources for " + actor.name, () => actor.update(update));
+    for (const snapshot of updated)
+      await restore("Resources for " + snapshot.actor.name, () =>
+        restoreSnapshot(snapshot),
+      );
     for (const { actor, ids } of createdItems)
       await restore("Items for " + actor.name, () =>
         actor.deleteEmbeddedDocuments("Item", ids),
@@ -295,7 +387,7 @@ async function executeLockedPayout(plan: PayoutPlan): Promise<void> {
     if (containerUpdated && containerSnapshot) {
       const snapshot = containerSnapshot;
       await restore("Communal container money", () =>
-        snapshot.actor.update({ "system.wealth": snapshot.wealth }),
+        restoreSnapshot(snapshot.snapshot),
       );
     }
     if (rollbackTraining) await restore("HQ Training", rollbackTraining);
@@ -306,12 +398,25 @@ async function executeLockedPayout(plan: PayoutPlan): Promise<void> {
       await restore("Acknowledgments", rollbackAcknowledgments);
     for (const message of promptMessages)
       await restore("Humanity chat prompt", () => message.delete());
+    // A rejected operation can still have persisted on the server. An unfinished
+    // step must be reconciled even if every known write was successfully undone.
+    const uncertain = attempt.steps.some((s) => s.status === "started");
+    attempt.status =
+      failures.length || uncertain ? "needsReview" : "rolledBack";
+    attempt.error = error instanceof Error ? error.message : String(error);
+    await restore("Payout recovery record", () => savePayoutAttempt(attempt));
     if (failures.length)
       throw new Error(
         "Rollback incomplete: " +
           failures.join("; ") +
           ". Inspect these records before retrying. Original error: " +
           (error instanceof Error ? error.message : String(error)),
+        { cause: error },
+      );
+    if (uncertain)
+      throw new Error(
+        "Payout interrupted. Known changes were restored; review the Payout Recovery Journal before retrying. Original error: " +
+          attempt.error,
         { cause: error },
       );
     throw error;

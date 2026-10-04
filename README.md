@@ -1,8 +1,8 @@
 # PneumaCrewTools
 
 Crew management tools for Foundry VTT v12 and the Cyberpunk RED Core system.
-Version 0.1.0 starts from the copied Pneuma's Payouts codebase, retaining its
-payout workflow, journals, and player inbox.
+Version 1.0.0 includes payouts, downtime projects, shared headquarters, IP spending
+and treatment rolls, with character records stored in native Foundry Journals.
 
 ## Campaign calendar
 
@@ -47,6 +47,19 @@ See [the Journal guide and specifications](docs/journals.md),
 [player discovery](docs/player-discovery.md), and [the roadmap](ROADMAP.md).
 The inherited project history is preserved under [docs/legacy](docs/legacy).
 
+## Transaction recovery
+
+HQ purchases, personal IP purchases, and payouts coordinate across connected
+clients. Player purchases retain their existing document permissions and do not
+require an online GM. An unresponsive client blocks a purchase rather than
+allowing overlapping writes.
+
+Payout attempts are saved before rewards change in **CrewTools-GM → Payout
+Recovery**. Interrupted attempts block further payouts. The GM Dashboard's
+**Review Interrupted Payouts** button opens the saved progress for inspection.
+Reconcile partial rewards and records, then record reconciliation notes to
+unblock payouts. Marking an attempt reconciled never reapplies rewards.
+
 ## Spend IP
 
 Player Hub → Spend IP opens a skill and role improvement planner. Filter skills by current rank or name, add or remove planned ranks, and review the receipt before clicking Improve. Costs include every intermediate rank: regular skills cost 20 × the new rank, difficult skills 40 × the new rank, and roles 60 × the new rank.
@@ -56,6 +69,8 @@ Each improved skill or role gets one native IP ledger entry, such as `Accounting
 ## Downtime
 
 Payouts now award player downtime balances. Players can spend or allocate whole days through Crew Tools Player Hub → Spend Downtime. See [Downtime implementation notes](docs/downtime.md) for the workflow, Journal format, and current limitations.
+
+**Treatment**, directly below Spend Downtime, provides the Combat Tools Treatment Roll layout for the Hub's selected healer: patient selection, stabilization and Body/Head QuickFix or Treatment rolls. It works independently of Combat Tools and supports named patients without Actor access. See [Treatment rolls](docs/treatment-rolls.md).
 
 The inbox-shaped token control opens the Crew Tools Player Hub: payout acknowledgements, current resources, downtime spending, and the multi-HQ viewer. Rent & Lifestyle now supports GM-issued monthly bills, percentage modifiers, personal payments and pending HQ contributions. Campaign price charts are awaiting the supplied tables; see [Rent & Lifestyle](docs/rent.md).
 

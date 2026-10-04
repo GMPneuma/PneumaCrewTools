@@ -1,4 +1,5 @@
 import { numberAt, arrayAt } from "./system-resources";
+import { withResourceLock } from "./resource-lock";
 
 export interface IpUpgrade {
   id: string;
@@ -67,6 +68,15 @@ export function actorUpgrades(actor: FoundryActor): IpUpgrade[] {
 
 const spending = new Set<string>();
 export async function applyIpUpgrades(
+  actor: FoundryActor,
+  drafts: IpUpgrade[],
+  expectedIp: number,
+): Promise<void> {
+  return withResourceLock(() =>
+    applyLockedIpUpgrades(actor, drafts, expectedIp),
+  );
+}
+async function applyLockedIpUpgrades(
   actor: FoundryActor,
   drafts: IpUpgrade[],
   expectedIp: number,

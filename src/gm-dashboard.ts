@@ -1,4 +1,8 @@
 import { openPayoutHistoryExport } from "./payout-history-export";
+import {
+  openPayoutRecovery,
+  unresolvedPayoutAttempts,
+} from "./payout-attempts";
 import { confirmExpireDowntime } from "./expire-downtime";
 import { accessibleCrewActors } from "./actor-policy";
 import { storedDowntimeBalance } from "./downtime-records";
@@ -50,7 +54,11 @@ export class GMDashboard extends PlayerHub {
   }
   override getData() {
     if (!game.user?.isGM) throw new Error("Only a GM can open this dashboard.");
-    return { ...super.getData(), gmDashboard: true };
+    return {
+      ...super.getData(),
+      gmDashboard: true,
+      interruptedPayouts: unresolvedPayoutAttempts().length,
+    };
   }
   override activateListeners(html: FoundryHtml): void {
     super.activateListeners(html);
@@ -66,6 +74,9 @@ export class GMDashboard extends PlayerHub {
     button.disabled = true;
     try {
       switch (button.dataset.gmDashboardAction) {
+        case "payoutRecovery":
+          openPayoutRecovery();
+          break;
         case "adjustDowntime": {
           const actors = accessibleCrewActors();
           if (!actors.length) throw new Error("No eligible player characters.");

@@ -499,39 +499,59 @@ export class DowntimeForm extends CrewToolsForm {
           (p) => p.active && p.slot < slotLimit && p.progress < p.required,
         ),
       techSlots: actor
-        ? Array.from({ length: canCraft ? 3 : 1 }, (_, slot) => {
-            const project = actor
-              ? projects.find((p) => p.active && p.slot === slot)
-              : undefined;
-            const enabled = slot < (canCraft ? slotLimit : 1);
-            return {
-              slot,
-              workshop,
-              canCraft,
-              requiredWorkshop: slot === 2 ? "Workshop II" : "Workshop I",
-              number: slot + 1,
-              enabled,
-              project,
-              canAdd:
-                enabled &&
-                project &&
-                project.progress < project.required &&
-                !!actor &&
-                available > 0,
-              canRoll: enabled && project?.canRoll,
-              canComplete:
-                enabled &&
-                project?.success &&
-                project.progress >= project.required,
-              stored: !!project?.storageItemId,
-              progressPercent: project
-                ? Math.max(
-                    0,
-                    Math.min(100, (100 * project.progress) / project.required),
-                  )
-                : 0,
-            };
-          })
+        ? Array.from(
+            {
+              length: canCraft
+                ? 3
+                : Math.max(
+                    1,
+                    ...projects.filter((p) => p.active).map((p) => p.slot + 1),
+                  ),
+            },
+            (_, slot) => {
+              const project = actor
+                ? projects.find((p) => p.active && p.slot === slot)
+                : undefined;
+              const enabled =
+                slot < (canCraft ? slotLimit : 1) &&
+                (canCraft || !project || project.mode === "repair");
+              return {
+                slot,
+                workshop,
+                canCraft,
+                requiredWorkshop:
+                  !canCraft && project?.mode !== "repair"
+                    ? "a ranked TECH role"
+                    : slot === 2
+                      ? "Workshop II"
+                      : "Workshop I",
+                number: slot + 1,
+                enabled,
+                project,
+                canAdd:
+                  enabled &&
+                  project &&
+                  project.progress < project.required &&
+                  !!actor &&
+                  available > 0,
+                canRoll: enabled && project?.canRoll,
+                canComplete:
+                  enabled &&
+                  project?.success &&
+                  project.progress >= project.required,
+                stored: !!project?.storageItemId,
+                progressPercent: project
+                  ? Math.max(
+                      0,
+                      Math.min(
+                        100,
+                        (100 * project.progress) / project.required,
+                      ),
+                    )
+                  : 0,
+              };
+            },
+          )
         : [],
       canHustle,
       fullWeek,
@@ -755,12 +775,11 @@ export class DowntimeForm extends CrewToolsForm {
                   getDowntime(field("actorId")),
                   field("actorId"),
                 ).find((p) => p.id === id);
-                const container = Array.from(game.actors).find(
-                  (a) => a.id === project?.storageActorId,
-                );
-                Array.from(container?.items ?? [])
-                  .find((i) => i.id === project?.storageItemId)
-                  ?.sheet?.render(true);
+                const item = (await fromUuid(project?.sourceUuid ?? "")) as
+                  FoundryItem | undefined;
+                if (!item || item.documentName !== "Item")
+                  throw new Error("The original project Item is missing.");
+                item.sheet?.render(true);
                 return;
               }
               if (button.dataset.techAction === "techCancel") {
@@ -778,8 +797,8 @@ export class DowntimeForm extends CrewToolsForm {
                       "</strong>?</p><p>You will lose the downtime days spent so far. The " +
                       project.allocated +
                       " allocated day(s) will not be refunded.</p>" +
-                      (project.mode === "upgrade"
-                        ? "<p>The held item will return to the character without the pending upgrade notes.</p>"
+                      (["upgrade", "repair"].includes(project.mode)
+                        ? "<p>The original item stays in inventory. Its name will be restored and the project reference removed without applying pending changes.</p>"
                         : ""),
                     buttons: {
                       keep: {

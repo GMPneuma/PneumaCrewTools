@@ -20,7 +20,12 @@ try {
       "body{font:14px Arial;background:#ddd}*{box-sizing:border-box}button,input,select{width:100%}button:disabled{opacity:.4}" +
       fs.readFileSync("src/styles/pneuma-crewtools.css", "utf8"),
   });
-  for (const name of ["system-resources", "ip-spending", "ip-spending-form"]) {
+  for (const name of [
+    "resource-lock",
+    "system-resources",
+    "ip-spending",
+    "ip-spending-form",
+  ]) {
     const code = ts.transpileModule(
       fs.readFileSync("src/" + name + ".ts", "utf8"),
       {

@@ -2,11 +2,12 @@ import { valueAt, arrayAt } from "./system-resources";
 export { valueAt, numberAt } from "./system-resources";
 import { moneyChange, humanityUpdate } from "./actor-resources";
 import type { PayoutChange } from "./payout-record";
-import type { PayoutActorInput, PayoutItem } from "./payout-execution";
+import type { PayoutItem } from "./payout-execution";
 // Native resource snapshots and update payloads for payout execution.
 export interface ActorSnapshot {
   actor: FoundryActor;
   update: Record<string, unknown>;
+  expected: Record<string, unknown>;
 }
 
 const PATHS = {
@@ -107,20 +108,49 @@ export function itemDocumentsForPayout(
   return Array.from({ length: item.quantity }, () => structuredClone(source));
 }
 
-export function createSnapshot(input: PayoutActorInput): ActorSnapshot {
-  const actor = input.actor;
+export function createSnapshot(
+  actor: FoundryActor,
+  update: Record<string, unknown>,
+): ActorSnapshot {
   return {
     actor,
-    update: {
-      "system.wealth": structuredClone(valueAt(actor.system, "wealth")),
-      "system.improvementPoints": structuredClone(
-        valueAt(actor.system, "improvementPoints"),
-      ),
-      "system.derivedStats.humanity": structuredClone(
-        valueAt(actor.system, "derivedStats.humanity"),
-      ),
-      "system.stats.emp": structuredClone(valueAt(actor.system, "stats.emp")),
-      "system.reputation": structuredClone(valueAt(actor.system, "reputation")),
-    },
+    update: Object.fromEntries(
+      Object.keys(update).map((path) => [
+        path,
+        structuredClone(valueAt(actor.system, path.replace(/^system\./, ""))),
+      ]),
+    ),
+    expected: structuredClone(update),
   };
+}
+
+export async function restoreSnapshot(snapshot: ActorSnapshot): Promise<void> {
+  const { actor, update, expected } = snapshot;
+  const live = Object.fromEntries(
+    Object.keys(expected).map((path) => [
+      path,
+      valueAt(actor.system, path.replace(/^system\./, "")),
+    ]),
+  );
+  if (JSON.stringify(live) === JSON.stringify(update)) return;
+  if (JSON.stringify(live) !== JSON.stringify(expected))
+    throw new Error(
+      "Resources changed after this payout; review before restoring " +
+        actor.name +
+        ".",
+    );
+  await actor.update(update);
+}
+export function assertSnapshotCurrent(snapshot: ActorSnapshot): void {
+  const live = Object.fromEntries(
+    Object.keys(snapshot.update).map((path) => [
+      path,
+      valueAt(snapshot.actor.system, path.replace(/^system\./, "")),
+    ]),
+  );
+  if (JSON.stringify(live) !== JSON.stringify(snapshot.update))
+    throw new Error(
+      snapshot.actor.name +
+        "'s resources changed before applying the payout. Preview again.",
+    );
 }

@@ -30,6 +30,10 @@ function fixture() {
     calls.push("adjustment-saved");
   };
   const deps = {
+    "./payout-attempts": {
+      unresolvedPayoutAttempts: () => [],
+      openPayoutRecovery: () => calls.push("payoutRecovery"),
+    },
     "./actor-policy": { accessibleCrewActors: () => [{ id: "a", name: "A" }] },
     "./downtime-records": { storedDowntimeBalance: () => 5 },
     "./downtime-store": { escape: String },
