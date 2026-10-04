@@ -53,6 +53,104 @@ test("exceptions release the distributed lock and local queued work continues", 
   assert.equal(results[1].value, "next purchase");
   assert.equal(results[2].value, "retry");
 });
+test("a refreshed browser can acknowledge transactions without its obsolete session blocking", async () => {
+  const timers = new Map();
+  let timerId = 0;
+  const stored = new Map();
+  const globals = {
+    performance: { getEntriesByType: () => [{ type: "reload" }] },
+    sessionStorage: {
+      getItem: (key) => stored.get(key) ?? null,
+      setItem: (key, value) => stored.set(key, value),
+    },
+    setTimeout: (fn) => {
+      timers.set(++timerId, fn);
+      return timerId;
+    },
+    clearTimeout: (id) => timers.delete(id),
+  };
+  const users = [
+    { id: "gm", active: true, isGM: true },
+    { id: "player", active: true, isGM: false },
+  ];
+  const gm = { user: users[0], users };
+  const player = { user: users[1], users };
+  const world = socketWorld([gm, player]);
+  const gmLock = loadTransactionModule("resource-lock", gm, {}, globals);
+  let playerLock = loadTransactionModule("resource-lock", player, {}, globals);
+  gmLock.registerResourceLock();
+  playerLock.registerResourceLock();
+  await tick();
+  // A reload can retain active User membership while replacing the JS runtime.
+  world.disconnect(player);
+  const refreshed = { user: users[1], users };
+  world.connect(refreshed);
+  playerLock = loadTransactionModule("resource-lock", refreshed, {}, globals);
+  playerLock.registerResourceLock();
+  await tick();
+  let status = "waiting";
+  const pending = gmLock
+    .withResourceLock(async () => "HQ purchase")
+    .then(
+      () => (status = "fulfilled"),
+      () => (status = "rejected"),
+    );
+  await tick();
+  for (const timeout of timers.values()) timeout();
+  await pending;
+  assert.equal(status, "fulfilled");
+});
+test("duplicating a tab with copied session storage keeps distinct lock participants", async () => {
+  const owner = { id: "same-owner", active: true, isGM: false };
+  const games = [
+    { user: owner, users: [owner] },
+    { user: owner, users: [owner] },
+  ];
+  socketWorld(games);
+  const stored = new Map();
+  function browserGlobals(storage) {
+    return {
+      performance: { getEntriesByType: () => [{ type: "navigate" }] },
+      sessionStorage: {
+        getItem: (key) => storage.get(key) ?? null,
+        setItem: (key, value) => storage.set(key, value),
+      },
+    };
+  }
+  const first = loadTransactionModule(
+    "resource-lock",
+    games[0],
+    {},
+    browserGlobals(stored),
+  );
+  first.registerResourceLock();
+  const second = loadTransactionModule(
+    "resource-lock",
+    games[1],
+    {},
+    browserGlobals(new Map(stored)),
+  );
+  second.registerResourceLock();
+  await tick();
+  let writers = 0,
+    maximum = 0;
+  await Promise.all(
+    [first, second].map((lock) =>
+      lock.withResourceLock(async () => {
+        maximum = Math.max(maximum, ++writers);
+        await tick();
+        writers--;
+      }),
+    ),
+  );
+  assert.equal(maximum, 1);
+});
+
+test("a GM alone can acquire a transaction without a socket or another client", async () => {
+  const user = { id: "gm", active: true, isGM: true };
+  const lock = loadTransactionModule("resource-lock", { user, users: [user] });
+  assert.equal(await lock.withResourceLock(async () => "saved"), "saved");
+});
 test("two browser sessions for the same owner serialize against each other", async () => {
   const owner = { id: "same-owner", active: true, isGM: false };
   const games = [
@@ -88,6 +186,7 @@ test("a missing client reply times out without executing or expiring another wri
     clearTimeout: (id) => timers.delete(id),
   };
   const { locks, games } = clients(2, globals);
+  games[0].user.name = "Alex";
   let finish;
   const held = locks[0].withResourceLock(
     () => new Promise((resolve) => (finish = resolve)),
@@ -97,7 +196,10 @@ test("a missing client reply times out without executing or expiring another wri
   const waiting = locks[1].withResourceLock(async () => {
     writes++;
   });
-  const rejected = assert.rejects(waiting, /did not release or acknowledge/);
+  const rejected = assert.rejects(
+    waiting,
+    /did not release or acknowledge.*Waiting for: Alex/,
+  );
   await tick();
   assert.equal(timers.size, 1, "no timer can release a held lock");
   [...timers.values()][0]();

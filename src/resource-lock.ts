@@ -15,7 +15,8 @@ interface Message extends Request {
   peers?: Array<{ user: string; session: string }>;
 }
 const channel = `module.${MODULE_ID}`;
-const session = `${Date.now()}:${Math.random().toString(36).slice(2)}`;
+const incarnation = `${Date.now()}:${Math.random().toString(36).slice(2)}`;
+let session = incarnation;
 const known = new Map<string, string>();
 let clock = 0;
 let serial = 0;
@@ -31,6 +32,29 @@ let current:
     }
   | undefined;
 const deferred = new Map<string, Request>();
+
+function browserSession(): string {
+  try {
+    if (typeof sessionStorage === "undefined") return incarnation;
+    const key = `${channel}.${game.user!.id}.session`;
+    const navigation =
+      typeof performance === "undefined"
+        ? undefined
+        : (performance.getEntriesByType("navigation")[0] as
+            PerformanceNavigationTiming | undefined);
+    // Keep the same participant across a reload, which does not always produce
+    // a userDisconnected event. A new/duplicated tab gets a separate identity,
+    // even when its initial sessionStorage was copied from the opener.
+    const previous = sessionStorage.getItem(key);
+    const identity =
+      navigation?.type === "reload" && previous ? previous : incarnation;
+    sessionStorage.setItem(key, identity);
+    return identity;
+  } catch {
+    // Storage restrictions retain the conservative missing-reply behavior.
+    return incarnation;
+  }
+}
 
 function send(message: Message): void {
   game.socket!.emit(channel, message);
@@ -60,7 +84,8 @@ function roster(): Array<{ user: string; session: string }> {
   ].filter((peer) => active.has(peer.user));
 }
 export function registerResourceLock(): void {
-  if (registered || !game.socket) return;
+  if (registered || !game.socket || !game.user) return;
+  session = browserSession();
   registered = true;
   game.socket.on(channel, (data: unknown) => {
     if (!data || typeof data !== "object" || !game.user) return;
@@ -140,6 +165,17 @@ function peers(): Set<string> {
       .map((u) => u.id),
   );
 }
+function waitingClients(): string {
+  const ids = new Set(current?.users);
+  for (const pending of current?.waiting ?? []) {
+    const userId = known.get(pending);
+    if (userId) ids.add(userId);
+  }
+  return Array.from(ids, (id) => {
+    const user = Array.from(game.users).find((user) => user.id === id);
+    return `${user?.name ?? id}${id === game.user?.id ? " (another browser session)" : ""}`;
+  }).join(", ");
+}
 async function locked<T>(action: () => Promise<T>): Promise<T> {
   if (!game.user)
     throw new Error("Sign in before changing Crew Tools resources.");
@@ -150,7 +186,8 @@ async function locked<T>(action: () => Promise<T>): Promise<T> {
     );
   registerResourceLock();
   const request = {
-    id: `${session}:${++serial}`,
+    // Replies from the page before a reload must never satisfy a new request.
+    id: `${incarnation}:${++serial}`,
     user: game.user.id,
     session,
     clock: ++clock,
@@ -175,7 +212,7 @@ async function locked<T>(action: () => Promise<T>): Promise<T> {
         () =>
           reject(
             new Error(
-              "Another client did not release or acknowledge the Crew Tools transaction. Wait for it to finish, or reconnect the unresponsive client, then retry.",
+              `Another client did not release or acknowledge the Crew Tools transaction. Waiting for: ${waitingClients()}. Wait for it to finish, or reconnect the unresponsive client, then retry.`,
             ),
           ),
         30000,

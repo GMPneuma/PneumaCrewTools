@@ -159,8 +159,19 @@ export async function ensureHqPages(
 ) {
   const existing = hqPage(actor.id);
   if (existing) {
-    if (existing.name !== actor.name)
-      await existing.update({ name: actor.name });
+    const changes: Record<string, unknown> = {};
+    if (existing.name !== actor.name) changes.name = actor.name;
+    if (
+      game.user?.isGM &&
+      existing.getFlag?.(MODULE_ID, "hqAccessVersion") === undefined
+    ) {
+      // Older Player Access settings granted Observer on the editable HQ page,
+      // hiding purchases. Repair those grants once without admitting denied users.
+      for (const [id, level] of Object.entries(existing.ownership ?? {}))
+        if (level === 2) changes[`ownership.${id}`] = 3;
+      changes[`flags.${MODULE_ID}.hqAccessVersion`] = 1;
+    }
+    if (Object.keys(changes).length) await existing.update(changes);
     return;
   }
   const journal = await ensureHeadquartersJournal();
@@ -172,6 +183,7 @@ export async function ensureHqPages(
       flags: {
         [MODULE_ID]: {
           recordKey: "hq",
+          hqAccessVersion: 1,
           hqActorId: actor.id,
           properties,
           rent: rental,

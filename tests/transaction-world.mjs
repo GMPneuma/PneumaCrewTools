@@ -38,7 +38,7 @@ export function loadTransactionModule(
 }
 export function socketWorld(games) {
   const listeners = [];
-  for (const game of games) {
+  function connect(game) {
     game.socket = {
       on(channel, callback) {
         listeners.push({ game, channel, callback });
@@ -51,5 +51,13 @@ export function socketWorld(games) {
       },
     };
   }
+  games.forEach(connect);
+  return {
+    connect,
+    disconnect(game) {
+      for (let i = listeners.length - 1; i >= 0; i--)
+        if (listeners[i].game === game) listeners.splice(i, 1);
+    },
+  };
 }
 export const tick = () => new Promise((resolve) => setImmediate(resolve));

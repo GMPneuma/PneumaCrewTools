@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.1 - 2026-10-04
+
+- Grant Owner permission on HQ Journal pages through Player Access so eligible players retain improvement purchase controls. Repair legacy Observer grants once while preserving excluded players and later native permission changes.
+- Open Manage HQ immediately without waiting for a transaction or writing records. HQ setup and edits retain transaction protection.
+- Preserve browser transaction identity across a refresh while keeping duplicated tabs distinct. Ignore replies from earlier page loads and identify the waiting clients in transaction timeout errors.
+
+Validated with 418 tests, typecheck and production build. Live Foundry multiplayer verification remains pending.
+
 ## 1.0.0 - 2026-10-04
 
 - Added Treatment directly below Spend Downtime with a red cross, matching CrewTools panels and controls. Patient selection, stabilization and Body/Head QuickFix or Treatment rolls use native skills, Surgery, injury DVs, modifiers and chat privacy. Named patients support use without patient Actor access or an online GM.

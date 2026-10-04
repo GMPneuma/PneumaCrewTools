@@ -271,6 +271,27 @@ function fixture(
       ),
   };
 }
+test("Manage HQ renders immediately without acquiring a resource lock or writing records", () => {
+  let locks = 0;
+  const f = fixture([], {
+    withResourceLock: () => {
+      locks++;
+      return new Promise(() => {});
+    },
+  });
+  let rendered = 0;
+  f.api.HeadquartersForm.prototype.render = function (force) {
+    assert.equal(force, true);
+    assert.equal(this.getData().hasHq, false);
+    rendered++;
+  };
+  f.api.openHeadquarters();
+  assert.equal(rendered, 1);
+  assert.equal(locks, 0);
+  assert.equal(f.game.journal.size, 0);
+  assert.equal(f.game.actors.size, 0);
+});
+
 test("independent player clients debit shared HQ IP and preserve improvements on different HQs", async () => {
   let lockA, lockB;
   const a = fixture([], {
@@ -1033,13 +1054,17 @@ test("HQ access selection overrides defaults on both documents and Everyone rest
     assert.equal(doc.testUserPermission(f.game.users[0], "OBSERVER"), true);
     assert.equal(doc.testUserPermission(f.game.users[1], "OBSERVER"), false);
   }
+  assert.equal(page.testUserPermission(f.game.users[0], "OWNER"), true);
+  f.game.user = f.game.users[0];
+  assert.equal(new f.api.HeadquartersForm().getData().canBuy, true);
   f.game.user = f.game.users[1];
   assert.equal(f.api.getHeadquarters(false).headquarters.length, 0);
+  assert.equal(new f.api.HeadquartersForm().getData().canBuy, false);
   await assert.rejects(f.api.saveHeadquartersAccess(id, true, []));
   f.game.user = f.game.users[2];
   await f.api.saveHeadquartersAccess(id, true, []);
   for (const doc of [actor, page]) {
-    assert.equal(doc.ownership.default, 2);
+    assert.equal(doc.ownership.default, doc === page ? 3 : 2);
     assert.equal(Object.hasOwn(doc.ownership, "alex"), false);
     assert.equal(Object.hasOwn(doc.ownership, "sam"), false);
     assert.equal(doc.testUserPermission(f.game.users[0], "OBSERVER"), true);
@@ -1052,9 +1077,47 @@ test("HQ access selection overrides defaults on both documents and Everyone rest
   assert.equal(f.api.headquartersAccess(id).summary, "Everyone");
   f.game.user = f.game.users[1];
   assert.equal(f.api.getHeadquarters(false).headquarters.length, 1);
+  assert.equal(new f.api.HeadquartersForm().getData().canBuy, true);
   f.game.user = f.game.users[2];
   await f.api.saveHeadquartersAccess(id, false, []);
   assert.equal(f.api.headquartersAccess(id).summary, "GM only");
+  await f.api.saveHeadquartersAccess(id, false, ["sam"]);
+  f.game.user = f.game.users[1];
+  assert.equal(new f.api.HeadquartersForm().getData().canBuy, true);
+  assert.equal(actor.testUserPermission(f.game.user, "OWNER"), false);
+  assert.equal(page.testUserPermission(f.game.user, "OWNER"), true);
+  const template = Handlebars.compile(
+    fs.readFileSync("static/templates/headquarters.hbs", "utf8"),
+  );
+  assert.match(
+    template(new f.api.HeadquartersForm().getData()),
+    /data-buy-improvement/,
+  );
+});
+
+test("GM setup repairs legacy Player Access Observer grants once and preserves denied players", async () => {
+  const f = fixture();
+  f.game.users = [
+    { id: "alex", name: "Alex", isGM: false },
+    { id: "sam", name: "Sam", isGM: false },
+  ];
+  const id = await f.api.saveHeadquarters({ name: "HQ" });
+  const page = f.records.hqPage(id);
+  delete page.flags["pneuma-crewtools"].hqAccessVersion;
+  page.ownership = { default: 2, alex: 0, sam: 2 };
+  await f.api.adjustHeadquartersIp(5, "Prepare HQ");
+  assert.equal(page.ownership.default, 3);
+  assert.equal(page.ownership.alex, 0);
+  assert.equal(page.ownership.sam, 3);
+  f.game.user = f.game.users[1];
+  assert.equal(new f.api.HeadquartersForm().getData().canBuy, true);
+  await f.api.buyHqImprovement(id, "Workshop", 1, "");
+  assert.equal(f.api.headquartersIp(), 4);
+  f.game.user = { id: "gm", isGM: true };
+  // After migration, an explicit native read-only choice remains read-only.
+  page.ownership.sam = 2;
+  await f.api.adjustHeadquartersIp(1, "Review");
+  assert.equal(page.ownership.sam, 2);
 });
 
 test("HQ access failed page write restores explicit and inherited actor permissions", async () => {

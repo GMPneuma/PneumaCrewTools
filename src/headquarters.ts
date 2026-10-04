@@ -705,8 +705,10 @@ export function saveHeadquartersAccess(
         "A selected player no longer exists. Reopen Player Access.",
       );
     const before = structuredClone(actor.ownership ?? {});
-    const changes = (ownership: Record<string, number> = {}) => ({
-      "ownership.default": everyone ? Math.max(2, ownership.default ?? 0) : 0,
+    const changes = (ownership: Record<string, number> = {}, minimum = 2) => ({
+      "ownership.default": everyone
+        ? Math.max(minimum, ownership.default ?? 0)
+        : 0,
       ...Object.fromEntries(
         players.map((u) => [
           // Foundry's Default choice removes the per-user override.
@@ -714,14 +716,17 @@ export function saveHeadquartersAccess(
           everyone
             ? null
             : ids.has(u.id)
-              ? Math.max(2, ownership[u.id] ?? ownership.default ?? 0)
+              ? Math.max(minimum, ownership[u.id] ?? ownership.default ?? 0)
               : 0,
         ]),
       ),
     });
     await actor.update(changes(before));
     try {
-      await document.update(changes(document.ownership));
+      await document.update({
+        ...changes(document.ownership, 3),
+        [`flags.${MODULE_ID}.hqAccessVersion`]: 1,
+      });
     } catch (error) {
       await actor.update(
         Object.fromEntries(
@@ -1227,12 +1232,10 @@ export class HeadquartersForm extends CrewToolsForm {
   }
 }
 export function openHeadquarters(): void {
-  const open = () => {
-    window ??= new HeadquartersForm();
-    window.render(true);
-  };
-  if (isDowntimeGM()) void withDowntimeLock(ensure).then(open).catch(report);
-  else open();
+  // Viewing records performs no writes. Setup runs at ready and before edits;
+  // opening the window must not wait for another client's transaction.
+  window ??= new HeadquartersForm();
+  window.render(true);
 }
 export function registerHeadquarters(): void {
   game.settings.registerMenu(MODULE_ID, "hqImprovements", {

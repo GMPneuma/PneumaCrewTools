@@ -65,6 +65,8 @@ Inactive HQs remain listed for the GM. To finish removal, manually delete that H
 
 Players need Observer or Owner access to both the HQ container and its HQ Journal page. Removing access to either hides that HQ from their Crew Tools lists and excludes its Garage, Workshop, Server Room and Medbay benefits. Native inherited and per-user permissions apply. GMs can still see active HQs regardless of player permissions; inactive HQs remain excluded.
 
+**Player Access** grants selected players Observer access to the container and Owner access to its HQ Journal page, allowing improvement purchases and rent contributions. **Everyone** applies these levels as defaults. The shared HQ IP page also requires Owner access for purchases. GM setup repairs older HQ page Observer grants once, preserving excluded players; subsequent manual native permission changes remain in effect.
+
 ## Automated stock benefits
 
 - **Morale Boost:** Player Hub adds **Moral Boost** below View HQ. The screen lists active benefits from accessible HQs. Upgrade 2 adds +1 effective BODY to natural healing, stacking with Medbay. Upgrade 6 rolls Hustle twice and keeps the higher income (ties keep the first); upgrade 8 pays both incomes. Both outcomes are recorded, but only one week is consumed. Lifestyle, monthly Humanity, LUCK, negotiation and the GM-designed benefit are references only. Base purchase is level 1, so upgrade 2 is level 3.
