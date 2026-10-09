@@ -158,6 +158,20 @@ try {
     );
   }
   await page.evaluate(() => window.modules.treatment.openTreatment("healer"));
+  const note = page.locator(".pneuma-treatment-note");
+  assert.equal(await note.isVisible(), true);
+  assert.equal(
+    await note.innerText(),
+    "This roll is for record-keeping only. The patient must remove their own status effects.",
+  );
+  const noteBox = await note.boundingBox();
+  const patientBox = await page
+    .locator(".pneuma-treatment-patient-picker")
+    .boundingBox();
+  assert.ok(
+    noteBox.y + noteBox.height <= patientBox.y,
+    "instruction appears above the patient picker",
+  );
   assert.equal(await page.locator(".pneuma-stabilize-table button").count(), 6);
   const body = page.locator('[data-treatment-location="body"]');
   assert.equal(

@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.3 - 2026-10-08
+
+- Display an explicit note at the top of CrewTools Treatment: the roll is for record-keeping only, and the patient must remove their own status effects.
+
 ## 1.0.2 - 2026-10-08
 
 - Add **Review / Clear TECH Blocker** to GM Downtime for the selected character's interrupted TECH Item change. The review shows the saved attempt, links relevant Items, and opens the character's Downtime Log.
