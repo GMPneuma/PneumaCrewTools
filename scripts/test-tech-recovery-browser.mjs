@@ -187,6 +187,29 @@ try {
     "player never sees the clear button",
   );
   assert.deepEqual(errors, []);
+  await page.locator("main").evaluate(
+    (el, html) => {
+      el.innerHTML = html;
+    },
+    render({
+      isGM: true,
+      hasTechBlocker: false,
+      hasActor: true,
+      actorId: "tech",
+      balance: 8,
+    }),
+  );
+  assert.equal(await page.locator("[data-tech-recovery]").isVisible(), true);
+  assert.equal(await page.locator("[data-tech-recovery]").isDisabled(), true);
+  await page
+    .locator("main")
+    .evaluate((el) => el.classList.add("pneuma-crewtools"));
+  assert.equal(
+    await page
+      .locator("[data-tech-recovery]")
+      .evaluate((el) => getComputedStyle(el).opacity),
+    "0.45",
+  );
   console.log(
     "PASS GM-only Downtime control, linked items, confirmation/note validation, retained audit and player exclusion.",
   );

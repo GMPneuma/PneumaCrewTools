@@ -181,7 +181,7 @@ test("recovery waits for a competing client and rejects a replaced blocker after
   assert.equal(f.flags.techAttempt.requestId, "new-operation");
   assert.equal(f.writes.length, 0);
 });
-test("Downtime recovery button appears only for a GM with a blocker", () => {
+test("Downtime recovery button is always shown to GMs and disabled without a blocker", () => {
   const render = Handlebars.compile(
     fs.readFileSync("static/templates/downtime.hbs", "utf8"),
   );
@@ -193,8 +193,10 @@ test("Downtime recovery button appears only for a GM with a blocker", () => {
     render({ isGM: false, hasTechBlocker: true }),
     /data-tech-recovery/,
   );
+  const idle = render({ isGM: true, hasTechBlocker: false });
+  assert.match(idle, /data-tech-recovery\s+disabled/);
   assert.doesNotMatch(
-    render({ isGM: true, hasTechBlocker: false }),
-    /data-tech-recovery/,
+    render({ isGM: true, hasTechBlocker: true }),
+    /data-tech-recovery\s+disabled/,
   );
 });

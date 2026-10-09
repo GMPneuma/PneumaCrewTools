@@ -4,12 +4,8 @@
       {{#if hasTechBlocker}}<div class="hub-status"><p><strong>TECH action needs
               review.</strong>
             Further TECH actions are blocked until the interrupted Item change
-            is reviewed.</p>{{#if isGM}}<button
-              type="button"
-              data-tech-recovery
-            ><i class="fas fa-unlock" aria-hidden="true"></i>
-              Review / Clear TECH Blocker</button>{{else}}<p>Ask the GM to
-              review this character in Downtime.</p>{{/if}}</div>{{/if}}
+            is reviewed.</p>{{#unless isGM}}<p>Ask the GM to review this
+              character in Downtime.</p>{{/unless}}</div>{{/if}}
       {{#unless ready}}<p>A GM must open Downtime to prepare your Journal.</p>{{/unless}}
       <div class="downtime-header">
         {{#if hasActor}}<span class="downtime-balance"><strong
@@ -25,6 +21,19 @@
           <input type="hidden" name="actorId" value="{{actorId}}" />
         {{/if}}
       </div>
+      {{#if isGM}}<div class="downtime-tech-recovery">{{#if
+            hasTechBlocker
+          }}<button type="button" data-tech-recovery><i
+                class="fas fa-unlock"
+                aria-hidden="true"
+              ></i>
+              Review / Clear TECH Blocker</button>{{else}}<button
+              type="button"
+              data-tech-recovery
+              disabled
+              title="No interrupted TECH action for the selected character"
+            ><i class="fas fa-unlock" aria-hidden="true"></i>
+              Review / Clear TECH Blocker</button>{{/if}}</div>{{/if}}
       {{#if canClearMedicalRoll}}<button
           type="button"
           data-medical-action="clearRoll"

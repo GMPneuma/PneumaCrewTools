@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.4 - 2026-10-08
+
+- Always show **Review / Clear TECH Blocker** below the character selector in GM Downtime. Disable and grey out the button when the selected character has no interrupted TECH action.
+
 ## 1.0.3 - 2026-10-08
 
 - Display an explicit note at the top of CrewTools Treatment: the roll is for record-keeping only, and the patient must remove their own status effects.

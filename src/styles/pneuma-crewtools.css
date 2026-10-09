@@ -4778,3 +4778,12 @@ html[data-cpr-theme="darkmode"] .pneuma-crewtools .netrunner-role {
 .crewtools-treatment-result {
   margin: 6px 0;
 }
+
+.pneuma-crewtools .downtime-tech-recovery {
+  margin: 0 0 0.5rem;
+}
+.pneuma-crewtools [data-tech-recovery]:disabled {
+  opacity: 0.45;
+  filter: grayscale(1);
+  cursor: default;
+}
