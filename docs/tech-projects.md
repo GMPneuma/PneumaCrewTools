@@ -56,6 +56,12 @@ Character Actors receive native inventory Items, not project flags. The holding 
 
 Before marking, updating or delivering an Item, the acting owner records **flags.pneuma-crewtools.techAttempt** on the ledger: request/project IDs, action, source UUID and predetermined reference/destination Actor/Item IDs. Stack starts also record the original quantity and remainder Item ID. The page displays these details and reconciliation instructions. A failed or uncertain Item change retains this guard and stops automatic TECH processing until the GM reviews the listed Items. Accepted request IDs prevent repeating a delivery. These are transaction records, not migration or hidden backup artifacts.
 
+### Clearing an interrupted TECH blocker
+
+In GM **Downtime**, select the affected character and click **Review / Clear TECH Blocker**. This appears only when a saved TECH attempt is blocking that character. Review the saved details, linked original/source Item, project reference or destination Item, any stack remainder, and **Active Projects**. Correct partial changes before enabling another attempt. **Open Downtime Log** opens the character's ledger.
+
+Enter a review note, confirm that the Items and project records were reconciled, then click **Clear TECH Blocker**. The first active GM can clear it. Clearing removes only the blocker; it does not undo Item changes, refund days, complete a project, or fix the original failure. The exact attempt, GM identity, timestamp and note remain in **TECH recovery history** on the Downtime Log. Existing blockers are supported. Competing TECH work is serialized with recovery; a changed blocker requires a new review.
+
 ## Validation and compatibility
 
 Tests cover category durations, month settings, locked slots, progress/retry rules, completion, single-item copying and stack splitting, upgrade notes, cancellation, permissions, failed delivery guards, and immediate owner processing without a connected GM. Browser previews use actual templates/CSS with mocked Foundry services. Live Foundry testing remains required.

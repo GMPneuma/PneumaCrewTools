@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.2 - 2026-10-08
+
+- Add **Review / Clear TECH Blocker** to GM Downtime for the selected character's interrupted TECH Item change. The review shows the saved attempt, links relevant Items, and opens the character's Downtime Log.
+- Require a review note and explicit confirmation before clearing. Preserve the exact attempt, reviewing GM and timestamp in readable recovery history; leave Items, project progress and downtime unchanged.
+- Coordinate TECH actions and recovery across clients, reject changed attempts, and point the interruption warning to the recovery control. Existing saved blockers can be reviewed without console commands.
+
+Live Foundry multiplayer verification remains pending.
+
 ## 1.0.1 - 2026-10-04
 
 - Grant Owner permission on HQ Journal pages through Player Access so eligible players retain improvement purchase controls. Repair legacy Observer grants once while preserving excluded players and later native permission changes.

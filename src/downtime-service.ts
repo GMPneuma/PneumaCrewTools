@@ -29,6 +29,7 @@ import {
 } from "./downtime-records";
 import { moneyChange } from "./actor-resources";
 import { queueAction, isPrimaryGM, withGMAction } from "./action-coordinator";
+import { withResourceLock } from "./resource-lock";
 import {
   readMedical,
   reservedMedicalDay,
@@ -199,7 +200,7 @@ async function executeDowntimeCommand(
   ) {
     if (ledgerPage()?.getFlag?.(MODULE_ID, "techAttempt"))
       throw new Error(
-        "An interrupted TECH item change needs GM review in the Downtime Journal.",
+        "An interrupted TECH item change needs GM review. In Downtime, select this character and use Review / Clear TECH Blocker.",
       );
     try {
       if (request.actorId !== account.actorId)
@@ -627,7 +628,11 @@ async function executeDowntimeCommand(
 }
 // Serialize repeat clicks locally, including the read/validate/write sequence.
 function submitActivityRequest(request: SpendRequest): Promise<void> {
-  const run = queueAction(() => submitActivityRequestNow(request));
+  const run = queueAction(() =>
+    request.kind.startsWith("tech")
+      ? withResourceLock(() => submitActivityRequestNow(request))
+      : submitActivityRequestNow(request),
+  );
   return run;
 }
 async function submitActivityRequestNow(request: SpendRequest): Promise<void> {

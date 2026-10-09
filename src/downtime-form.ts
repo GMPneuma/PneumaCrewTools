@@ -1,5 +1,9 @@
 import { trainingPanel } from "./hq-training";
 import { requestTraining } from "./downtime-service";
+import {
+  interruptedTechAttempt,
+  reviewInterruptedTechAttempt,
+} from "./tech-recovery";
 import { customResultHtml } from "./custom-result-view";
 import {
   customActivityView,
@@ -568,6 +572,7 @@ export class DowntimeForm extends CrewToolsForm {
       multipleRoles: roles.length > 1,
       period: state.period,
       isGM: game.user?.isGM,
+      hasTechBlocker: !!actor && !!interruptedTechAttempt(actor.id),
       ready: Boolean(account && actorLedger(account.actorId)),
       balance: account ? balance : "—",
       hasActor: Boolean(actor),
@@ -629,6 +634,13 @@ export class DowntimeForm extends CrewToolsForm {
           ),
         );
       });
+    root
+      ?.querySelector("[data-tech-recovery]")
+      ?.addEventListener(
+        "click",
+        () =>
+          void perform(() => reviewInterruptedTechAttempt(field("actorId"))),
+      );
     const activityChoice = root?.querySelector<HTMLSelectElement>(
       "[data-custom-choice]",
     );

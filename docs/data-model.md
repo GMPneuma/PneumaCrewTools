@@ -63,6 +63,8 @@ Deleting a Journal record never reverses a payout. Text remains readable with Cr
 
 Each character has one Journal tagged **recordKind: character** and **actorId**. Downtime Log owns day charges; Active Projects owns TECH and medical details; Payout Receipts and Humanity Rolls retain their existing responsibilities. Successful action clicks append structured records, not new Journal pages.
 
+Downtime Log **flags.pneuma-crewtools.techRecoveries** retains explicitly cleared TECH attempts with the exact attempt, GM identity, UTC timestamp and review note. Clearing this blocker and saving its audit entry share one page update; native Items, project records and resource balances are unchanged.
+
 Journal page updates and native Actor updates are separate operations, not an atomic Foundry transaction. Existing interruption records remain visible.
 
 Character Journals are created on first payout use, not merely because an Actor is created or shared with players. Startup and ownership changes maintain already-provisioned records. Excluded Actors are not provisioned. The first payout requires a GM; subsequent owner actions remain available offline.

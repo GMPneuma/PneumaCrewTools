@@ -1,5 +1,5 @@
 import { isNetrunner } from "./netrunner-system";
-import { recordEscape } from "./journal-format";
+import { recordEscape, readableRecord } from "./journal-format";
 import { resourceTransactionsHtml } from "./downtime-journal-view";
 import { ensureActorPayoutJournal } from "./journal-records";
 import {
@@ -112,20 +112,31 @@ export function actorLink(actorId: string, savedName?: string): string {
   return `<a class="content-link" draggable="true" data-link data-uuid="Actor.${escape(actorId)}"><i class="fas fa-user"></i> ${escape(name)}</a> <small>(Actor.${escape(actorId)})</small>`;
 }
 
-export function ledgerHtml(state: DowntimeState): string {
+export function ledgerHtml(
+  state: DowntimeState,
+  overrides: Record<string, unknown> = {},
+): string {
   const account = state.accounts[0],
     page = account ? actorLedger(account.actorId) : undefined;
+  const flag = (key: string) =>
+    Object.hasOwn(overrides, key)
+      ? overrides[key]
+      : page?.getFlag?.(MODULE_ID, key);
   const guards = [
     "hustleAttempt",
     "techAttempt",
     "healingAttempt",
     "trainingAttempt",
-  ].flatMap((key) =>
-    page?.getFlag?.(MODULE_ID, key)
-      ? [{ kind: key, details: page.getFlag!(MODULE_ID, key) }]
-      : [],
+  ].flatMap((key) => (flag(key) ? [{ kind: key, details: flag(key) }] : []));
+  const recoveries = flag("techRecoveries");
+  return (
+    resourceTransactionsHtml(state, guards) +
+    (Array.isArray(recoveries) && recoveries.length
+      ? "<details><summary>TECH recovery history</summary>" +
+        readableRecord(recoveries) +
+        "</details>"
+      : "")
   );
-  return resourceTransactionsHtml(state, guards);
 }
 
 export function characterState(

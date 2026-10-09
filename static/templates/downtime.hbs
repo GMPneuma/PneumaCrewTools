@@ -1,6 +1,15 @@
 <form class="pneuma-downtime payout-inbox-form">
   <div class="downtime-stack">
     <section class="downtime-common" aria-label="General downtime">
+      {{#if hasTechBlocker}}<div class="hub-status"><p><strong>TECH action needs
+              review.</strong>
+            Further TECH actions are blocked until the interrupted Item change
+            is reviewed.</p>{{#if isGM}}<button
+              type="button"
+              data-tech-recovery
+            ><i class="fas fa-unlock" aria-hidden="true"></i>
+              Review / Clear TECH Blocker</button>{{else}}<p>Ask the GM to
+              review this character in Downtime.</p>{{/if}}</div>{{/if}}
       {{#unless ready}}<p>A GM must open Downtime to prepare your Journal.</p>{{/unless}}
       <div class="downtime-header">
         {{#if hasActor}}<span class="downtime-balance"><strong

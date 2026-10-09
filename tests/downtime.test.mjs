@@ -242,6 +242,7 @@ function fixture() {
       },
       "./downtime-model": model,
       "./headquarters": { getHeadquarters: () => headquarters },
+      "./resource-lock": { withResourceLock: (action) => action() },
       "./downtime-healing": load("downtime-healing", {}, {}),
       "./downtime-activities": activities,
     },
