@@ -213,6 +213,31 @@ try {
   console.log(
     "PASS GM-only Downtime control, linked items, confirmation/note validation, retained audit and player exclusion.",
   );
+  const dashboard = Handlebars.compile(
+    fs.readFileSync("static/templates/payout-inbox.hbs", "utf8"),
+  );
+  for (const count of [0, 1]) {
+    await page.locator("main").evaluate(
+      (el, html) => {
+        el.innerHTML = html;
+      },
+      dashboard({
+        gmDashboard: true,
+        isGM: true,
+        interruptedTech: count,
+        cards: [],
+        pendingRolls: [],
+      }),
+    );
+    const control = page.locator('[data-gm-dashboard-action="techRecovery"]');
+    assert.equal(await control.isVisible(), true);
+    assert.equal(await control.isDisabled(), count === 0);
+    const panel = control.locator("xpath=ancestor::fieldset");
+    assert.equal(await panel.locator("legend").innerText(), "Downtime");
+  }
+  await page.screenshot({
+    path: "C:/Users/Jerem/AppData/Local/Temp/crewtools-gm-dashboard-tech-button.png",
+  });
 } finally {
   await browser.close();
 }

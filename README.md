@@ -1,7 +1,7 @@
 # PneumaCrewTools
 
 Crew management tools for Foundry VTT v12 and the Cyberpunk RED Core system.
-Version 1.0.4 includes payouts, downtime projects, shared headquarters, IP spending
+Version 1.0.5 includes payouts, downtime projects, shared headquarters, IP spending
 and treatment rolls, with character records stored in native Foundry Journals.
 
 ## Campaign calendar

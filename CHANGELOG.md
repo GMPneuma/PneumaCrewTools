@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.5 - 2026-10-08
+
+- Add **Review / Clear TECH Blocker** to the **GM Dashboard → Downtime** section beside **Adjust Player Downtime**. The control is always visible and disabled when no eligible character has a blocker.
+- Open the affected character's review directly for one blocker, or prompt for the character when several need review. Clearing behavior and audit records are unchanged.
+
 ## 1.0.4 - 2026-10-08
 
 - Always show **Review / Clear TECH Blocker** below the character selector in GM Downtime. Disable and grey out the button when the selected character has no interrupted TECH action.

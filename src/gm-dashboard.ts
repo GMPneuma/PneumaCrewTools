@@ -7,6 +7,10 @@ import { confirmExpireDowntime } from "./expire-downtime";
 import { accessibleCrewActors } from "./actor-policy";
 import { storedDowntimeBalance } from "./downtime-records";
 import { escape } from "./downtime-store";
+import {
+  interruptedTechAttempt,
+  reviewInterruptedTechAttempt,
+} from "./tech-recovery";
 import { adjustPlayerDowntime } from "./downtime-service";
 import { issueRent } from "./rent";
 import { PlayerHub, openPlayerHub } from "./payout-inbox";
@@ -58,6 +62,9 @@ export class GMDashboard extends PlayerHub {
       ...super.getData(),
       gmDashboard: true,
       interruptedPayouts: unresolvedPayoutAttempts().length,
+      interruptedTech: accessibleCrewActors().filter((actor) =>
+        interruptedTechAttempt(actor.id),
+      ).length,
     };
   }
   override activateListeners(html: FoundryHtml): void {
@@ -74,6 +81,44 @@ export class GMDashboard extends PlayerHub {
     button.disabled = true;
     try {
       switch (button.dataset.gmDashboardAction) {
+        case "techRecovery": {
+          const actors = accessibleCrewActors().filter((actor) =>
+            interruptedTechAttempt(actor.id),
+          );
+          if (!actors.length) {
+            ui.notifications.info("No interrupted TECH actions need review.");
+            break;
+          }
+          const actorId =
+            actors.length === 1
+              ? actors[0]!.id
+              : await new Promise<string | null>((resolve) => {
+                  new Dialog({
+                    title: "Choose TECH Blocker to Review",
+                    content: `<label>Character<select name="actorId">${actors.map((actor) => `<option value="${escape(actor.id)}">${escape(actor.name)}</option>`).join("")}</select></label>`,
+                    buttons: {
+                      review: {
+                        label: "Review",
+                        callback: (html) =>
+                          resolve(
+                            html[0]?.querySelector<HTMLSelectElement>(
+                              '[name="actorId"]',
+                            )?.value ?? null,
+                          ),
+                      },
+                      cancel: {
+                        label: "Cancel",
+                        callback: () => resolve(null),
+                      },
+                    },
+                    default: "cancel",
+                    close: () => resolve(null),
+                  }).render(true);
+                });
+          if (actorId) await reviewInterruptedTechAttempt(actorId);
+          this.render(false);
+          break;
+        }
         case "payoutRecovery":
           openPayoutRecovery();
           break;
@@ -268,7 +313,11 @@ export class GMDashboard extends PlayerHub {
       report(error);
     } finally {
       this.busy = false;
-      button.disabled = false;
+      button.disabled =
+        button.dataset.gmDashboardAction === "techRecovery" &&
+        !accessibleCrewActors().some((actor) =>
+          interruptedTechAttempt(actor.id),
+        );
     }
   }
 }

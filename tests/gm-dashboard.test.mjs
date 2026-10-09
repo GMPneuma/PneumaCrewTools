@@ -10,6 +10,7 @@ function fixture() {
     instances = [],
     errors = [];
   const game = { user: { isGM: true } };
+  let pendingTech = false;
   class PlayerHub {
     static get defaultOptions() {
       return { classes: [] };
@@ -30,6 +31,14 @@ function fixture() {
     calls.push("adjustment-saved");
   };
   const deps = {
+    "./tech-recovery": {
+      interruptedTechAttempt: () =>
+        pendingTech ? { requestId: "pending" } : null,
+      reviewInterruptedTechAttempt: async (actorId) => {
+        calls.push("techRecovery:" + actorId);
+        pendingTech = false;
+      },
+    },
     "./payout-attempts": {
       unresolvedPayoutAttempts: () => [],
       openPayoutRecovery: () => calls.push("payoutRecovery"),
@@ -128,8 +137,42 @@ function fixture() {
       },
     },
   );
-  return { exports, game, calls, hooks, dialogs, instances, errors };
+  return {
+    exports,
+    game,
+    calls,
+    hooks,
+    dialogs,
+    instances,
+    errors,
+    pendingTech: (value) => {
+      pendingTech = value;
+    },
+  };
 }
+
+test("Dashboard TECH recovery routes the blocked character and disables itself after review", async () => {
+  const f = fixture(),
+    dashboard = new f.exports.GMDashboard(() => {});
+  assert.equal(dashboard.getData().interruptedTech, 0);
+  f.pendingTech(true);
+  assert.equal(dashboard.getData().interruptedTech, 1);
+  let click;
+  const button = {
+    dataset: { gmDashboardAction: "techRecovery" },
+    addEventListener: (_e, fn) => {
+      click = fn;
+    },
+    disabled: false,
+  };
+  dashboard.activateListeners([{ querySelectorAll: () => [button] }]);
+  click();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.ok(f.calls.includes("techRecovery:a"));
+  assert.equal(button.disabled, true);
+  assert.equal(dashboard.getData().interruptedTech, 0);
+  assert.equal(f.errors.length, 0);
+});
 test("GM dashboard guards entry, preserves pending records and routes actions", async () => {
   const f = fixture(),
     dashboard = new f.exports.GMDashboard(() => f.calls.push("payout"));

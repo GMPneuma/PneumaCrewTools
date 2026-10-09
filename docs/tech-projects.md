@@ -58,6 +58,8 @@ Before marking, updating or delivering an Item, the acting owner records **flags
 
 ### Clearing an interrupted TECH blocker
 
+The **GM Dashboard → Downtime** section also has an always-visible **Review / Clear TECH Blocker** button. It is disabled when no eligible character has a blocker. With one affected character it opens their review directly; with several it prompts for the character.
+
 In GM **Downtime**, select the affected character and click **Review / Clear TECH Blocker** below the character selector. The button is always visible to GMs and greyed out when the selected character has no saved TECH blocker. Review the saved details, linked original/source Item, project reference or destination Item, any stack remainder, and **Active Projects**. Correct partial changes before enabling another attempt. **Open Downtime Log** opens the character's ledger.
 
 Enter a review note, confirm that the Items and project records were reconciled, then click **Clear TECH Blocker**. The first active GM can clear it. Clearing removes only the blocker; it does not undo Item changes, refund days, complete a project, or fix the original failure. The exact attempt, GM identity, timestamp and note remain in **TECH recovery history** on the Downtime Log. Existing blockers are supported. Competing TECH work is serialized with recovery; a changed blocker requires a new review.

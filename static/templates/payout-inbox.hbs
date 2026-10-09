@@ -47,6 +47,17 @@
             class="fas fa-plus-minus"
           ></i>
           Adjust Player Downtime</button>
+        {{#if interruptedTech}}<button
+            type="button"
+            data-gm-dashboard-action="techRecovery"
+          ><i class="fas fa-unlock" aria-hidden="true"></i>
+            Review / Clear TECH Blocker</button>{{else}}<button
+            type="button"
+            data-gm-dashboard-action="techRecovery"
+            disabled
+            title="No interrupted TECH actions need review"
+          ><i class="fas fa-unlock" aria-hidden="true"></i>
+            Review / Clear TECH Blocker</button>{{/if}}
       </div>
     </fieldset>
     <fieldset class="payout-heading hub-status gm-dashboard-panel">

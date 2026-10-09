@@ -4782,7 +4782,8 @@ html[data-cpr-theme="darkmode"] .pneuma-crewtools .netrunner-role {
 .pneuma-crewtools .downtime-tech-recovery {
   margin: 0 0 0.5rem;
 }
-.pneuma-crewtools [data-tech-recovery]:disabled {
+.pneuma-crewtools [data-tech-recovery]:disabled,
+.pneuma-crewtools [data-gm-dashboard-action="techRecovery"]:disabled {
   opacity: 0.45;
   filter: grayscale(1);
   cursor: default;
