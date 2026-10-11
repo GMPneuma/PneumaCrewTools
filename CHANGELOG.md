@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.6 - 2026-10-11
+
+- Recognize renamed pharmaceutical Drug items in Administer Pharma when their names start with a supported pharmaceutical name followed by a separator.
+- Accept custom Drug items beginning with `Pharma ` (including the space), and both Rapidetox and Rapiddetox spellings. Matching is case-insensitive.
+- Apply the same recognition to inventory listing and transfer validation; keep crafting stack matching exact.
+
+
 ## 1.0.5 - 2026-10-08
 
 - Add **Review / Clear TECH Blocker** to the **GM Dashboard → Downtime** section beside **Adjust Player Downtime**. The control is always visible and disabled when no eligible character has a blocker.

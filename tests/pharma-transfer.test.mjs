@@ -49,7 +49,7 @@ function fixture() {
       toObject() {
         return {
           _id: id,
-          name,
+          name: this.name,
           type: "drug",
           system: structuredClone(this.system),
         };
@@ -206,6 +206,54 @@ test("Medtech lists only pharma; transfers require ownership, valid quantities a
   );
   assert.equal(f.source.items.find((i) => i.id === "drug").system.amount, 5);
 });
+test("named pharmaceutical variants and Pharma prefixes survive offering and native use", async () => {
+  for (const name of [
+    "Speedheal (Enhanced)",
+    " SPEEDHEAL - Brand Name ",
+    "Rapidetox",
+    "Rapiddetox (Custom)",
+    "Pharma Custom Remedy",
+    "pharma experimental dose",
+  ]) {
+    const f = fixture();
+    await f.setup();
+    const item = f.source.items.find((i) => i.id === "drug");
+    item.name = name;
+    assert.equal(
+      new f.api.PharmaTransferPanel().getData("source").pharma[0].name,
+      name,
+    );
+    await f.api.offerPharma("source", "drug", "target", 1);
+    f.game.user = f.recipient;
+    await f.api.respondToPharma(f.offer(), "consume");
+    assert.equal(f.target.consumed, 1, name);
+    assert.equal(f.target.items[0].name, name);
+  }
+});
+
+test("pharmaceutical prefixes reject partial words and require native drug Items", () => {
+  const { isPharmaceutical, PHARMACEUTICALS } =
+    fixture().load("pharmaceuticals");
+  for (const name of PHARMACEUTICALS)
+    assert.equal(
+      isPharmaceutical({ type: "drug", name: name + " (Custom)" }),
+      true,
+    );
+  for (const name of [
+    "Speedhealing Something",
+    "Enhanced Speedheal",
+    "Pharmaceutical",
+    "Pharma",
+    "Pharma\tRemedy",
+    "Synthcoke",
+  ])
+    assert.equal(isPharmaceutical({ type: "drug", name }), false, name);
+  assert.equal(
+    isPharmaceutical({ type: "gear", name: "Pharma Remedy" }),
+    false,
+  );
+});
+
 test("Use Now works without a GM and cannot deliver twice", async () => {
   const f = fixture();
   await f.setup();

@@ -11,11 +11,19 @@ export const PHARMACEUTICALS = [
 
 // The system uses drug Items for both street drugs and pharmaceuticals.
 export function isPharmaceutical(item: FoundryItem): boolean {
+  if (item.type !== "drug") return false;
+  const name = item.name.trim().toLowerCase();
+  // Preserve named variants and split stacks without accepting partial words.
   return (
-    item.type === "drug" &&
-    PHARMACEUTICALS.some(
-      (name) => name.toLowerCase() === item.name.trim().toLowerCase(),
-    )
+    name.startsWith("pharma ") ||
+    [...PHARMACEUTICALS, "Rapidetox"].some((base) => {
+      const prefix = base.toLowerCase();
+      return (
+        name.startsWith(prefix) &&
+        (name.length === prefix.length ||
+          /^[\s\p{P}\p{S}]/u.test(name.slice(prefix.length)))
+      );
+    })
   );
 }
 export function pharmaceuticalInventory(actor: FoundryActor) {
