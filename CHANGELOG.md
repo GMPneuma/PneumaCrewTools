@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.7 - 2026-10-11
+
+- Align Exec teammate portraits with the top of the artwork in the Player Hub.
+
 ## 1.0.6 - 2026-10-11
 
 - Recognize renamed pharmaceutical Drug items in Administer Pharma when their names start with a supported pharmaceutical name followed by a separator.
