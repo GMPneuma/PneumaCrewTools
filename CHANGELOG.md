@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.8 - 2026-10-14
+
+- Let GMs click the Hub HUD date to open the Campaign Calendar date editor.
+
 ## 1.0.7 - 2026-10-11
 
 - Align Exec teammate portraits with the top of the artwork in the Player Hub.

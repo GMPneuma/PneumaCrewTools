@@ -16,8 +16,8 @@ The blue city-clock display replaces the Foundry logo in the upper-left corner a
 date to players and GMs. It does not change the clock merely to initialize the UI.
 On v12, a world time of zero displays 1970-01-01 under the Gregorian shim.
 
-The blue date reads, for example, **Jan 1, 2078**. The date itself is passive and
-does not respond to clicks. Its monospace text, dark translucent gradient, thin blue border, cyan left edge, and restrained shadow match the Combat Tools Biomonitor HUD. The compact 124px frame rounds its bottom-right corner to suit its upper-left screen placement. The weekday and year stay smaller than the month/day; the existing Crew and Biomon shortcuts keep their positions and status colors. It occupies the logo slot above the scene controls;
+The blue date reads, for example, **Jan 1, 2078**. GMs can click the date to open
+the Campaign Calendar form, or focus it and press Enter or Space. The date remains passive for players. Its monospace text, dark translucent gradient, thin blue border, cyan left edge, and restrained shadow match the Combat Tools Biomonitor HUD. The compact 124px frame rounds its bottom-right corner to suit its upper-left screen placement. The weekday and year stay smaller than the month/day; the existing Crew and Biomon shortcuts keep their positions and status colors. It occupies the logo slot above the scene controls;
 if no logo exists, it falls back to the upper-left corner.
 
 To edit the date, open **Module Settings > Pneuma's Crew Tools > Campaign

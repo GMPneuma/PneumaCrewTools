@@ -1459,6 +1459,14 @@ html[data-cpr-theme="darkmode"]
   padding: 0;
   line-height: 1;
 }
+#pneuma-crewtools-calendar .pneuma-calendar-date[role="button"] {
+  pointer-events: auto;
+  cursor: pointer;
+}
+#pneuma-crewtools-calendar .pneuma-calendar-date[role="button"]:focus-visible {
+  outline: 1px solid currentColor;
+  outline-offset: 2px;
+}
 #pneuma-crewtools-calendar .pneuma-calendar-month-day {
   font-size: 22px;
   font-weight: 700;

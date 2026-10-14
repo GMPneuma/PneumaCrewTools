@@ -372,6 +372,17 @@ function renderCalendar(): void {
   if (!label) {
     label = document.createElement("span");
     label.className = "pneuma-calendar-date";
+    if (game.user?.isGM) {
+      label.setAttribute("role", "button");
+      label.tabIndex = 0;
+      label.title = "Modify date";
+      label.addEventListener("click", openCampaignCalendar);
+      label.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        event.preventDefault();
+        openCampaignCalendar();
+      });
+    }
     const weekdayLine = document.createElement("span"),
       dayLine = document.createElement("span"),
       yearLine = document.createElement("span");
