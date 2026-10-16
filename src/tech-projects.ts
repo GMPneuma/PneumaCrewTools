@@ -370,9 +370,10 @@ export async function processTechRequest(
         event.kind === "techCancel",
         guard,
       );
-      event.techDelivery = { actorId: actor.id, itemId: item.id };
-      event.reason +=
-        event.kind === "techCancel"
+      if (item) event.techDelivery = { actorId: actor.id, itemId: item.id };
+      event.reason += !item
+        ? "; original Item missing; project cancelled without restoring an Item"
+        : event.kind === "techCancel"
           ? "; original Item retained"
           : "; completed " + item.name;
     } else if (event.kind !== "techCancel") {

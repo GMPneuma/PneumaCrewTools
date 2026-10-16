@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.9 - 2026-10-15
+
+- Allow cancelling upgrade and repair projects after the original Item is deleted, freeing the slot and removing the matching project reference without recreating the Item or refunding spent days.
+- Explain that completion requires the missing original Item and direct users to Cancel.
+
 ## 1.0.8 - 2026-10-14
 
 - Let GMs click the Hub HUD date to open the Campaign Calendar date editor.
@@ -13,7 +18,6 @@
 - Recognize renamed pharmaceutical Drug items in Administer Pharma when their names start with a supported pharmaceutical name followed by a separator.
 - Accept custom Drug items beginning with `Pharma ` (including the space), and both Rapidetox and Rapiddetox spellings. Matching is case-insensitive.
 - Apply the same recognition to inventory listing and transfer validation; keep crafting stack matching exact.
-
 
 ## 1.0.5 - 2026-10-08
 

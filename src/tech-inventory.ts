@@ -116,16 +116,20 @@ export async function finishInventoryProject(
   projectId: string,
   cancel: boolean,
   guard: Guard,
-): Promise<FoundryItem> {
+): Promise<FoundryItem | undefined> {
   const item = (await fromUuid(spec.sourceUuid ?? "")) as
     FoundryItem | undefined;
+  if (!item && !cancel)
+    throw new Error(
+      "The original project Item is missing. Cancel the project to free its slot; it cannot be completed without the original Item.",
+    );
   if (
-    !item ||
-    item.documentName !== "Item" ||
-    item.parent?.id !== actor.id ||
-    !requester ||
-    !item.testUserPermission?.(requester, "OWNER") ||
-    !item.update
+    item &&
+    (item.documentName !== "Item" ||
+      item.parent?.id !== actor.id ||
+      !requester ||
+      !item.testUserPermission?.(requester, "OWNER") ||
+      !item.update)
   )
     throw new Error("The original project Item is missing or no longer owned.");
   const storage = Array.from(game.actors).find(
@@ -141,10 +145,23 @@ export async function finishInventoryProject(
       );
     const link = reference.getFlag?.(MODULE_ID, "techProjectReference") as
       { projectId?: string; sourceUuid?: string } | undefined;
-    if (link?.projectId !== projectId || link.sourceUuid !== item.uuid)
+    if (link?.projectId !== projectId || link.sourceUuid !== spec.sourceUuid)
       throw new Error(
         "The project reference does not match the original Item. GM review is required.",
       );
+  }
+  if (!item) {
+    if (reference) {
+      await guard({
+        projectId,
+        action: "Cancel inventory project with missing original",
+        sourceUuid: spec.sourceUuid,
+        destinationActorId: storage!.id,
+        destinationItemId: reference.id,
+      });
+      await storage!.deleteEmbeddedDocuments("Item", [reference.id]);
+    }
+    return undefined;
   }
   const update: Record<string, unknown> = {};
   // Preserve a deliberate rename made while the project was running.
@@ -180,7 +197,7 @@ export async function finishInventoryProject(
     destinationActorId: storage?.id,
     destinationItemId: reference?.id,
   });
-  if (Object.keys(update).length) await item.update(update);
+  if (Object.keys(update).length) await item.update!(update);
   // Delete only the reference document; never uninstall or delete the original.
   if (reference) await storage!.deleteEmbeddedDocuments("Item", [reference.id]);
   return item;

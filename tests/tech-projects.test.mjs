@@ -755,6 +755,59 @@ test("missing references do not recreate originals and mismatched references can
   }
 });
 
+test("deleted upgrade and repair originals can be cancelled without recreating items or refunding days", async () => {
+  for (const mode of ["upgrade", "repair"]) {
+    for (const referenceState of [
+      "matching",
+      "missing",
+      "mismatched",
+      "denied",
+    ]) {
+      const f = fixture();
+      const item = f.makeItem(
+        {
+          name: "Gear",
+          type: "gear",
+          system: { amount: 1, price: { market: 500 } },
+        },
+        f.actor,
+      );
+      f.actor.items.push(item);
+      const id = await f.run("techStart", {
+        ...f.invention(),
+        mode,
+        sourceUuid: item.uuid,
+      });
+      await f.run("techDay", undefined, id);
+      const storage = f.game.actors[1];
+      await f.actor.deleteEmbeddedDocuments("Item", [item.id]);
+      if (referenceState === "missing")
+        await storage.deleteEmbeddedDocuments("Item", [storage.items[0].id]);
+      if (referenceState === "mismatched")
+        storage.items[0].getFlag = () => ({ projectId: "unrelated" });
+      if (referenceState === "denied") storage.testUserPermission = () => false;
+      if (["mismatched", "denied"].includes(referenceState)) {
+        await assert.rejects(
+          f.run("techCancel", undefined, id),
+          /reference does not match|permission.*container/,
+        );
+        assert.equal(f.projects()[0].active, true);
+        assert.equal(storage.items.length, 1);
+      } else {
+        await f.run("techCancel", undefined, id);
+        assert.equal(f.projects()[0].active, false);
+        assert.equal(f.projects()[0].progress, 1);
+        assert.equal(storage.items.length, 0);
+        assert.equal(
+          f.actor.items.some((i) => i.type === "gear"),
+          false,
+        );
+      }
+      assert.equal(f.attempt(), null);
+    }
+  }
+});
+
 test("interrupted project start keeps original and stack recovery details and blocks retries", async () => {
   const f = fixture();
   const item = f.makeItem(
