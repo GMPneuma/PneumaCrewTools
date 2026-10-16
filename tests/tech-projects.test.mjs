@@ -732,7 +732,7 @@ test("missing references do not recreate originals and mismatched references can
     );
     f.actor.items.push(item);
     const id = await f.run("techStart", {
-      ...f.invention(),
+      ...f.invention("premium", 100),
       mode: "upgrade",
       sourceUuid: item.uuid,
     });
@@ -740,13 +740,18 @@ test("missing references do not recreate originals and mismatched references can
     if (tampered) storage.items[0].getFlag = () => ({ projectId: "unrelated" });
     else await storage.deleteEmbeddedDocuments("Item", [storage.items[0].id]);
     if (tampered) {
+      await f.run("techRoll", undefined, id);
       await assert.rejects(
-        f.run("techCancel", undefined, id),
+        f.run("techDay", undefined, id),
         /reference does not match/,
       );
       assert.equal(storage.items.length, 1);
       assert.equal(item.name, "Gear (being upgraded)");
       assert.equal(f.attempt(), null);
+      await f.run("techCancel", undefined, id);
+      assert.equal(f.projects()[0].active, false);
+      assert.equal(storage.items.length, 1);
+      assert.equal(item.name, "Gear");
     } else {
       await f.run("techCancel", undefined, id);
       assert.equal(item.name, "Gear");
@@ -761,6 +766,8 @@ test("deleted upgrade and repair originals can be cancelled without recreating i
       "matching",
       "missing",
       "mismatched",
+      "unflagged",
+      "wrong-source",
       "denied",
     ]) {
       const f = fixture();
@@ -785,8 +792,15 @@ test("deleted upgrade and repair originals can be cancelled without recreating i
         await storage.deleteEmbeddedDocuments("Item", [storage.items[0].id]);
       if (referenceState === "mismatched")
         storage.items[0].getFlag = () => ({ projectId: "unrelated" });
+      if (referenceState === "unflagged")
+        storage.items[0].getFlag = () => undefined;
+      if (referenceState === "wrong-source")
+        storage.items[0].getFlag = () => ({
+          projectId: id,
+          sourceUuid: "Item.other",
+        });
       if (referenceState === "denied") storage.testUserPermission = () => false;
-      if (["mismatched", "denied"].includes(referenceState)) {
+      if (referenceState === "denied") {
         await assert.rejects(
           f.run("techCancel", undefined, id),
           /reference does not match|permission.*container/,
@@ -797,7 +811,15 @@ test("deleted upgrade and repair originals can be cancelled without recreating i
         await f.run("techCancel", undefined, id);
         assert.equal(f.projects()[0].active, false);
         assert.equal(f.projects()[0].progress, 1);
-        assert.equal(storage.items.length, 0);
+        const retained = ["mismatched", "unflagged", "wrong-source"].includes(
+          referenceState,
+        );
+        assert.equal(storage.items.length, retained ? 1 : 0);
+        if (retained)
+          assert.match(
+            f.state().events.at(-1).reason,
+            /mismatched project reference left untouched for GM review: Actor\./,
+          );
         assert.equal(
           f.actor.items.some((i) => i.type === "gear"),
           false,

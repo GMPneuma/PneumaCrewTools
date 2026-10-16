@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.10 - 2026-10-16
+
+- Allow cancelling upgrade and repair projects whose container reference has missing or mismatched project/source IDs. Leave the unverified Item untouched and record its UUID in project history for GM review.
+- Keep completion blocked for mismatched references and preserve Item/container permission checks.
+
 ## 1.0.9 - 2026-10-15
 
 - Allow cancelling upgrade and repair projects after the original Item is deleted, freeing the slot and removing the matching project reference without recreating the Item or refunding spent days.

@@ -362,7 +362,7 @@ export async function processTechRequest(
       event.kind === "techCancel")
   ) {
     if (project.mode === "repair" || project.mode === "upgrade") {
-      const item = await finishInventoryProject(
+      const { item, retainedReferenceUuid } = await finishInventoryProject(
         actor,
         ctx.requester,
         project,
@@ -376,6 +376,10 @@ export async function processTechRequest(
         : event.kind === "techCancel"
           ? "; original Item retained"
           : "; completed " + item.name;
+      if (retainedReferenceUuid)
+        event.reason +=
+          "; mismatched project reference left untouched for GM review: " +
+          retainedReferenceUuid;
     } else if (event.kind !== "techCancel") {
       let template: FoundryItem | undefined;
       if (project.fabricationUuid) {

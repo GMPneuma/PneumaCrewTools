@@ -36,7 +36,7 @@ Upgrade and repair never transfer, uninstall or recreate the original Item or it
 - Fabrication and invention completion add one Item to the character’s inventory. Upgrade and repair completion update the original, restore its name and delete the container reference. All completions clear the active slot. A deliberate rename during work is preserved.
 - Cancel closes the project without refunding spent days. Upgrade and repair restore the original’s name and delete the reference without applying pending changes. Cancellation stays available after losing the role or facility.
 
-If the original upgrade or repair Item was deleted, Cancel still closes the project, frees its slot and removes its matching container reference. It does not recreate the Item or refund spent days. Completion requires the original Item. Existing Item ownership and reference-validation checks still apply.
+If the original upgrade or repair Item was deleted, Cancel still closes the project, frees its slot and removes its matching container reference. It does not recreate the Item or refund spent days. If the reference has missing or mismatched project/source flags, cancellation leaves that Item untouched and records its UUID in the project history for GM review. Completion still requires the original Item and a matching reference if one exists. Existing Item and container ownership checks still apply.
 
 No material costs are charged automatically. Inventions produce inventory Items as requested, rather than a separate blueprint-only step.
 

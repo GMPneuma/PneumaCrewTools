@@ -116,7 +116,7 @@ export async function finishInventoryProject(
   projectId: string,
   cancel: boolean,
   guard: Guard,
-): Promise<FoundryItem | undefined> {
+): Promise<{ item?: FoundryItem; retainedReferenceUuid?: string }> {
   const item = (await fromUuid(spec.sourceUuid ?? "")) as
     FoundryItem | undefined;
   if (!item && !cancel)
@@ -135,9 +135,10 @@ export async function finishInventoryProject(
   const storage = Array.from(game.actors).find(
     (a) => a.id === spec.storageActorId,
   );
-  const reference = Array.from(storage?.items ?? []).find(
+  let reference = Array.from(storage?.items ?? []).find(
     (i) => i.id === spec.storageItemId,
   );
+  let retainedReferenceUuid: string | undefined;
   if (reference) {
     if (!game.user || !storage!.testUserPermission(game.user, "OWNER"))
       throw new Error(
@@ -145,10 +146,15 @@ export async function finishInventoryProject(
       );
     const link = reference.getFlag?.(MODULE_ID, "techProjectReference") as
       { projectId?: string; sourceUuid?: string } | undefined;
-    if (link?.projectId !== projectId || link.sourceUuid !== spec.sourceUuid)
-      throw new Error(
-        "The project reference does not match the original Item. GM review is required.",
-      );
+    if (link?.projectId !== projectId || link.sourceUuid !== spec.sourceUuid) {
+      if (!cancel)
+        throw new Error(
+          "The project reference does not match the original Item. GM review is required. Cancel can close the project while leaving this reference untouched.",
+        );
+      retainedReferenceUuid = `Actor.${storage!.id}.Item.${reference.id}`;
+      // An unverified reference may be an unrelated Item. Leave it untouched.
+      reference = undefined;
+    }
   }
   if (!item) {
     if (reference) {
@@ -161,7 +167,7 @@ export async function finishInventoryProject(
       });
       await storage!.deleteEmbeddedDocuments("Item", [reference.id]);
     }
-    return undefined;
+    return { retainedReferenceUuid };
   }
   const update: Record<string, unknown> = {};
   // Preserve a deliberate rename made while the project was running.
@@ -200,5 +206,5 @@ export async function finishInventoryProject(
   if (Object.keys(update).length) await item.update!(update);
   // Delete only the reference document; never uninstall or delete the original.
   if (reference) await storage!.deleteEmbeddedDocuments("Item", [reference.id]);
-  return item;
+  return { item, retainedReferenceUuid };
 }
