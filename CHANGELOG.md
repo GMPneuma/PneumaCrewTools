@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.11 - 2026-10-28
+
+- Add a small borderless User Settings gear anchored to the top-left of the Crew Tools mini-HUD.
+- List only active Combat, Crew, Scene and Visual Tools. Open module-only views of existing native client settings and unrestricted configuration menus; exclude world settings and hide the category sidebar.
+- Keep the settings popup above HUD controls with a User Settings heading and the shared translucent Combat Tools panel styling. Keep its position independent of external shortcuts.
+
+Validation: production build and automated checks. Live Foundry multiplayer verification remains pending.
+
 ## 1.0.10 - 2026-10-16
 
 - Allow cancelling upgrade and repair projects whose container reference has missing or mismatched project/source IDs. Leave the unverified Item untouched and record its UUID in project history for GM review.

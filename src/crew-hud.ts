@@ -7,6 +7,7 @@ import { isActorExcluded } from "./actor-policy";
 import { getIndex } from "./downtime-store";
 import { storedDowntimeBalance } from "./downtime-records";
 import { openPlayerHub, waitingPayoutCount } from "./payout-inbox";
+import { addPlayerSettingsGear } from "./player-settings";
 
 let ready = false;
 
@@ -34,6 +35,7 @@ export function refreshCrewHud(): void {
   if (!ready) return;
   const root = document.getElementById("pneuma-crewtools-calendar");
   if (!root) return;
+  addPlayerSettingsGear(root);
   let row = root.querySelector<HTMLElement>(".pneuma-crew-hud");
   // Hidden shortcuts require no status reads; the date display remains intact.
   if (!showHudShortcuts()) {

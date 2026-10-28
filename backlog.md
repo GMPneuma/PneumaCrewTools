@@ -197,3 +197,14 @@ This is the editable work list. [Detailed roadmap](docs/ROADMAP.md) and [integra
 
 Implemented features and completed fixes remain in [docs/ROADMAP.md](docs/ROADMAP.md). Older release targets there are historical, not new backlog tasks.
 
+
+## Player Settings mini-HUD launcher
+Implemented locally: tiny gear on Crew Tools mini-HUD opens active Pneuma modules and their existing native player settings in module-only windows. Moved from the initially requested Scene Tools placement. No Scene Tools dependency. Live Foundry verification pending.
+
+Player Settings appearance refinement: hide the native settings category sidebar only in the module-only window; use a borderless blue mini-HUD gear and native Foundry ContextMenu. Existing settings controls remain native.
+
+User Settings menu refinement: only active Combat, Crew, Scene and Visual Tools are listed; visible User Settings heading, content-sized native menu, unavailable-settings explanation moved to tooltip.
+
+User Settings gear stays anchored to the mini-HUD top-left independently of native context-menu positioning and external shortcut rows; reduced glyph to 10px.
+
+User Settings popup: heading added after native rendering; menu attached to document body above HUD stacking contexts, using Combat Tools shared translucent panel/header styling.

@@ -4797,3 +4797,50 @@ html[data-cpr-theme="darkmode"] .pneuma-crewtools .netrunner-role {
   filter: grayscale(1);
   cursor: default;
 }
+
+/* Player Settings on the Crew Tools mini-HUD. */
+.pneuma-player-settings .filters,
+.pneuma-player-settings .sidebar,
+.pneuma-player-settings nav.tabs { display: none; }
+.pneuma-player-settings .categories { flex: 1; min-width: 0; }
+.pneuma-player-settings-launcher { position: absolute; left: 3px; top: 3px; pointer-events: auto; width: 20px; z-index: 10; }
+#pneuma-crewtools-calendar .pneuma-player-settings-anchor > button {
+  width: 16px; height: 16px; min-height: 0; margin: 0; padding: 0;
+  font-size: 10px; line-height: 16px;
+  color: var(--pneuma-hud-icon-color, #69c9ed);
+  background: transparent; border: none; border-radius: 0; box-shadow: none;
+  cursor: pointer;
+}
+#pneuma-crewtools-calendar .pneuma-player-settings-anchor > button i { margin: 0; }
+#pneuma-crewtools-calendar .pneuma-player-settings-anchor > button:hover { text-shadow: 0 0 5px currentColor; }
+#pneuma-crewtools-calendar .pneuma-player-settings-anchor > button:focus-visible { outline: 1px solid currentColor; }
+
+
+
+
+
+
+
+.pneuma-player-settings-anchor { position: relative; width: 16px; height: 16px; }
+
+/* Share the Combat Tools attack-panel surface; body placement escapes HUD stacking. */
+#context-menu.pneuma-user-settings-popup {
+  position: fixed; z-index: 2147483647; width: 230px; min-width: 210px;
+  max-width: calc(100vw - 16px); max-height: calc(100vh - 16px); overflow-y: auto;
+  box-sizing: border-box; pointer-events: auto; text-align: left;
+  background: var(--pneuma-panel-background, rgba(12,14,18,.78));
+  color: var(--pneuma-panel-color, #eee);
+  border: var(--pneuma-panel-border, 1px solid rgba(255,255,255,.22));
+  border-radius: var(--pneuma-panel-radius, 4px);
+  box-shadow: var(--pneuma-panel-shadow, 0 2px 8px rgba(0,0,0,.35));
+  padding: var(--pneuma-panel-padding, 8px);
+  font: var(--pneuma-panel-font-size, 13px)/1.4 var(--font-primary, sans-serif);
+  text-shadow: none; letter-spacing: normal;
+}
+#context-menu.pneuma-user-settings-popup .pneuma-user-settings-heading {
+  display: block; padding: 4px 6px; border: 1px solid; border-radius: 3px;
+  font-weight: bold; margin-bottom: 6px; text-align: left;
+}
+#context-menu.pneuma-user-settings-popup .context-item { white-space: normal; }
+#context-menu.pneuma-user-settings-popup .context-item:hover { background: var(--pneuma-menu-hover-background, rgba(255,255,255,.16)); }
+#context-menu.pneuma-user-settings-popup [aria-disabled="true"] { opacity: .5; cursor: default; }
