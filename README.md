@@ -1,6 +1,9 @@
 # PneumaCrewTools
 
 Crew management tools for Foundry VTT v12 and the Cyberpunk RED Core system.
+
+Local performance updates: HUD exclusion data is computed once per refresh. HQ server-room synchronization batches queued changes, ignores unrelated Actor updates before Journal lookup, and skips unchanged ownership writes. Live Foundry verification pending.
+
 Version 1.0.10 includes payouts, downtime projects, shared headquarters, IP spending
 and treatment rolls, with character records stored in native Foundry Journals.
 

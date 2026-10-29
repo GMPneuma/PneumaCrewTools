@@ -254,6 +254,7 @@ interface FoundryActor {
 }
 
 interface FoundryItem {
+  ownership?: Record<string, number>;
   getFlag?(namespace: string, key: string): unknown;
   snort?(): Promise<unknown>;
   uuid?: string;

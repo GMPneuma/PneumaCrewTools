@@ -3,7 +3,7 @@ import { openGMDashboard } from "./window-controls";
 import { rentNeedsAttention } from "./rent";
 import { MODULE_ID } from "./constants";
 import { coalesceRefresh, isCrewPage } from "./ui-refresh";
-import { isActorExcluded } from "./actor-policy";
+import { excludedActorIds } from "./actor-policy";
 import { getIndex } from "./downtime-store";
 import { storedDowntimeBalance } from "./downtime-records";
 import { openPlayerHub, waitingPayoutCount } from "./payout-inbox";
@@ -62,13 +62,12 @@ export function refreshCrewHud(): void {
   let days: number | null;
   try {
     const state = getIndex();
+    const excluded = excludedActorIds();
     days = state.accounts
       .filter((account) => {
-        if (isActorExcluded(account.actorId)) return false;
+        if (excluded.has(account.actorId)) return false;
         if (game.user?.isGM) return true;
-        const actor = Array.from(game.actors).find(
-          (a) => a.id === account.actorId,
-        );
+        const actor = game.actors.get(account.actorId);
         return (
           actor?.type === "character" &&
           game.user &&

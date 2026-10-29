@@ -3,6 +3,22 @@ import { getHeadquarters } from "./headquarters";
 import { hqPage } from "./hq-records";
 import { improvementLevel } from "./hq-benefits";
 import { queueAction, isPrimaryGM } from "./action-coordinator";
+async function syncOwnership(
+  item: FoundryItem,
+  ownership: Record<string, number>,
+): Promise<void> {
+  const current = item.ownership ?? {};
+  if (
+    Object.keys(current).length === Object.keys(ownership).length &&
+    Object.entries(ownership).every(([id, level]) => current[id] === level)
+  )
+    return;
+  const changes: Record<string, unknown> = { ownership };
+  for (const id of Object.keys(current)) {
+    if (!(id in ownership)) changes[`ownership.-=${id}`] = null;
+  }
+  await item.update?.(changes);
+}
 export function serverRoomItem(hqId: string): FoundryItem | undefined {
   return Array.from(game.items ?? []).find(
     (i) =>
@@ -26,14 +42,15 @@ export async function ensureServerRooms(): Promise<void> {
       id &&
       !hqs.some((h) => h.id === id && improvementLevel(h, "serverRoom") > 0)
     )
-      await item.update?.({
-        ownership: Object.fromEntries([
+      await syncOwnership(
+        item,
+        Object.fromEntries([
           ["default", 0],
           ...Array.from(game.users)
             .filter((u) => !u.isGM)
             .map((u) => [u.id, 0]),
         ]),
-      });
+      );
   }
   for (const hq of hqs) {
     if (!improvementLevel(hq, "serverRoom")) continue;
@@ -51,7 +68,7 @@ export async function ensureServerRooms(): Promise<void> {
     const existing = serverRoomItem(hq.id);
     if (existing) {
       // This generated Item follows HQ visibility; preserve its architecture and edits.
-      await existing.update?.({ ownership });
+      await syncOwnership(existing, ownership);
       continue;
     }
     const folder =
@@ -69,11 +86,15 @@ export async function ensureServerRooms(): Promise<void> {
   }
 }
 export function registerServerRooms(): void {
+  let queued = false;
   const refresh = () => {
-    if (isPrimaryGM())
-      void queueAction(ensureServerRooms).catch((error) =>
-        ui.notifications.error(String(error)),
-      );
+    if (!isPrimaryGM() || queued) return;
+    queued = true;
+    void queueAction(async () => {
+      // Changes arriving during writes schedule one follow-up reconciliation.
+      queued = false;
+      await ensureServerRooms();
+    }).catch((error) => ui.notifications.error(String(error)));
   };
   Hooks.once("ready", refresh);
   Hooks.on("updateJournalEntryPage", (page) => {
@@ -85,10 +106,11 @@ export function registerServerRooms(): void {
   });
   Hooks.on("updateActor", (actor, changes) => {
     if (
-      hqPage(actor.id) &&
+      isPrimaryGM() &&
       Object.keys(changes).some(
         (k) => k === "ownership" || k.startsWith("ownership."),
-      )
+      ) &&
+      hqPage(actor.id)
     )
       refresh();
   });

@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.12 - 2026-10-28
+
+- Build Crew HUD actor exclusions once per refresh and use direct actor lookups.
+- Filter and coalesce HQ server-room refreshes; skip unchanged ownership writes and remove obsolete permission entries.
+
+Validation: production build and automated checks. Live Foundry multiplayer verification remains pending.
+
 ## 1.0.11 - 2026-10-28
 
 - Add a small borderless User Settings gear anchored to the top-left of the Crew Tools mini-HUD.
