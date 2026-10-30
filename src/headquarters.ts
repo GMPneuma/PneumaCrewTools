@@ -863,7 +863,7 @@ export class HeadquartersForm extends CrewToolsForm {
       title: "Crew Tools — Headquarters",
       classes: [...(super.defaultOptions.classes ?? []), MODULE_ID],
       template: `modules/${MODULE_ID}/templates/headquarters.hbs`,
-      width: 640,
+      width: 880,
       height: 680,
       resizable: true,
       scrollY: [".window-content"],

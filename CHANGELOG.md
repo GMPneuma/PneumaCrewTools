@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.0.13 - 2026-10-30
+
+- Add outer padding and align the Save Choices and Save HQ Rent rows in Rent & Lifestyle.
+- Arrange HQ properties and rent settings beside Shared Rent and Improvements; compact the header and image, and let scrolling use the full window height.
+- Place Rent Types and Lifestyles side by side in the padded, resizable settings window, with compact rate rows and a narrow-window fallback.
+- Mark Loyalty check die and Armor Repair Times with the red homebrew mug and the tooltip "Homebrew rules".
+
+Validation: typecheck, production build, automated tests, and browser layout checks. Live Foundry verification remains pending.
+
 ## 1.0.12 - 2026-10-28
 
 - Build Crew HUD actor exclusions once per refresh and use direct actor lookups.

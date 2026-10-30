@@ -18,172 +18,184 @@
         and its container from Actors. Keep the shared Journal and Shared HQ IP
         page.</p><ul>{{#each inactiveHqs}}<li
           >{{name}}</li>{{/each}}</ul></details>{{/if}}
-  {{#if canManage}}
-    <fieldset class="payout-heading hub-status"><legend><i
-          class="fas fa-building"
-        ></i>
-        HQ Properties</legend>
-      <div class="hq-properties">
-        <div class="hq-picture">
-          {{#if hasContainer}}<button
+  <div class="hq-columns">
+    <div class="hq-details-column">
+      {{#if canManage}}
+        <fieldset class="payout-heading hub-status"><legend><i
+              class="fas fa-building"
+            ></i>
+            HQ Properties</legend>
+          <div class="hq-properties">
+            <div class="hq-picture">
+              {{#if hasContainer}}<button
+                  type="button"
+                  class="hq-image-link"
+                  data-open-container
+                  title="Open HQ Container"
+                  aria-label="Open HQ Container"
+                ><img src="{{hq.image}}" alt="{{hq.name}}" /></button>
+              {{else}}<img
+                  src="modules/pneuma-crewtools/images/headquarters.svg"
+                  alt="New HQ"
+                />{{/if}}
+              {{#if hasContainer}}
+                <div class="hq-access-summary">
+                  <button type="button" data-hq-access><i
+                      class="fas fa-users"
+                      aria-hidden="true"
+                    ></i>
+                    Player Access</button>
+                  <span>Access: <strong>{{accessSummary}}</strong></span>
+                </div>
+              {{/if}}
+            </div>
+            <div class="hq-property-fields">
+              <label class="hq-field hq-field-wide">Name<input
+                  type="text"
+                  name="name"
+                  value="{{hq.name}}"
+                  maxlength="100"
+                  required
+                /></label>
+              <label class="hq-field hq-field-wide">Description / Location<textarea
+                  name="description"
+                  rows="2"
+                  maxlength="2000"
+                >{{hq.description}}</textarea></label>
+              <label class="hq-field">Bedrooms<input
+                  type="number"
+                  name="bedrooms"
+                  value="{{hq.bedrooms}}"
+                  min="0"
+                  step="1"
+                /></label>
+              <label class="hq-field">Max improvements<input
+                  type="number"
+                  name="maxImprovements"
+                  value="{{hq.maxImprovements}}"
+                  min="0"
+                  step="1"
+                  placeholder="No limit"
+                /></label>
+              <div class="hq-rent-row hq-field-wide">
+                <label class="hq-field">Rent type<select name="rentType"><option
+                      value=""
+                    >Not configured</option>{{#each rentRates}}{{#if
+                        selected
+                      }}<option value="{{id}}" selected>{{name}}
+                          ·
+                          {{cost}}
+                          eb</option>{{else}}<option value="{{id}}">{{name}}
+                          ·
+                          {{cost}}
+                          eb</option>{{/if}}{{/each}}</select></label>
+                <label class="hq-field">% modifier<select
+                    name="rentModifier"
+                  >{{#each rentModifiers}}{{#if selected}}<option
+                          value="{{value}}"
+                          selected
+                        >{{label}}</option>{{else}}<option
+                          value="{{value}}"
+                        >{{label}}</option>{{/if}}{{/each}}</select></label>
+              </div>
+              {{#unless hq}}<label
+                  class="hq-field hq-field-wide"
+                >Container<select name="actorId"><option value="">Create new</option>{{#each
+                      containers
+                    }}<option
+                        value="{{id}}"
+                      >{{name}}</option>{{/each}}</select></label>{{/unless}}
+            </div>
+          </div>
+          <div class="hq-property-actions"><button
+              type="submit"
+              class="hq-save-properties"
+            ><i class="fas fa-save"></i> Save</button>{{#if hq}}<button
+                type="button"
+                data-delete-hq
+              ><i class="fas fa-trash"></i> Delete HQ</button>{{/if}}</div>
+        </fieldset>
+      {{else if hq}}<fieldset class="payout-heading hub-status"><legend
+          >{{hq.name}}</legend><div class="hq-properties"><button
               type="button"
               class="hq-image-link"
               data-open-container
               title="Open HQ Container"
               aria-label="Open HQ Container"
-            ><img src="{{hq.image}}" alt="{{hq.name}}" /></button>
-          {{else}}<img
-              src="modules/pneuma-crewtools/images/headquarters.svg"
-              alt="New HQ"
-            />{{/if}}
-          {{#if hasContainer}}
-            <div class="hq-access-summary">
-              <button type="button" data-hq-access><i
-                  class="fas fa-users"
-                  aria-hidden="true"
-                ></i>
-                Player Access</button>
-              <span>Access: <strong>{{accessSummary}}</strong></span>
-            </div>
-          {{/if}}
-        </div>
-        <div class="hq-property-fields">
-          <label class="hq-field hq-field-wide">Name<input
-              type="text"
-              name="name"
-              value="{{hq.name}}"
-              maxlength="100"
-              required
-            /></label>
-          <label class="hq-field hq-field-wide">Description / Location<textarea
-              name="description"
-              rows="2"
-              maxlength="2000"
-            >{{hq.description}}</textarea></label>
-          <label class="hq-field">Bedrooms<input
-              type="number"
-              name="bedrooms"
-              value="{{hq.bedrooms}}"
-              min="0"
-              step="1"
-            /></label>
-          <label class="hq-field">Max improvements<input
-              type="number"
-              name="maxImprovements"
-              value="{{hq.maxImprovements}}"
-              min="0"
-              step="1"
-              placeholder="No limit"
-            /></label>
-          <div class="hq-rent-row hq-field-wide">
-            <label class="hq-field">Rent type<select name="rentType"><option
-                  value=""
-                >Not configured</option>{{#each rentRates}}{{#if
-                    selected
-                  }}<option value="{{id}}" selected>{{name}}
+            ><img src="{{hq.image}}" alt="{{hq.name}}" /></button><div><p
+              >{{hq.description}}</p><p>{{hq.bedrooms}} bedrooms</p><p
+              >{{hq.improvements.length}}
+                improvements{{#if hq.maxImprovements}}
+                  /
+                  {{hq.maxImprovements}}{{/if}}</p></div></div></fieldset>{{else}}<p
+        >No headquarters yet.</p>{{/if}}
+    </div>
+    {{#if hq}}
+      <div class="hq-activity-column">
+        <fieldset class="payout-heading hub-status"><legend><i
+              class="fas fa-house-user"
+            ></i>
+            Shared Rent</legend><div class="hq-toolbar"><strong>{{#if
+                rentConfigured
+              }}{{rentAmount}} eb / month{{else}}Rent not configured{{/if}}</strong><button
+              type="button"
+              data-rent-open
+            >Rent & Contributions</button></div>{{#each rentBills}}<div
+              class="hq-rent-bill"
+            ><span>{{date}} · {{paid}} / {{total}} eb paid</span><strong
+              >{{remaining}} eb due</strong><progress
+                value="{{progress}}"
+                max="100"
+                aria-label="Rent paid"
+              ></progress></div>{{else}}<p class="notes">No outstanding rent
+              bills.</p>{{/each}}</fieldset>
+        <fieldset class="payout-heading hub-status"><legend><i
+              class="fas fa-tools"
+            ></i>
+            Improvements</legend>{{#if serverRoom}}<p><button
+                type="button"
+                data-hq-netarch
+              ><i class="fas fa-network-wired"></i>
+                {{#if serverRoomItem}}{{serverRoomItem.name}}{{else}}NET
+                  Architecture · GM setup pending{{/if}}</button></p>{{/if}}<div
+            class="hq-improvements-layout"
+          >
+            <div class="hq-installed"><table><thead><tr><th>Improvement</th><th
+                    >Level</th>{{#if canManage}}<th
+                      ></th>{{/if}}</tr></thead><tbody>{{#each
+                    hq.improvements
+                  }}<tr><td title="{{notes}}">{{name}}</td><td
+                      >{{level}}</td>{{#if canManage}}<td><button
+                            type="button"
+                            data-remove-improvement="{{id}}"
+                            title="Remove improvement"
+                            aria-label="Remove {{name}}"
+                          ><i
+                              class="fas fa-trash"
+                            ></i></button></td>{{/if}}</tr>{{else}}<tr><td
+                        colspan="3"
+                      >No improvements yet.</td></tr>{{/each}}</tbody></table></div>
+            {{#if canBuy}}<div class="hq-buy"><label
+                  for="hq-improvement-choice"
+                >Buy Improvement</label><select
+                  id="hq-improvement-choice"
+                  name="improvementId"
+                >{{#each catalog}}<option
+                      value="{{id}}"
+                      data-description="{{description}}"
+                    >{{name}}
+                      · Level
+                      {{level}}
                       ·
                       {{cost}}
-                      eb</option>{{else}}<option value="{{id}}">{{name}}
-                      ·
-                      {{cost}}
-                      eb</option>{{/if}}{{/each}}</select></label>
-            <label class="hq-field">% modifier<select
-                name="rentModifier"
-              >{{#each rentModifiers}}{{#if selected}}<option
-                      value="{{value}}"
-                      selected
-                    >{{label}}</option>{{else}}<option
-                      value="{{value}}"
-                    >{{label}}</option>{{/if}}{{/each}}</select></label>
-          </div>
-          {{#unless hq}}<label class="hq-field hq-field-wide">Container<select
-                name="actorId"
-              ><option value="">Create new</option>{{#each containers}}<option
-                    value="{{id}}"
-                  >{{name}}</option>{{/each}}</select></label>{{/unless}}
-        </div>
-      </div>
-      <div class="hq-property-actions"><button
-          type="submit"
-          class="hq-save-properties"
-        ><i class="fas fa-save"></i> Save</button>{{#if hq}}<button
-            type="button"
-            data-delete-hq
-          ><i class="fas fa-trash"></i> Delete HQ</button>{{/if}}</div>
-    </fieldset>
-  {{else if hq}}<fieldset class="payout-heading hub-status"><legend
-      >{{hq.name}}</legend><div class="hq-properties"><button
-          type="button"
-          class="hq-image-link"
-          data-open-container
-          title="Open HQ Container"
-          aria-label="Open HQ Container"
-        ><img src="{{hq.image}}" alt="{{hq.name}}" /></button><div><p
-          >{{hq.description}}</p><p>{{hq.bedrooms}} bedrooms</p><p
-          >{{hq.improvements.length}}
-            improvements{{#if hq.maxImprovements}}
-              /
-              {{hq.maxImprovements}}{{/if}}</p></div></div></fieldset>{{else}}<p
-    >No headquarters yet.</p>{{/if}}
-  {{#if hq}}
-    <fieldset class="payout-heading hub-status"><legend><i
-          class="fas fa-house-user"
-        ></i>
-        Shared Rent</legend><div class="hq-toolbar"><strong>{{#if
-            rentConfigured
-          }}{{rentAmount}} eb / month{{else}}Rent not configured{{/if}}</strong><button
-          type="button"
-          data-rent-open
-        >Rent & Contributions</button></div>{{#each rentBills}}<div
-          class="hq-rent-bill"
-        ><span>{{date}} · {{paid}} / {{total}} eb paid</span><strong
-          >{{remaining}} eb due</strong><progress
-            value="{{progress}}"
-            max="100"
-            aria-label="Rent paid"
-          ></progress></div>{{else}}<p class="notes">No outstanding rent bills.</p>{{/each}}</fieldset>
-    <fieldset class="payout-heading hub-status"><legend><i
-          class="fas fa-tools"
-        ></i>
-        Improvements</legend>{{#if serverRoom}}<p><button
-            type="button"
-            data-hq-netarch
-          ><i class="fas fa-network-wired"></i>
-            {{#if serverRoomItem}}{{serverRoomItem.name}}{{else}}NET
-              Architecture · GM setup pending{{/if}}</button></p>{{/if}}<div
-        class="hq-improvements-layout"
-      >
-        <div class="hq-installed"><table><thead><tr><th>Improvement</th><th
-                >Level</th>{{#if canManage}}<th></th>{{/if}}</tr></thead><tbody
-            >{{#each hq.improvements}}<tr><td title="{{notes}}">{{name}}</td><td
-                  >{{level}}</td>{{#if canManage}}<td><button
-                        type="button"
-                        data-remove-improvement="{{id}}"
-                        title="Remove improvement"
-                        aria-label="Remove {{name}}"
-                      ><i
-                          class="fas fa-trash"
-                        ></i></button></td>{{/if}}</tr>{{else}}<tr><td
-                    colspan="3"
-                  >No improvements yet.</td></tr>{{/each}}</tbody></table></div>
-        {{#if canBuy}}<div class="hq-buy"><label for="hq-improvement-choice">Buy
-              Improvement</label><select
-              id="hq-improvement-choice"
-              name="improvementId"
-            >{{#each catalog}}<option
-                  value="{{id}}"
-                  data-description="{{description}}"
-                >{{name}}
-                  · Level
-                  {{level}}
-                  ·
-                  {{cost}}
-                  IP</option>{{/each}}</select><p
-              class="notes"
-              data-improvement-description
-            ></p><button type="button" data-buy-improvement><i
-                class="fas fa-shopping-cart"
-              ></i>
-              Buy with HQ IP</button></div>{{/if}}
-      </div></fieldset>{{/if}}
+                      IP</option>{{/each}}</select><p
+                  class="notes"
+                  data-improvement-description
+                ></p><button type="button" data-buy-improvement><i
+                    class="fas fa-shopping-cart"
+                  ></i>
+                  Buy with HQ IP</button></div>{{/if}}
+          </div></fieldset>
+      </div>{{/if}}
+  </div>
 </form>

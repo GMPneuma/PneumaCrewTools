@@ -67,6 +67,17 @@ export function groupModuleSettings(root: HTMLElement): void {
       row.remove();
       continue;
     }
+    if (row && ["loyaltyCheckDie", "armorRepair"].includes(key)) {
+      const label = row.querySelector("label");
+      if (label && !label.querySelector(".pneuma-homebrew-rule-icon")) {
+        const icon = document.createElement("i");
+        icon.className = "fas fa-beer-mug-empty pneuma-homebrew-rule-icon";
+        icon.setAttribute("role", "img");
+        icon.setAttribute("aria-label", "Homebrew rules");
+        icon.title = "Homebrew rules";
+        label.append(" ", icon);
+      }
+    }
     if (row && !rows.has(row)) rows.set(row, key);
   }
   if (!rows.size) return;

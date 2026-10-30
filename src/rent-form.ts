@@ -267,8 +267,10 @@ class RentSettings extends CrewToolsForm {
       title: "Rent & Lifestyle Settings",
       classes: [MODULE_ID],
       template: `modules/${MODULE_ID}/templates/rent-settings.hbs`,
-      width: 560,
+      width: 960,
       height: "auto",
+      resizable: true,
+      scrollY: [".window-content"],
       closeOnSubmit: false,
     };
   }

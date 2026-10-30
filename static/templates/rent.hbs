@@ -116,7 +116,7 @@
       class="payout-heading hub-status"
       data-hq-rent
     ><legend><i class="fas fa-building"></i> {{name}}</legend>
-      {{#if isGM}}<div class="rent-charge"><select
+      {{#if isGM}}<div class="rent-hq-choice-row"><select
             data-hq-type
             aria-label="HQ rent type"
           ><option value="">Choose HQ rent</option>{{#each rates}}{{#if
@@ -131,11 +131,12 @@
                   selected
                 >{{label}}</option>{{else}}<option
                   value="{{value}}"
-                >{{label}}</option>{{/if}}{{/each}}</select><button
+                >{{label}}</option>{{/if}}{{/each}}</select></div>
+        <div class="rent-save-row"><button
             type="button"
             data-rent-action="hqSetup"
             data-hq="{{id}}"
-          >Save HQ Rent</button></div>{{/if}}
+          ><i class="fas fa-save"></i> Save HQ Rent</button></div>{{/if}}
       {{#each bills}}<div class="rent-charge"><div><strong>Due
               {{date}}</strong><div>{{formula}}</div><div>{{paid}}
               eb paid ·
