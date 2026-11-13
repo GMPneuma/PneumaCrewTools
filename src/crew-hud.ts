@@ -179,6 +179,16 @@ export function registerCrewHud(): void {
     requestAnimationFrame(positionSceneList),
   );
   window.addEventListener("resize", positionSceneList);
+  document.addEventListener("contextmenu", (event) => {
+    if (mapButton?.getAttribute("aria-expanded") !== "true") return;
+    const scene = event.target instanceof Element && event.target.closest<HTMLElement>("#navigation #scene-list .scene");
+    if (!scene) return;
+    const bounds = scene.getBoundingClientRect();
+    scene.style.setProperty("--pneuma-menu-left", bounds.left + "px");
+    scene.style.setProperty("--pneuma-menu-edge", bounds.bottom + "px");
+    scene.style.setProperty("--pneuma-menu-above", bounds.top + "px");
+    scene.toggleAttribute("data-pneuma-menu-up", bounds.top > innerHeight - bounds.bottom);
+  }, true);
   document.addEventListener("pointerdown", (event) => {
     if (
       event.target instanceof Element &&

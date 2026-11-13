@@ -91,10 +91,30 @@ try {
   assert.equal((await nav.boundingBox()).y, hud.y + hud.height + 4);
   const controls = await mapPage.locator("#controls").boundingBox();
   assert.equal((await nav.boundingBox()).x, controls.x + controls.width + 8);
+  async function checkSceneMenu() {
+    const scene = mapPage.locator(".scene").last();
+    await scene.evaluate(el => el.addEventListener("contextmenu", event => {
+      event.preventDefault();
+      const menu = document.createElement("nav");
+      menu.id = "context-menu";
+      menu.style.height = "160px";
+      menu.textContent = "Activate scene";
+      el.append(menu);
+    }, { once: true }));
+    await scene.click({ button: "right" });
+    assert.ok(await mapPage.locator("#context-menu").evaluate(menu => {
+      const bounds = menu.getBoundingClientRect();
+      const list = menu.closest("#scene-list").getBoundingClientRect();
+      return bounds.bottom > list.bottom && menu.contains(document.elementFromPoint(bounds.left + 8, bounds.bottom - 4));
+    }));
+    await mapPage.locator("#context-menu").evaluate(menu => menu.remove());
+  }
+  await checkSceneMenu();
   await mapPage.evaluate(() =>
     window.setMapSetting("mapListLayout", "vertical"),
   );
   const scenes = mapPage.locator(".scene");
+  await checkSceneMenu();
   const colors = await scenes.locator(".scene-name").evaluateAll(names => names.map(name => getComputedStyle(name).color));
   assert.equal(colors[0], "rgb(255, 195, 106)");
   assert.notEqual(colors[1], colors[0]);

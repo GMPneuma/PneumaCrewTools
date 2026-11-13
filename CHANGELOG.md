@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.15 - 2026-11-13
+
+- Fixed clipping of the scene right-click menu in horizontal and vertical Crew HUD map lists.
+
 ## 1.0.14 - 2026-11-12
 
 - Updated the Crew HUD layout and styling, with room for the Combat Tools EKG and token name.

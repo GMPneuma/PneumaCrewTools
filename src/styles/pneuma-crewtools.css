@@ -1706,6 +1706,22 @@ body:has(#pneuma-crewtools-calendar [data-hud-action="maps"]) #navigation #scene
 body:has(#pneuma-crewtools-calendar [data-layout="vertical"]) #navigation #scene-list {
   flex-flow: column nowrap;
 }
+/* Keep Foundry's context menu inside its scene for native actions, but position it
+   against the viewport so the scrollable scene list cannot clip it. */
+body:has(#pneuma-crewtools-calendar [data-hud-action="maps"]) #navigation .scene #context-menu {
+  position: fixed;
+  inset: var(--pneuma-menu-edge) auto auto clamp(4px, var(--pneuma-menu-left), 100vw - min(15rem, 100vw - 8px) - 4px);
+  box-sizing: border-box;
+  width: min(15rem, 100vw - 8px);
+  min-width: 0;
+  max-height: calc(100vh - var(--pneuma-menu-edge) - 4px);
+  overflow-y: auto;
+}
+body:has(#pneuma-crewtools-calendar [data-hud-action="maps"]) #navigation .scene[data-pneuma-menu-up] #context-menu {
+  top: auto;
+  bottom: calc(100vh - var(--pneuma-menu-above));
+  max-height: calc(var(--pneuma-menu-above) - 4px);
+}
 body:has(#pneuma-crewtools-calendar [data-hud-action="maps"]) #navigation #scene-list .scene {
   flex: 0 0 auto;
   margin: 0;
