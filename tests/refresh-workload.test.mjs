@@ -26,13 +26,18 @@ test("HUD builds exclusions once, preserving GM and owner balances after roster 
   }));
   const hub = { setAttribute() {}, classList: { toggle() {} } },
     row = { querySelector: () => hub },
-    root = { querySelector: () => row };
+    root = {
+      querySelector: () => row,
+      getBoundingClientRect: () => ({ left: 0, right: 124, bottom: 70 }),
+    };
   let excluded = [];
   const game = {
     actors,
     journal: journals,
     user: { isGM: true },
-    settings: { get: () => excluded },
+    settings: {
+      get: (_module, key) => (key === "replaceMapControl" ? false : excluded),
+    },
   };
   const api = loadTransactionModule(
     "crew-hud",
@@ -53,7 +58,15 @@ test("HUD builds exclusions once, preserving GM and owner balances after roster 
       "./payout-inbox": { waitingPayoutCount: () => 0 },
       "./player-settings": { addPlayerSettingsGear() {} },
     },
-    { document: { getElementById: () => root } },
+    {
+      ResizeObserver: class {
+        observe() {}
+      },
+      document: {
+        body: { style: { setProperty() {} } },
+        getElementById: (id) => (id === "controls" ? null : root),
+      },
+    },
   );
   api.readyCrewHud();
   assert.equal(actorVisits, 1000);

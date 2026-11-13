@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.14 - 2026-11-12
+
+- Updated the Crew HUD layout and styling, with room for the Combat Tools EKG and token name.
+- Added optional HUD scene navigation, horizontal and vertical map lists, and coordinated map and biomonitor toggles.
+
 ## 1.0.13 - 2026-10-30
 
 - Add outer padding and align the Save Choices and Save HQ Rent rows in Rent & Lifestyle.

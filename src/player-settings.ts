@@ -175,7 +175,6 @@ export function addPlayerSettingsGear(root: HTMLElement): void {
   launcher.className = "pneuma-player-settings-launcher";
   const gear = document.createElement("button");
   gear.type = "button";
-  gear.title = "User Settings";
   gear.setAttribute("aria-label", "User Settings");
   gear.setAttribute("aria-expanded", "false");
   gear.innerHTML = '<i class="fas fa-gear" aria-hidden="true"></i>';

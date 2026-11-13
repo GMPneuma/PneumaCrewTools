@@ -10,6 +10,37 @@ import { openPlayerHub, waitingPayoutCount } from "./payout-inbox";
 import { addPlayerSettingsGear } from "./player-settings";
 
 let ready = false;
+let mapButton: HTMLButtonElement | undefined;
+let observedHud: HTMLElement | null = null;
+let mapAnchor: ResizeObserver | undefined;
+
+function positionSceneList(): void {
+  const hud = document.getElementById("pneuma-crewtools-calendar");
+  if (!hud) return;
+  const bounds = hud.getBoundingClientRect();
+  const controls = document.getElementById("controls");
+  const buttons = Array.from(
+    controls?.querySelectorAll(".scene-control, .control-tool") ?? [],
+  )
+    .map((button) => button.getBoundingClientRect())
+    .filter((rect) => rect.width && rect.height);
+  const edge = buttons.length
+    ? Math.max(...buttons.map((rect) => rect.right))
+    : controls?.getBoundingClientRect().right;
+  document.body.style.setProperty(
+    "--pneuma-map-left",
+    Math.max(bounds.left, edge ? edge + 8 : 0) + "px",
+  );
+  document.body.style.setProperty(
+    "--pneuma-native-map-left",
+    bounds.right + 8 + "px",
+  );
+  document.body.style.setProperty("--pneuma-map-top", bounds.bottom + 4 + "px");
+}
+
+function closeSceneList(): void {
+  mapButton?.setAttribute("aria-expanded", "false");
+}
 
 // One stable hub button preserves focus while status updates.
 function button(
@@ -34,14 +65,22 @@ function button(
 export function refreshCrewHud(): void {
   if (!ready) return;
   const root = document.getElementById("pneuma-crewtools-calendar");
-  if (!root) return;
-  addPlayerSettingsGear(root);
-  let row = root.querySelector<HTMLElement>(".pneuma-crew-hud");
-  // Hidden shortcuts require no status reads; the date display remains intact.
-  if (!showHudShortcuts()) {
-    row?.remove();
+  if (root !== observedHud) {
+    mapAnchor?.disconnect();
+    observedHud = root;
+    if (root) {
+      mapAnchor ??= new ResizeObserver(positionSceneList);
+      mapAnchor.observe(root);
+      positionSceneList();
+    }
+  }
+  if (root) addPlayerSettingsGear(root);
+  if (!root || !showHudShortcuts()) {
+    mapButton = undefined;
+    root?.querySelector(".pneuma-crew-hud")?.remove();
     return;
   }
+  let row = root.querySelector<HTMLElement>(".pneuma-crew-hud");
   if (!row) {
     row = document.createElement("div");
     row.className = "pneuma-crew-hud";
@@ -55,6 +94,29 @@ export function refreshCrewHud(): void {
     );
     root.insertBefore(row, root.querySelector(".pneuma-external-shortcut"));
   }
+  if (!game.settings.get(MODULE_ID, "replaceMapControl")) {
+    mapButton?.remove();
+    mapButton = undefined;
+  } else if (!mapButton || mapButton.parentElement !== row) {
+    mapButton = button("maps", "fas fa-map", () => {
+      const open = mapButton!.getAttribute("aria-expanded") !== "true";
+      mapButton!.setAttribute("aria-expanded", String(open));
+      if (open) {
+        document.dispatchEvent(new Event("pneumaCrewMapOpened"));
+        positionSceneList();
+        void ui.navigation?.expand();
+      }
+    });
+    mapButton.title = "Scene navigation";
+    mapButton.setAttribute("aria-label", mapButton.title);
+    mapButton.setAttribute("aria-controls", "scene-list");
+    closeSceneList();
+    row.append(mapButton);
+  }
+  if (mapButton)
+    mapButton.dataset.layout = String(
+      game.settings.get(MODULE_ID, "mapListLayout"),
+    );
   const hub = row.querySelector<HTMLButtonElement>('[data-hud-action="hub"]')!;
   const crew = game.user?.isGM ? "crew " : "";
   const payouts = waitingPayoutCount();
@@ -93,6 +155,46 @@ export function refreshCrewHud(): void {
 }
 
 export function registerCrewHud(): void {
+  document.addEventListener("pneumaCrewBiomonitorOpened", closeSceneList);
+  game.settings.register(MODULE_ID, "replaceMapControl", {
+    name: "Replace Foundry Map Control Button",
+    hint: "Show scene navigation in the Crew HUD. Turn off to use Foundry’s own control beside the HUD.",
+    scope: "client",
+    config: true,
+    type: Boolean,
+    default: true,
+    onChange: refreshCrewHud,
+  });
+  game.settings.register(MODULE_ID, "mapListLayout", {
+    name: "Crew HUD Map List Layout",
+    hint: "Arrangement of scenes when Crew Tools replaces the map control.",
+    scope: "client",
+    config: true,
+    type: String,
+    default: "normal",
+    choices: { normal: "Normal (horizontal)", vertical: "Vertical" },
+    onChange: refreshCrewHud,
+  });
+  Hooks.on("renderSceneControls", () =>
+    requestAnimationFrame(positionSceneList),
+  );
+  window.addEventListener("resize", positionSceneList);
+  document.addEventListener("pointerdown", (event) => {
+    if (
+      event.target instanceof Element &&
+      !event.target.closest('#navigation, [data-hud-action="maps"]')
+    )
+      closeSceneList();
+  });
+  document.addEventListener("keydown", (event) => {
+    if (
+      event.key === "Escape" &&
+      mapButton?.getAttribute("aria-expanded") === "true"
+    ) {
+      closeSceneList();
+      mapButton.focus();
+    }
+  });
   registerShortcutDisplay(refreshCrewHud);
   const refresh = coalesceRefresh(refreshCrewHud);
   const refreshPage = (page: FoundryJournalPage) => {

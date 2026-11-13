@@ -128,6 +128,7 @@ try {
     exact: true,
   });
   const initialPosition = await gear.boundingBox();
+  assert.equal(await gear.getAttribute("title"), null);
   await page.evaluate(() => {
     const root = document.getElementById("pneuma-crewtools-calendar");
     root.classList.add("has-external-shortcuts");
@@ -153,7 +154,7 @@ try {
     bg: getComputedStyle(el).backgroundColor,
   }));
   assert.equal(surface.z, "2147483647");
-  assert.equal(surface.bg, "rgba(12, 14, 18, 0.78)");
+  assert.equal(surface.bg, "rgba(12, 14, 18, 0.96)");
   assert.equal(
     await page
       .locator("#context-menu .context-item")

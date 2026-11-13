@@ -1428,19 +1428,21 @@ html[data-cpr-theme="darkmode"]
   min-height: 70px;
   padding: 6px 4px;
   box-sizing: border-box;
-  border: 1px solid #487a82;
-  border-left: 3px solid #64f1df;
-  border-radius: 0 0 12px 0;
-  background: linear-gradient(
-    135deg,
-    rgba(5, 22, 28, 0.8),
-    rgba(5, 12, 21, 0.72)
-  );
+  /* Pneuma Hub chat-card header finish, also available with Crew Tools alone. */
+  border: 1px solid #548792;
+  border-left: 3px solid #55dce7;
+  border-radius: 0;
+  background:
+    linear-gradient(115deg, #55dce71c, transparent 52%),
+    repeating-linear-gradient(0deg, transparent 0 5px, #80dce704 5px 6px),
+    linear-gradient(125deg, transparent 65%, #55dce70b 65% 79%, transparent 79%),
+    #101c23;
   box-shadow:
-    0 8px 28px #0008,
-    inset 0 0 20px #2ba8ba12;
+    inset 0 1px #55dce755,
+    inset 0 0 0 1px #080f14,
+    0 2px 4px #0005;
   color: var(--pneuma-calendar-font-color, #b8efeb);
-  font: 12px/1.45 monospace;
+  font: 12px/1.45 "Roboto Condensed", "Arial Narrow", sans-serif;
   letter-spacing: 0;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -1682,7 +1684,64 @@ html[data-cpr-theme="darkmode"]
 #pneuma-crewtools-calendar .pneuma-crew-hud button i {
   margin: 0;
 }
-#pneuma-crewtools-calendar .pneuma-crew-hud button.has-attention {
+#pneuma-crewtools-calendar .pneuma-crew-hud:has([data-hud-action="maps"]) button {
+  height: 26px;
+}
+/* Keep the original scene entries and Foundry's listeners on the navigation element. */
+body:has(#pneuma-crewtools-calendar):not(:has(#pneuma-crewtools-calendar [data-hud-action="maps"])) #navigation {
+  position: fixed;
+  left: var(--pneuma-native-map-left);
+  margin-left: 0;
+  max-width: calc(100vw - var(--pneuma-native-map-left) - 8px);
+}
+body:has(#pneuma-crewtools-calendar [data-hud-action="maps"]) #navigation #scene-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 8px;
+  align-content: flex-start;
+  max-height: calc(100vh - var(--pneuma-map-top) - 8px);
+  overflow-y: auto;
+  padding: 3px 5px 12px;
+}
+body:has(#pneuma-crewtools-calendar [data-layout="vertical"]) #navigation #scene-list {
+  flex-flow: column nowrap;
+}
+body:has(#pneuma-crewtools-calendar [data-hud-action="maps"]) #navigation #scene-list .scene {
+  flex: 0 0 auto;
+  margin: 0;
+  overflow: visible;
+  border: 1px solid #354d55;
+  border-radius: 0;
+  background: #10191e;
+  color: #b5c7ca;
+  box-shadow: none;
+  text-shadow: none;
+  font-family: "Roboto Condensed", "Arial Narrow", sans-serif;
+}
+body:has(#pneuma-crewtools-calendar [data-hud-action="maps"]) #navigation #scene-list .scene:is(.view, :hover, :focus-within) {
+  border-color: #60838a;
+  background-color: #18282e;
+}
+body:has(#pneuma-crewtools-calendar [data-hud-action="maps"]) #navigation #scene-list .scene.active {
+  color: #ffc36a;
+  border-left: 3px solid currentColor;
+}
+body:has(#pneuma-crewtools-calendar [data-hud-action="maps"]) #navigation #scene-list .scene.active .scene-name {
+  color: inherit;
+}
+body:has(#pneuma-crewtools-calendar [data-hud-action="maps"]) #navigation {
+  position: fixed;
+  inset: var(--pneuma-map-top) auto auto var(--pneuma-map-left);
+  width: max-content;
+  max-width: calc(100vw - var(--pneuma-map-left) - 8px);
+  margin: 0;
+  z-index: 80;
+}
+body:has(#pneuma-crewtools-calendar [data-hud-action="maps"]) #nav-toggle,
+body:has(#pneuma-crewtools-calendar [data-hud-action="maps"][aria-expanded="false"]) #navigation {
+  display: none;
+}
+#pneuma-crewtools-calendar .pneuma-crew-hud:has([data-hud-action="hub"].has-attention) button {
   color: var(--pneuma-hud-attention-color, #ffc36a);
 }
 #pneuma-crewtools-calendar .pneuma-crew-hud button:hover {
@@ -2784,6 +2843,15 @@ html[data-cpr-theme="darkmode"] .crewtools-roll-outcome.failure,
 .pneuma-crewtools .hq-installed table {
   margin: 0;
   width: 100%;
+}
+.pneuma-crewtools .hq-installed thead {
+  background: #3b3b3b;
+  color: #fff;
+  text-shadow: none;
+}
+.pneuma-crewtools .hq-installed thead th {
+  color: #fff;
+  text-shadow: none;
 }
 .pneuma-crewtools .hq-installed td,
 .pneuma-crewtools .hq-installed th {
@@ -4858,7 +4926,7 @@ html[data-cpr-theme="darkmode"] .pneuma-crewtools .netrunner-role {
   position: fixed; z-index: 2147483647; width: 230px; min-width: 210px;
   max-width: calc(100vw - 16px); max-height: calc(100vh - 16px); overflow-y: auto;
   box-sizing: border-box; pointer-events: auto; text-align: left;
-  background: var(--pneuma-panel-background, rgba(12,14,18,.78));
+  background: rgba(12,14,18,.96);
   color: var(--pneuma-panel-color, #eee);
   border: var(--pneuma-panel-border, 1px solid rgba(255,255,255,.22));
   border-radius: var(--pneuma-panel-radius, 4px);

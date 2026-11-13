@@ -6,6 +6,7 @@ declare const foundry: {
 };
 
 declare const Hooks: {
+  on(event: "renderSceneControls", callback: () => void): number;
   on(
     event: "userConnected",
     callback: (user: FoundryUser, connected: boolean) => void,
@@ -356,6 +357,7 @@ declare const game: {
 };
 
 declare const ui: {
+  navigation?: { expand(): unknown };
   // Native v12 scene-control refresh used by personal shortcut preferences.
   controls?: { initialize(): void };
   windows?: Record<

@@ -8,6 +8,8 @@ const GROUP_KEYS: Record<string, string[]> = {
   HUD: [
     "hideCrewHud",
     "shortcutDisplay",
+    "replaceMapControl",
+    "mapListLayout",
     "calendarFontColor",
     "hudIconColor",
     "hudAttentionColor",

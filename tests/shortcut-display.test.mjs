@@ -64,14 +64,26 @@ function fixture() {
             },
           },
         },
+        ResizeObserver: class {
+          observe() {}
+        },
         document: {
-          getElementById: () => ({
-            querySelector: () => ({
-              remove() {
-                removed++;
-              },
-            }),
-          }),
+          body: { style: { setProperty() {} } },
+          getElementById: (id) =>
+            id === "controls"
+              ? null
+              : {
+                  getBoundingClientRect: () => ({
+                    left: 0,
+                    right: 124,
+                    bottom: 70,
+                  }),
+                  querySelector: () => ({
+                    remove() {
+                      removed++;
+                    },
+                  }),
+                },
         },
       },
     );
