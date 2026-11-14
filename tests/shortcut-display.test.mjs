@@ -68,7 +68,7 @@ function fixture() {
           observe() {}
         },
         document: {
-          body: { style: { setProperty() {} } },
+          body: { style: { setProperty() {}, getPropertyValue() { return ""; } } },
           getElementById: (id) =>
             id === "controls"
               ? null

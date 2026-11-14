@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.16 - 2026-11-14
+
+- Batch HUD/map positioning notifications once per animation frame and avoid rewriting unchanged body positioning styles.
+- Verify that resize bursts perform one positioning pass while actual HUD geometry changes still move the map anchor.
+
+Validation: typecheck, production build, and automated tests. Live Foundry verification remains pending.
+
 ## 1.0.15 - 2026-11-13
 
 - Fixed clipping of the scene right-click menu in horizontal and vertical Crew HUD map lists.

@@ -13,6 +13,10 @@ let ready = false;
 let mapButton: HTMLButtonElement | undefined;
 let observedHud: HTMLElement | null = null;
 let mapAnchor: ResizeObserver | undefined;
+let mapPositionFrame = 0;
+function scheduleSceneList(): void {
+  if (!mapPositionFrame) mapPositionFrame = requestAnimationFrame(() => { mapPositionFrame = 0; positionSceneList(); });
+}
 
 function positionSceneList(): void {
   const hud = document.getElementById("pneuma-crewtools-calendar");
@@ -27,15 +31,18 @@ function positionSceneList(): void {
   const edge = buttons.length
     ? Math.max(...buttons.map((rect) => rect.right))
     : controls?.getBoundingClientRect().right;
-  document.body.style.setProperty(
+  const set = (name: string, value: string) => {
+    if (document.body.style.getPropertyValue(name) !== value) document.body.style.setProperty(name, value);
+  };
+  set(
     "--pneuma-map-left",
     Math.max(bounds.left, edge ? edge + 8 : 0) + "px",
   );
-  document.body.style.setProperty(
+  set(
     "--pneuma-native-map-left",
     bounds.right + 8 + "px",
   );
-  document.body.style.setProperty("--pneuma-map-top", bounds.bottom + 4 + "px");
+  set("--pneuma-map-top", bounds.bottom + 4 + "px");
 }
 
 function closeSceneList(): void {
@@ -69,7 +76,7 @@ export function refreshCrewHud(): void {
     mapAnchor?.disconnect();
     observedHud = root;
     if (root) {
-      mapAnchor ??= new ResizeObserver(positionSceneList);
+      mapAnchor ??= new ResizeObserver(scheduleSceneList);
       mapAnchor.observe(root);
       positionSceneList();
     }
@@ -175,10 +182,8 @@ export function registerCrewHud(): void {
     choices: { normal: "Normal (horizontal)", vertical: "Vertical" },
     onChange: refreshCrewHud,
   });
-  Hooks.on("renderSceneControls", () =>
-    requestAnimationFrame(positionSceneList),
-  );
-  window.addEventListener("resize", positionSceneList);
+  Hooks.on("renderSceneControls", scheduleSceneList);
+  window.addEventListener("resize", scheduleSceneList);
   document.addEventListener("contextmenu", (event) => {
     if (mapButton?.getAttribute("aria-expanded") !== "true") return;
     const scene = event.target instanceof Element && event.target.closest<HTMLElement>("#navigation #scene-list .scene");

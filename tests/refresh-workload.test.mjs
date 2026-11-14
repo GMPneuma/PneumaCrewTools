@@ -5,6 +5,8 @@ import { loadTransactionModule } from "./transaction-world.mjs";
 test("HUD builds exclusions once, preserving GM and owner balances after roster edits", () => {
   let actorVisits = 0,
     journalReads = 0;
+  let resizeHud, hudRight = 124, positionReads = 0, styleWrites = 0;
+  const frames = [], properties = new Map();
   const actors = Array.from({ length: 1000 }, (_, i) => ({
     id: "a" + i,
     type: "character",
@@ -28,7 +30,7 @@ test("HUD builds exclusions once, preserving GM and owner balances after roster 
     row = { querySelector: () => hub },
     root = {
       querySelector: () => row,
-      getBoundingClientRect: () => ({ left: 0, right: 124, bottom: 70 }),
+      getBoundingClientRect: () => { positionReads++; return { left: 0, right: hudRight, bottom: 70 }; },
     };
   let excluded = [];
   const game = {
@@ -60,10 +62,12 @@ test("HUD builds exclusions once, preserving GM and owner balances after roster 
     },
     {
       ResizeObserver: class {
+        constructor(callback) { resizeHud = callback; }
         observe() {}
       },
+      requestAnimationFrame: callback => { frames.push(callback); return frames.length; },
       document: {
-        body: { style: { setProperty() {} } },
+        body: { style: { setProperty(key, value) { styleWrites++; properties.set(key, value); }, getPropertyValue(key) { return properties.get(key) ?? ""; } } },
         getElementById: (id) => (id === "controls" ? null : root),
       },
     },
@@ -72,6 +76,15 @@ test("HUD builds exclusions once, preserving GM and owner balances after roster 
   assert.equal(actorVisits, 1000);
   assert.equal(journalReads, 500);
   assert.match(hub.title, /50 unspent crew/);
+  const initialReads = positionReads, initialWrites = styleWrites;
+  for (let i = 0; i < 20; i++) resizeHud();
+  assert.equal(frames.length, 1, "resize bursts schedule one positioning pass");
+  frames.shift()();
+  assert.equal(positionReads, initialReads + 1);
+  assert.equal(styleWrites, initialWrites, "unchanged HUD geometry does not rewrite body styles");
+  hudRight = 160; resizeHud(); frames.shift()();
+  assert.equal(properties.get("--pneuma-native-map-left"), "168px");
+  assert.equal(styleWrites, initialWrites + 1, "real size changes still update the relevant position");
   excluded = ["a0"];
   actorVisits = journalReads = 0;
   api.refreshCrewHud();
