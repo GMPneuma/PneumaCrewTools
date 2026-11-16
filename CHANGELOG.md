@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.17 - 2026-11-16
+
+- Fix Foundry settings search hiding matching module settings after they are organized into groups. Preserve the native category identifier on each row's immediate container, including nested groups.
+- Add regression coverage using Foundry v12's native search method for labels, hints, clearing search and retaining draft controls. Original layouts reproduce the bug; corrected layouts pass. Live Foundry verification remains pending.
+
 ## 1.0.16 - 2026-11-14
 
 - Batch HUD/map positioning notifications once per animation frame and avoid rewriting unchanged body positioning styles.

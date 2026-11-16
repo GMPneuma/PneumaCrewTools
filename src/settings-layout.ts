@@ -166,6 +166,8 @@ export function groupModuleSettings(root: HTMLElement): void {
     " and is not approved or endorsed by RTG. This content references materials that are the property of R. Talsorian Games and its licensees.",
   );
   wrapper.append(disclaimer);
+  // Foundry v12 search reads the category from each row's immediate parent.
+  for (const row of Array.from(wrapper.querySelectorAll<HTMLElement>(".form-group"))) row.parentElement!.dataset.category = MODULE_ID;
 }
 
 export function registerSettingsLayout(): void {

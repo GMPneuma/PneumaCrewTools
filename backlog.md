@@ -208,3 +208,5 @@ User Settings menu refinement: only active Combat, Crew, Scene and Visual Tools 
 User Settings gear stays anchored to the mini-HUD top-left independently of native context-menu positioning and external shortcut rows; reduced glyph to 10px.
 
 User Settings popup: heading added after native rendering; menu attached to document body above HUD stacking contexts, using Combat Tools shared translucent panel/header styling.
+
+Settings search correction (v1.0.17, 2026-11-16): grouped native setting rows preserve their category on the immediate parent so Foundry v12 search keeps matching module categories visible. Labels, hints, menu buttons, nested groups, clear-search behavior and draft controls are covered by a browser regression using the native search method. Live Foundry validation remains pending.
