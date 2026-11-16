@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.18 - 2026-11-16
+
+- Hide empty settings-group headings when Foundry search filters out their settings. Groups with matching descendants remain visible; clearing search restores the headings.
+- Extend native-search browser regressions to check group visibility and nested groups. Builds and browser checks pass; live Foundry verification remains pending.
+
 ## 1.0.17 - 2026-11-16
 
 - Fix Foundry settings search hiding matching module settings after they are organized into groups. Preserve the native category identifier on each row's immediate container, including nested groups.

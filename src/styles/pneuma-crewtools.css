@@ -5102,3 +5102,6 @@ html[data-cpr-theme="darkmode"] .pneuma-crewtools .netrunner-role {
   font-size: 14px;
   cursor: help;
 }
+
+/* Native search hides rows; omit their empty group headings as well. */
+.pneuma-settings-groups fieldset:not(:has(.form-group:not(.hidden):not([hidden]))) { display: none; }
