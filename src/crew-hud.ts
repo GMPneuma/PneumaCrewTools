@@ -144,7 +144,8 @@ export function refreshCrewHud(): void {
         );
       })
       .reduce(
-        (sum, account) => sum + storedDowntimeBalance(account.actorId),
+        (sum, account) =>
+          sum + storedDowntimeBalance(account.actorId, account.characterJournalId),
         0,
       );
   } catch {

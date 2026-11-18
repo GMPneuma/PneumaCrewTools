@@ -53,10 +53,16 @@ test("HUD builds exclusions once, preserving GM and owner balances after roster 
         getIndex: () => ({
           accounts: Array.from({ length: 50 }, (_, i) => ({
             actorId: "a" + i,
+            characterJournalId: "j" + i,
           })),
         }),
       },
-      "./downtime-records": { storedDowntimeBalance: () => 1 },
+      "./downtime-records": {
+        storedDowntimeBalance: (actorId, journalId) => {
+          assert.equal(journalId, "j" + actorId.slice(1));
+          return 1;
+        },
+      },
       "./payout-inbox": { waitingPayoutCount: () => 0 },
       "./player-settings": { addPlayerSettingsGear() {} },
     },
@@ -191,4 +197,23 @@ test("HQ refresh ignores unrelated actor changes, coalesces bursts, and writes o
     2,
     "Removed user permissions do not cause perpetual writes",
   );
+});
+
+test("HUD balance uses the bound journal and recovers from stale IDs", () => {
+  const record = (owner, days) => ({
+    getFlag: (_, key) => ({ recordKind: "character", actorId: owner })[key],
+    pages: [{ getFlag: (_, key) => ({ kind: "actorLedger", downtimeBalance: days })[key] }],
+  });
+  const correct = record("a", 7);
+  const wrong = record("b", 20);
+  let lookups = 0;
+  const game = { journal: { get: (id) => ({ good: correct, wrong })[id] } };
+  const { storedDowntimeBalance } = loadTransactionModule("downtime-records", game, {
+    "./journal-records": { actorPayoutJournal: () => { lookups++; return correct; } },
+    "./downtime-journal-view": {},
+  });
+  assert.equal(storedDowntimeBalance("a", "good"), 7);
+  assert.equal(lookups, 0);
+  for (const id of ["missing", "wrong", ""]) assert.equal(storedDowntimeBalance("a", id), 7);
+  assert.equal(lookups, 3);
 });

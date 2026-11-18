@@ -14,14 +14,20 @@ import {
 import type { ActivityRecord } from "./activity-records";
 
 // Character pages own separate concerns; the service assembles a transient model for calculations.
-export function resourcePage(actorId: string) {
-  return Array.from(actorPayoutJournal(actorId)?.pages ?? []).find(
+export function resourcePage(actorId: string, journalId?: string) {
+  const indexed = journalId ? game.journal.get(journalId) : undefined;
+  const journal =
+    indexed?.getFlag?.(MODULE_ID, "recordKind") === "character" &&
+    indexed.getFlag?.(MODULE_ID, "actorId") === actorId
+      ? indexed
+      : actorPayoutJournal(actorId);
+  return Array.from(journal?.pages ?? []).find(
     (p) => p.getFlag?.(MODULE_ID, "kind") === "actorLedger",
   );
 }
 // HUD reads this scalar without loading or replaying transaction history.
-export function storedDowntimeBalance(actorId: string): number {
-  const balance = resourcePage(actorId)?.getFlag?.(
+export function storedDowntimeBalance(actorId: string, journalId?: string): number {
+  const balance = resourcePage(actorId, journalId)?.getFlag?.(
     MODULE_ID,
     "downtimeBalance",
   );

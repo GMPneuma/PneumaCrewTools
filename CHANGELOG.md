@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.19 - 2026-11-18
+
+- Use the character journal ID stored on each downtime account when refreshing the crew HUD balance. Recover the correct journal when a saved ID is missing or stale.
+
 ## 1.0.18 - 2026-11-16
 
 - Hide empty settings-group headings when Foundry search filters out their settings. Groups with matching descendants remain visible; clearing search restores the headings.
