@@ -4362,6 +4362,9 @@ html[data-cpr-theme="darkmode"] .pneuma-crewtools .netrunner-role {
   grid-column: 3;
   grid-row: 2;
 }
+.pneuma-crewtools .hub-actions:has(> [data-hub-spend-ip]) > [data-hub-morale] {
+  grid-row: 3;
+}
 
 /* Public shortcut slots leave contributor colors and animations untouched. */
 #pneuma-crewtools-calendar.has-external-shortcuts {
