@@ -293,6 +293,7 @@ function promptTeammate(
     title,
     content,
     buttons: {
+      cancel: { label: "Cancel" },
       save: {
         label: "Save",
         callback: (html) => {
@@ -303,10 +304,9 @@ function promptTeammate(
             .catch((error) => ui.notifications.error(String(error)));
         },
       },
-      cancel: { label: "Cancel" },
     },
     default: "cancel",
-  }).render(true);
+  }, { classes: ["dialog", "pneuma-crew-action-dialog"] }).render(true);
 }
 export function bindTeammates(
   root: HTMLElement,

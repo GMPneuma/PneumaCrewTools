@@ -55,17 +55,17 @@ export function customResultHtml(
         rows +
         "</ul>"
       : '<p class="notes">No payouts for this result.</p>') +
-    (interactive &&
-    !result.applied &&
-    result.rewards.every((r) => r.amount !== null)
-      ? '<button type="button" data-custom-apply>Apply Saved Payouts</button>'
-      : "") +
     '<p class="notes custom-result-note">' +
     (result.applied
       ? "Saved in Downtime Log."
       : result.rewards.some((r) => r.amount === null)
         ? "Roll each pending payout to apply all rewards and losses together. You can close this window and choose Continue Result later; completed rolls are saved."
         : "Payouts pending. Apply the saved payouts to retry.") +
-    "</p>"
+    "</p>" +
+    (interactive &&
+    !result.applied &&
+    result.rewards.every((r) => r.amount !== null)
+      ? '<button type="button" data-custom-apply>Apply Saved Payouts</button>'
+      : "")
   );
 }

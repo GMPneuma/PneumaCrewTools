@@ -64,15 +64,15 @@
               ·
               {{cost}}
               eb</option>{{/if}}{{/each}}</select></div>
-    <div class="rent-save-row"><button
+    <div class="rent-save-row"><p class="notes">Before rent is due, changes cost only the increase;
+        downgrades give no refund. HQ residence uses shared rent.</p>
+      <button
         type="button"
         data-rent-action="residence"
       ><i class="fas fa-save"></i>
         {{#if choiceIncrease}}Save Choices · Pay
           {{choiceIncrease}}
-          eb{{else}}Save Choices{{/if}}</button>
-      <p class="notes">Before rent is due, changes cost only the increase;
-        downgrades give no refund. HQ residence uses shared rent.</p></div>
+          eb{{else}}Save Choices{{/if}}</button></div>
   </fieldset>
   {{#each bills}}<fieldset class="payout-heading hub-status"><legend>Rent &
         Lifestyle ·
@@ -131,12 +131,7 @@
                   selected
                 >{{label}}</option>{{else}}<option
                   value="{{value}}"
-                >{{label}}</option>{{/if}}{{/each}}</select></div>
-        <div class="rent-save-row"><button
-            type="button"
-            data-rent-action="hqSetup"
-            data-hq="{{id}}"
-          ><i class="fas fa-save"></i> Save HQ Rent</button></div>{{/if}}
+                >{{label}}</option>{{/if}}{{/each}}</select></div>{{/if}}
       {{#each bills}}<div class="rent-charge"><div><strong>Due
               {{date}}</strong><div>{{formula}}</div><div>{{paid}}
               eb paid ·
@@ -155,5 +150,10 @@
             data-period="{{period}}"
           >Contribute</button></div>{{else}}<p class="notes">No outstanding rent
           bill.</p>{{/each}}
+      {{#if isGM}}<div class="rent-save-row"><button
+            type="button"
+            data-rent-action="hqSetup"
+            data-hq="{{id}}"
+          ><i class="fas fa-save"></i> Save HQ Rent</button></div>{{/if}}
     </fieldset>{{/each}}
 </form>

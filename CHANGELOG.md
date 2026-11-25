@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.21 - 2026-11-25
+
+- Move Save and Apply to the bottom right in Crew Tools settings, Headquarters, Rent & Lifestyle, downtime, and GM adjustment dialogs.
+- Keep this release on the Foundry v12 codebase.
+
 ## 1.0.19 - 2026-11-18
 
 - Use the character journal ID stored on each downtime account when refreshing the crew HUD balance. Recover the correct journal when a saved ID is missing or stale.

@@ -172,6 +172,7 @@ export class GMDashboard extends PlayerHub {
                 refresh();
               },
               buttons: {
+                cancel: { label: "Cancel", callback: () => resolve(null) },
                 apply: {
                   label: "Apply Adjustment",
                   callback: async (html) => {
@@ -198,7 +199,6 @@ export class GMDashboard extends PlayerHub {
                     resolve(adjustment);
                   },
                 },
-                cancel: { label: "Cancel", callback: () => resolve(null) },
               },
               default: "apply",
               close: () => resolve(null),
@@ -233,6 +233,7 @@ export class GMDashboard extends PlayerHub {
                 html[0]?.closest(".app")?.classList.add("crew-hq-ip-dialog");
               },
               buttons: {
+                cancel: { label: "Cancel", callback: () => resolve(null) },
                 apply: {
                   label: "Apply Adjustment",
                   callback: async (html: FoundryHtml) => {
@@ -254,7 +255,6 @@ export class GMDashboard extends PlayerHub {
                     resolve(adjustment);
                   },
                 },
-                cancel: { label: "Cancel", callback: () => resolve(null) },
               },
               default: "apply",
               close: () => resolve(null),

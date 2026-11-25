@@ -2948,6 +2948,7 @@ html[data-cpr-theme="darkmode"] .crewtools-roll-outcome.failure,
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: flex-end;
   gap: 0.75rem;
   margin-top: 0.5rem;
 }
@@ -3881,6 +3882,7 @@ html[data-cpr-theme="darkmode"] .pneuma-crewtools .netrunner-role {
 }
 .pneuma-crewtools .activity-footer button {
   flex: 0 0 auto;
+  margin-inline-start: auto;
   width: auto;
   padding: 0 14px;
   min-height: 34px;
@@ -5105,3 +5107,29 @@ html[data-cpr-theme="darkmode"] .pneuma-crewtools .netrunner-role {
 
 /* Native search hides rows; omit their empty group headings as well. */
 .pneuma-settings-groups fieldset:not(:has(.form-group:not(.hidden):not([hidden]))) { display: none; }
+
+.pneuma-crewtools .workshop-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.5rem;
+}
+
+.pneuma-crewtools .workshop-actions > button {
+  width: auto;
+}
+
+:is(.pneuma-crew-action-dialog, .crew-hq-ip-dialog, .crew-downtime-adjustment-dialog) .dialog-buttons,
+.pneuma-player-settings footer:has(> button[type="submit"]) {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+:is(.pneuma-crew-action-dialog, .crew-hq-ip-dialog, .crew-downtime-adjustment-dialog) .dialog-buttons > button,
+.pneuma-player-settings footer > button[type="submit"] {
+  flex: 0 0 auto;
+  width: auto;
+  margin: 0;
+  padding-inline: 12px;
+}

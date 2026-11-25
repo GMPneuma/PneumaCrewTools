@@ -100,9 +100,11 @@ try {
     .locator('[data-rent-action="residence"]')
     .boundingBox();
   const note = await page.locator(".rent-save-row .notes").boundingBox();
+  const saveRow = await page.locator(".rent-save-row").first().boundingBox();
+  assert.ok(note.x + note.width <= save.x, "the explanation precedes Save");
   assert.ok(
-    note.x >= save.x + save.width,
-    "save explanation sits beside the button",
+    Math.abs(save.x + save.width - (saveRow.x + saveRow.width)) < 2,
+    "Save Choices is right-aligned",
   );
   await page.screenshot({ path: "rent-preview.png", fullPage: true });
   await page.setContent(
