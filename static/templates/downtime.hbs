@@ -446,15 +446,7 @@
                   {{workshop}}
                   · one downtime day advances
                   {{#if canWorkshopDay}}active{{else}}eligible{{/if}}
-                  projects together.</p>{{#if canWorkshopDay}}<button
-                    type="button"
-                    class="downtime-use-day"
-                    data-tech-action="techWorkshop"
-                  >Apply 1 day to all projects</button>{{else}}<button
-                    type="button"
-                    class="downtime-use-day"
-                    disabled
-                  >Apply 1 day to all projects</button>{{/if}}{{/if}}
+                  projects together.</p>{{/if}}
               {{#each techSlots}}
                 <div class="tech-slot" data-tech-slot="{{slot}}">
                   {{#if project}}
@@ -529,6 +521,17 @@
                   {{/if}}
                 </div>
               {{/each}}
+              {{#if workshop}}<footer class="workshop-actions">
+                {{#if canWorkshopDay}}<button
+                    type="button"
+                    class="downtime-use-day"
+                    data-tech-action="techWorkshop"
+                  >Apply 1 day to all projects</button>{{else}}<button
+                    type="button"
+                    class="downtime-use-day"
+                    disabled
+                  >Apply 1 day to all projects</button>{{/if}}
+              </footer>{{/if}}
             </details>
           {{/if}}
           {{#if netrunnerVisible}}

@@ -107,13 +107,6 @@
                       >{{name}}</option>{{/each}}</select></label>{{/unless}}
             </div>
           </div>
-          <div class="hq-property-actions"><button
-              type="submit"
-              class="hq-save-properties"
-            ><i class="fas fa-save"></i> Save</button>{{#if hq}}<button
-                type="button"
-                data-delete-hq
-              ><i class="fas fa-trash"></i> Delete HQ</button>{{/if}}</div>
         </fieldset>
       {{else if hq}}<fieldset class="payout-heading hub-status"><legend
           >{{hq.name}}</legend><div class="hq-properties"><button
@@ -198,4 +191,13 @@
           </div></fieldset>
       </div>{{/if}}
   </div>
+  {{#if canManage}}
+    <footer class="hq-property-actions">{{#if hq}}<button
+          type="button"
+          data-delete-hq
+        ><i class="fas fa-trash"></i> Delete HQ</button>{{/if}}<button
+        type="submit"
+        class="hq-save-properties"
+      ><i class="fas fa-save"></i> Save</button></footer>
+  {{/if}}
 </form>

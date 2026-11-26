@@ -1074,6 +1074,7 @@ export class HeadquartersForm extends CrewToolsForm {
             );
           },
           buttons: {
+            cancel: { label: "Cancel" },
             save: {
               label: "Save Access",
               callback: (html) => {
@@ -1092,11 +1093,10 @@ export class HeadquartersForm extends CrewToolsForm {
                 );
               },
             },
-            cancel: { label: "Cancel" },
           },
           default: "cancel",
         },
-        { width: 420, height: "auto", resizable: true },
+        { width: 420, height: "auto", resizable: true, classes: ["dialog", "pneuma-crew-action-dialog"] },
       );
       dialog.render(true);
     });

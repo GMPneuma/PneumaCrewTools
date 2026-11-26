@@ -19,7 +19,7 @@ const data = {
   hasItems: true,
   status: {
     actorId: "a1",
-    hasActor: true,
+    hasActor: false,
     actors: [{ id: "a1", name: "V", selected: true }],
     actorName: "V",
     downtime: "4",
@@ -91,8 +91,8 @@ try {
   );
   const alignment = await page.evaluate(() => {
     const tiles = Array.from(document.querySelectorAll(".hub-metrics > div"));
-    const buttons = Array.from(
-      document.querySelectorAll(".hub-actions button"),
+    const buttons = ["downtime", "rent", "headquarters", "reputation"].map(
+      (action) => document.querySelector(`[data-hub-${action}]`),
     );
     return tiles.map((tile, i) => {
       const t = tile.getBoundingClientRect(),
@@ -137,21 +137,38 @@ try {
     bounds.status < bounds.payout,
     "dashboard stays smaller than an expanded payout",
   );
+  data.status.hasActor = true;
   data.status.moraleBoost = true;
   await page
     .locator(".window-content")
     .evaluate((el, html) => (el.innerHTML = html), template(data));
-  const moraleBox = await page.locator("[data-hub-morale]").boundingBox();
+  const morale = page.getByRole("button", { name: "Morale Boost", exact: true });
+  const spendIp = page.getByRole("button", { name: "Spend IP", exact: true });
+  const moraleBox = await morale.boundingBox();
+  const ipBox = await spendIp.boundingBox();
   const hqBox = await page.locator("[data-hub-headquarters]").boundingBox();
   assert.ok(
-    Math.abs(moraleBox.x - hqBox.x) < 1 &&
-      moraleBox.y >= hqBox.y + hqBox.height,
-    "Moral Boost appears directly below View HQ",
+    Math.abs(moraleBox.x - ipBox.x) < 1 &&
+      Math.abs(ipBox.x - hqBox.x) < 1 &&
+      ipBox.y >= hqBox.y + hqBox.height &&
+      moraleBox.y >= ipBox.y + ipBox.height,
+    "Spend IP and Morale Boost occupy separate rows under View HQ",
   );
+  await spendIp.click({ trial: true });
+  await morale.click({ trial: true });
   if (process.env.HUB_SCREENSHOT)
     await page
       .locator(".window-app")
       .screenshot({ path: process.env.HUB_SCREENSHOT });
+  await page.locator(".window-content").evaluate(
+    (el, html) => (el.innerHTML = html),
+    template({ ...data, status: { ...data.status, hasActor: false } }),
+  );
+  assert.equal(await spendIp.count(), 0);
+  assert.equal(
+    await morale.evaluate((button) => getComputedStyle(button).gridRowStart),
+    "2",
+  );
   data.status.moraleBoost = false;
   // A long GM inbox must scroll, not collapse the opt-in controls to their borders.
   await page.locator(".window-content").evaluate(
@@ -702,6 +719,7 @@ try {
       "expire",
       "downtime",
       "adjustDowntime",
+      "techRecovery",
       "hqIp",
       "headquarters",
     ],

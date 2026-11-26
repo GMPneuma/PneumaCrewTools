@@ -1057,6 +1057,7 @@ function showCustomResult(
           ".custom-activity-result",
         );
         if (!content) return;
+        const footer = html[0]?.querySelector(".dialog-buttons");
         let busy = false;
         const refresh = () => {
           const result = read()?.result;
@@ -1066,16 +1067,20 @@ function showCustomResult(
             escape(result.tableTotal) +
             "</strong></p>" +
             customResultHtml(result, true);
-          for (const button of content.querySelectorAll<HTMLButtonElement>(
-            "[data-custom-reward], [data-custom-apply]",
-          ))
+          const apply = content.querySelector<HTMLButtonElement>(
+            "[data-custom-apply]",
+          );
+          footer?.querySelector("[data-custom-apply]")?.remove();
+          if (apply && footer) footer.append(apply);
+          const actions = [
+            ...content.querySelectorAll<HTMLButtonElement>("[data-custom-reward]"),
+          ];
+          if (apply) actions.push(apply);
+          for (const button of actions)
             button.addEventListener("click", () => {
               if (busy) return;
               busy = true;
-              for (const b of content.querySelectorAll<HTMLButtonElement>(
-                "button",
-              ))
-                b.disabled = true;
+              for (const action of actions) action.disabled = true;
               void rollCustomActivity(actorId, cycleId, {
                 deferDice: true,
                 ...(button.dataset.customReward !== undefined
@@ -1099,6 +1104,6 @@ function showCustomResult(
       buttons: { close: { label: "Close" } },
       default: "close",
     },
-    { width: 600, resizable: true },
+    { width: 600, resizable: true, classes: ["dialog", "pneuma-crew-action-dialog"] },
   ).render(true);
 }

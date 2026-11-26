@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.0.22 - 2026-11-25
+
+- Keep Spend IP clickable when Morale Boost is available. Morale Boost moves to a third row only when both buttons appear.
+- Correct the Morale Boost label in the Player Hub.
+
+## 1.0.21 - 2026-11-25
+
+- Move Save and Apply to the bottom right in Crew Tools settings, Headquarters, Rent & Lifestyle, downtime, and GM adjustment dialogs.
+- Keep this release on the Foundry v12 codebase.
+
 ## 1.0.19 - 2026-11-18
 
 - Use the character journal ID stored on each downtime account when refreshing the crew HUD balance. Recover the correct journal when a saved ID is missing or stale.
