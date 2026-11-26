@@ -136,3 +136,14 @@ GMs can inspect record sizes and diagnostics, open Journals, export reference co
 ### Custom downtime activities
 
 GMs can configure named activities under **Module Settings → Downtime → Custom Downtime Activities**. They appear in Spend Downtime’s **Other Activity** section, with one-day buttons or tracked day requirements and optional completion RollTables. Table results support Money, Humanity, Hitpoints and Reputation payout tags. See [Downtime](docs/downtime.md#custom-activities) for syntax and behavior.
+
+## Version branches and releases
+
+| Folder | Branch | Purpose |
+| --- | --- | --- |
+| `D:/Git/PneumaCrewTools-v12` | `main` | v12 maintenance |
+| `D:/Git/PneumaCrewTools-v13` | `foundry-v13` | v13 development |
+
+V12 keeps the existing `releases/latest/download/module.json` update feed. V13 uses `https://raw.githubusercontent.com/GMPneuma/PneumaCrewTools/foundry-v13/static/module.json`; its packaged manifest must retain that URL. Publish v13 as prereleases with `make_latest=false` until the v13 launch is explicitly approved. Publish matching assets before advancing the manifest. The development manifest is not ready for installation until a matching v13 package has been published.
+
+Use `./scripts/deploy-local.ps1 -CheckOnly` to check the local target, or run without arguments to typecheck and build. Only after stopping the matching server, use `-Deploy -ServerStopped` to deploy. Keep separate test worlds. Port relevant v12 fixes from `main` selectively to `foundry-v13`.
